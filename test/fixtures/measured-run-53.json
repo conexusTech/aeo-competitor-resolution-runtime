@@ -1,0 +1,909 @@
+{
+  "note": "The handover spike's measured 53-row run — the outcome split this row's exit criterion must reproduce or beat. Recovered from a fixture committed in aeo-frontend after the spike's own 160MB response cache was found to have vanished from the machine it lived on. Client SKUs and prices are removed; barcodes are manufacturer identifiers and the retailer fields are public listing facts.",
+  "measuredOn": "2026-09-08",
+  "recoveredOn": "2026-09-10",
+  "recoveredFrom": "aeo-frontend:src/lib/insights/__fixtures__/newegg-upc-sample-53.csv",
+  "split": {
+    "upc-verified": 22,
+    "not-found": 14,
+    "error": 5,
+    "probable": 12
+  },
+  "rows": [
+    {
+      "barcode": "649532609635",
+      "spikeStatus": "upc-verified",
+      "retailerItemId": "N82E16842102133",
+      "retailerModel": "CP1350PFCLCD",
+      "retailerBrand": "CyberPower",
+      "retailerBarcode": "649532609635",
+      "retailerSeller": null,
+      "queriesTried": [
+        "CyberPower CP1350PFCLCD"
+      ],
+      "candidatesSeen": 1,
+      "probes": 1,
+      "note": null
+    },
+    {
+      "barcode": "663296413697",
+      "spikeStatus": "upc-verified",
+      "retailerItemId": "N82E16879337003",
+      "retailerModel": "2960703",
+      "retailerBrand": "Thrustmaster",
+      "retailerBarcode": "663296413697",
+      "retailerSeller": null,
+      "queriesTried": [
+        "Control 41369",
+        "Thrustmaster T-Flight HOTAS"
+      ],
+      "candidatesSeen": 16,
+      "probes": 1,
+      "note": null
+    },
+    {
+      "barcode": "035286302005",
+      "spikeStatus": "not-found",
+      "retailerItemId": null,
+      "retailerModel": null,
+      "retailerBrand": null,
+      "retailerBarcode": null,
+      "retailerSeller": null,
+      "queriesTried": [
+        "Allsop ASP30200",
+        "ASP30200",
+        "Allsop 30200",
+        "Allsop ALLSOP-30200-",
+        "ALLSOP-30200-",
+        "Allsop Accutrack Slimline XL"
+      ],
+      "candidatesSeen": 0,
+      "probes": 0,
+      "note": "identity resolved, but no Newegg search results"
+    },
+    {
+      "barcode": "035286302012",
+      "spikeStatus": "not-found",
+      "retailerItemId": null,
+      "retailerModel": null,
+      "retailerBrand": null,
+      "retailerBarcode": null,
+      "retailerSeller": null,
+      "queriesTried": [
+        "Allsop 120269786-AC",
+        "120269786-AC",
+        "Allsop 30201",
+        "Allsop ALLSOP-30201",
+        "ALLSOP-30201",
+        "Allsop Accutrack Slimline Graphite"
+      ],
+      "candidatesSeen": 0,
+      "probes": 0,
+      "note": "identity resolved, but no Newegg search results"
+    },
+    {
+      "barcode": "046838064258",
+      "spikeStatus": "error",
+      "retailerItemId": null,
+      "retailerModel": null,
+      "retailerBrand": null,
+      "retailerBarcode": null,
+      "retailerSeller": null,
+      "queriesTried": [],
+      "candidatesSeen": 0,
+      "probes": 0,
+      "note": "status=200 bytes=209"
+    },
+    {
+      "barcode": "085854213196",
+      "spikeStatus": "upc-verified",
+      "retailerItemId": "0Z2-0025-00006",
+      "retailerModel": "085854213196",
+      "retailerBrand": "Case Logic",
+      "retailerBarcode": "085854213196",
+      "retailerSeller": "NothingButSavings",
+      "queriesTried": [
+        "Case DCB-306",
+        "DCB-306"
+      ],
+      "candidatesSeen": 1,
+      "probes": 1,
+      "note": null
+    },
+    {
+      "barcode": "035286302050",
+      "spikeStatus": "upc-verified",
+      "retailerItemId": "2RC-0089-00007",
+      "retailerModel": "30205",
+      "retailerBrand": "ALLSOP",
+      "retailerBarcode": "035286302050",
+      "retailerSeller": "NothingButSavings",
+      "queriesTried": [
+        "Allsop 120240127-M",
+        "120240127-M",
+        "Allsop 30205"
+      ],
+      "candidatesSeen": 2,
+      "probes": 1,
+      "note": null
+    },
+    {
+      "barcode": "710931610239",
+      "spikeStatus": "probable",
+      "retailerItemId": "0XP-001A-008U0",
+      "retailerModel": "TEG-S17D",
+      "retailerBrand": "TRENDnet",
+      "retailerBarcode": null,
+      "retailerSeller": "NothingButSavings",
+      "queriesTried": [
+        "TRENDnet TEG-S16G",
+        "TEG-S16G",
+        "TRENDnet 61023",
+        "TRENDnet 16-PORT",
+        "16-PORT"
+      ],
+      "candidatesSeen": 88,
+      "probes": 8,
+      "note": "no UPCCode match in 8 probed candidates — unconfirmed"
+    },
+    {
+      "barcode": "897337030295",
+      "spikeStatus": "probable",
+      "retailerItemId": "2YM-000S-003B2",
+      "retailerModel": "FA60-RR",
+      "retailerBrand": "PrimoChill",
+      "retailerBarcode": null,
+      "retailerSeller": "Tyler Direct",
+      "queriesTried": [
+        "PrimoChill PRIMOCHILL-60",
+        "PRIMOCHILL-60",
+        "PrimoChill 03029",
+        "PrimoChill 60 cc Cooling System Fill Syringe"
+      ],
+      "candidatesSeen": 12,
+      "probes": 6,
+      "note": "no UPCCode match in 6 probed candidates — unconfirmed"
+    },
+    {
+      "barcode": "710931505184",
+      "spikeStatus": "upc-verified",
+      "retailerItemId": "N82E16833156419",
+      "retailerModel": "TPE-TG44G",
+      "retailerBrand": "TRENDnet",
+      "retailerBarcode": "710931505184",
+      "retailerSeller": "NothingButSavings",
+      "queriesTried": [
+        "TPE-TG44G"
+      ],
+      "candidatesSeen": 9,
+      "probes": 1,
+      "note": null
+    },
+    {
+      "barcode": "884102021862",
+      "spikeStatus": "probable",
+      "retailerItemId": "2AM-000W-003D7",
+      "retailerModel": "NSE-200-KKN1",
+      "retailerBrand": "Cooler Master",
+      "retailerBarcode": null,
+      "retailerSeller": "Computer Headquarters",
+      "queriesTried": [
+        "Cooler N200"
+      ],
+      "candidatesSeen": 16,
+      "probes": 8,
+      "note": "no UPCCode match in 8 probed candidates — unconfirmed"
+    },
+    {
+      "barcode": "034447044723",
+      "spikeStatus": "not-found",
+      "retailerItemId": null,
+      "retailerModel": null,
+      "retailerBrand": null,
+      "retailerBarcode": null,
+      "retailerSeller": null,
+      "queriesTried": [
+        "Dot 04472",
+        "Dot Line SmartPhone Tripod Mount"
+      ],
+      "candidatesSeen": 1,
+      "probes": 1,
+      "note": "no candidate with model-level evidence — treat as not carried / unresolved"
+    },
+    {
+      "barcode": "097855100665",
+      "spikeStatus": "upc-verified",
+      "retailerItemId": "0S6-003U-00015",
+      "retailerModel": "980-000802",
+      "retailerBrand": "Logitech",
+      "retailerBarcode": "097855100665",
+      "retailerSeller": null,
+      "queriesTried": [
+        "Logitech Z150",
+        "Z150",
+        "Logitech 10066",
+        "Logitech 1012233-REG",
+        "1012233-REG",
+        "Logitech LOGITECH-Z150-2"
+      ],
+      "candidatesSeen": 9,
+      "probes": 1,
+      "note": null
+    },
+    {
+      "barcode": "897337025918",
+      "spikeStatus": "not-found",
+      "retailerItemId": null,
+      "retailerModel": null,
+      "retailerBrand": null,
+      "retailerBarcode": null,
+      "retailerSeller": null,
+      "queriesTried": [
+        "PrimoChill 02591",
+        "PrimoChill Intensifier UV Coolant Concentrate 15"
+      ],
+      "candidatesSeen": 0,
+      "probes": 0,
+      "note": "identity resolved, but no Newegg search results"
+    },
+    {
+      "barcode": "619659102180",
+      "spikeStatus": "probable",
+      "retailerItemId": "N82E16820173395",
+      "retailerModel": "SDCZ430-064G-G46",
+      "retailerBrand": "SanDisk",
+      "retailerBarcode": null,
+      "retailerSeller": "3C Expert",
+      "queriesTried": [
+        "SanDisk 64GB",
+        "64GB"
+      ],
+      "candidatesSeen": 72,
+      "probes": 8,
+      "note": "no UPCCode match in 8 probed candidates — unconfirmed"
+    },
+    {
+      "barcode": "897337025970",
+      "spikeStatus": "error",
+      "retailerItemId": null,
+      "retailerModel": null,
+      "retailerBrand": null,
+      "retailerBarcode": null,
+      "retailerSeller": null,
+      "queriesTried": [],
+      "candidatesSeen": 0,
+      "probes": 0,
+      "note": "status=200 bytes=209"
+    },
+    {
+      "barcode": "897337025956",
+      "spikeStatus": "probable",
+      "retailerItemId": "1B4-01S8-00005",
+      "retailerModel": "IBT-BG",
+      "retailerBrand": "PrimoChill",
+      "retailerBarcode": null,
+      "retailerSeller": "Tyler Direct",
+      "queriesTried": [
+        "PrimoChill B00AG243IM",
+        "B00AG243IM",
+        "PrimoChill 02595",
+        "PrimoChill Intensifier Transparent Fluid Dye UV"
+      ],
+      "candidatesSeen": 3,
+      "probes": 3,
+      "note": "no UPCCode match in 3 probed candidates — unconfirmed"
+    },
+    {
+      "barcode": "897337025925",
+      "spikeStatus": "probable",
+      "retailerItemId": "13K-008F-001D5",
+      "retailerModel": "VB00AQBBBLA",
+      "retailerBrand": "PrimoChill",
+      "retailerBarcode": null,
+      "retailerSeller": "Tyler Direct",
+      "queriesTried": [
+        "PrimoChill B00AG245JE",
+        "B00AG245JE",
+        "PrimoChill 02592",
+        "PrimoChill UV"
+      ],
+      "candidatesSeen": 36,
+      "probes": 8,
+      "note": "no UPCCode match in 8 probed candidates — unconfirmed"
+    },
+    {
+      "barcode": "747464127859",
+      "spikeStatus": "upc-verified",
+      "retailerItemId": "N82E16822165589",
+      "retailerModel": "LS210D0201",
+      "retailerBrand": "Buffalo Technology",
+      "retailerBarcode": "747464127859",
+      "retailerSeller": "BeachAudio",
+      "queriesTried": [
+        "Buffalo 1-BAY"
+      ],
+      "candidatesSeen": 36,
+      "probes": 1,
+      "note": null
+    },
+    {
+      "barcode": "747464127873",
+      "spikeStatus": "upc-verified",
+      "retailerItemId": "N82E16822165591",
+      "retailerModel": "LS210D0401",
+      "retailerBrand": "Buffalo Technology",
+      "retailerBarcode": "747464127873",
+      "retailerSeller": null,
+      "queriesTried": [
+        "Buffalo LS210D0401"
+      ],
+      "candidatesSeen": 2,
+      "probes": 1,
+      "note": null
+    },
+    {
+      "barcode": "747464128634",
+      "spikeStatus": "upc-verified",
+      "retailerItemId": "N82E16822165596",
+      "retailerModel": "LS220D0402",
+      "retailerBrand": "Buffalo Technology",
+      "retailerBarcode": "747464128634",
+      "retailerSeller": null,
+      "queriesTried": [
+        "Buffalo LS220D0402"
+      ],
+      "candidatesSeen": 2,
+      "probes": 1,
+      "note": null
+    },
+    {
+      "barcode": "606449101515",
+      "spikeStatus": "error",
+      "retailerItemId": null,
+      "retailerModel": null,
+      "retailerBrand": null,
+      "retailerBarcode": null,
+      "retailerSeller": null,
+      "queriesTried": [],
+      "candidatesSeen": 0,
+      "probes": 0,
+      "note": "status=200 bytes=209"
+    },
+    {
+      "barcode": "747464128658",
+      "spikeStatus": "upc-verified",
+      "retailerItemId": "N82E16822165598",
+      "retailerModel": "LS220D0802",
+      "retailerBrand": "Buffalo Technology",
+      "retailerBarcode": "747464128658",
+      "retailerSeller": null,
+      "queriesTried": [
+        "Buffalo LS220D0802"
+      ],
+      "candidatesSeen": 2,
+      "probes": 1,
+      "note": null
+    },
+    {
+      "barcode": "021299187203",
+      "spikeStatus": "upc-verified",
+      "retailerItemId": "N82E16826263223",
+      "retailerModel": "KEB6IK",
+      "retailerBrand": "Koss",
+      "retailerBarcode": "021299187203",
+      "retailerSeller": "BeachAudio",
+      "queriesTried": [
+        "On-ear KEB6IK",
+        "KEB6IK"
+      ],
+      "candidatesSeen": 1,
+      "probes": 1,
+      "note": null
+    },
+    {
+      "barcode": "606449070156",
+      "spikeStatus": "upc-verified",
+      "retailerItemId": "12K-008X-00026",
+      "retailerModel": "GS108-400NAS",
+      "retailerBrand": "Netgear Inc.",
+      "retailerBarcode": "606449070156",
+      "retailerSeller": null,
+      "queriesTried": [
+        "NETGEAR 8-PORT"
+      ],
+      "candidatesSeen": 36,
+      "probes": 1,
+      "note": null
+    },
+    {
+      "barcode": "649833202153",
+      "spikeStatus": "not-found",
+      "retailerItemId": null,
+      "retailerModel": null,
+      "retailerBrand": null,
+      "retailerBarcode": null,
+      "retailerSeller": null,
+      "queriesTried": [
+        "IMAK A20215",
+        "A20215",
+        "IMAK 20215",
+        "IMAK IMA20215",
+        "IMA20215",
+        "IMAK Ergo Glider Black"
+      ],
+      "candidatesSeen": 0,
+      "probes": 0,
+      "note": "identity resolved, but no Newegg search results"
+    },
+    {
+      "barcode": "852552006050",
+      "spikeStatus": "not-found",
+      "retailerItemId": null,
+      "retailerModel": null,
+      "retailerBrand": null,
+      "retailerBarcode": null,
+      "retailerSeller": null,
+      "queriesTried": [
+        "Avue ACN-BMTO081",
+        "ACN-BMTO081",
+        "Avue 00605",
+        "Avue BNC Male Twist On Connector (8 Pack)"
+      ],
+      "candidatesSeen": 0,
+      "probes": 0,
+      "note": "identity resolved, but no Newegg search results"
+    },
+    {
+      "barcode": "766623560641",
+      "spikeStatus": "probable",
+      "retailerItemId": "0TH-006Y-00010",
+      "retailerModel": "523318",
+      "retailerBrand": "Intellinet",
+      "retailerBarcode": null,
+      "retailerSeller": "Technology Galaxy",
+      "queriesTried": [
+        "Intellinet 8-PORT",
+        "8-PORT",
+        "Intellinet 56064",
+        "Intellinet INTELLINET-EN-8-P",
+        "INTELLINET-EN-8-P",
+        "Intellinet ITL-560641"
+      ],
+      "candidatesSeen": 47,
+      "probes": 8,
+      "note": "no UPCCode match in 8 probed candidates — unconfirmed"
+    },
+    {
+      "barcode": "810830022031",
+      "spikeStatus": "not-found",
+      "retailerItemId": null,
+      "retailerModel": null,
+      "retailerBrand": null,
+      "retailerBarcode": null,
+      "retailerSeller": null,
+      "queriesTried": [
+        "Night B00WMJE3IM",
+        "B00WMJE3IM",
+        "Night 02203",
+        "Night 9-WAY",
+        "9-WAY"
+      ],
+      "candidatesSeen": 72,
+      "probes": 8,
+      "note": "no candidate with model-level evidence — treat as not carried / unresolved"
+    },
+    {
+      "barcode": "852552006197",
+      "spikeStatus": "not-found",
+      "retailerItemId": null,
+      "retailerModel": null,
+      "retailerBrand": null,
+      "retailerBarcode": null,
+      "retailerSeller": null,
+      "queriesTried": [
+        "Avue 00619",
+        "Avue BNC Female to RNC Male Adapter (8 Pack)"
+      ],
+      "candidatesSeen": 0,
+      "probes": 0,
+      "note": "identity resolved, but no Newegg search results"
+    },
+    {
+      "barcode": "852552006258",
+      "spikeStatus": "not-found",
+      "retailerItemId": null,
+      "retailerModel": null,
+      "retailerBrand": null,
+      "retailerBarcode": null,
+      "retailerSeller": null,
+      "queriesTried": [
+        "Avue 00625",
+        "Avue BNC Female to Female Adapter (8 Pack)"
+      ],
+      "candidatesSeen": 0,
+      "probes": 0,
+      "note": "identity resolved, but no Newegg search results"
+    },
+    {
+      "barcode": "852552006333",
+      "spikeStatus": "error",
+      "retailerItemId": null,
+      "retailerModel": null,
+      "retailerBrand": null,
+      "retailerBarcode": null,
+      "retailerSeller": null,
+      "queriesTried": [],
+      "candidatesSeen": 0,
+      "probes": 0,
+      "note": "status=200 bytes=209"
+    },
+    {
+      "barcode": "855597003992",
+      "spikeStatus": "not-found",
+      "retailerItemId": null,
+      "retailerModel": null,
+      "retailerBrand": null,
+      "retailerBarcode": null,
+      "retailerSeller": null,
+      "queriesTried": [
+        "Avue 00399",
+        "Avue Passive Video Transceiver with Pigtail"
+      ],
+      "candidatesSeen": 0,
+      "probes": 0,
+      "note": "identity resolved, but no Newegg search results"
+    },
+    {
+      "barcode": "855597003169",
+      "spikeStatus": "not-found",
+      "retailerItemId": null,
+      "retailerModel": null,
+      "retailerBrand": null,
+      "retailerBarcode": null,
+      "retailerSeller": null,
+      "queriesTried": [
+        "Avue APW-D1210A",
+        "APW-D1210A",
+        "Avue 00316",
+        "Avue DC12V 1A Power Adapter"
+      ],
+      "candidatesSeen": 0,
+      "probes": 0,
+      "note": "identity resolved, but no Newegg search results"
+    },
+    {
+      "barcode": "606449106657",
+      "spikeStatus": "upc-verified",
+      "retailerItemId": "N82E16825124013",
+      "retailerModel": "C7000-100NAS",
+      "retailerBrand": "Netgear Inc.",
+      "retailerBarcode": "606449106657",
+      "retailerSeller": null,
+      "queriesTried": [
+        "NETGEAR AC1900"
+      ],
+      "candidatesSeen": 26,
+      "probes": 1,
+      "note": null
+    },
+    {
+      "barcode": "855597003985",
+      "spikeStatus": "not-found",
+      "retailerItemId": null,
+      "retailerModel": null,
+      "retailerBrand": null,
+      "retailerBarcode": null,
+      "retailerSeller": null,
+      "queriesTried": [
+        "Transceptor AVB300P",
+        "AVB300P",
+        "Transceptor 00398",
+        "AVUE Video"
+      ],
+      "candidatesSeen": 4,
+      "probes": 4,
+      "note": "no candidate with model-level evidence — treat as not carried / unresolved"
+    },
+    {
+      "barcode": "897337049235",
+      "spikeStatus": "error",
+      "retailerItemId": null,
+      "retailerModel": null,
+      "retailerBrand": null,
+      "retailerBarcode": null,
+      "retailerSeller": null,
+      "queriesTried": [],
+      "candidatesSeen": 0,
+      "probes": 0,
+      "note": "status=200 bytes=209"
+    },
+    {
+      "barcode": "619659113551",
+      "spikeStatus": "probable",
+      "retailerItemId": "0BD-000B-002P0",
+      "retailerModel": "SDCZ48-128G-U46",
+      "retailerBrand": "SanDisk",
+      "retailerBarcode": null,
+      "retailerSeller": "BioStar",
+      "queriesTried": [
+        "Sandisk 128GB",
+        "128GB"
+      ],
+      "candidatesSeen": 72,
+      "probes": 8,
+      "note": "no UPCCode match in 8 probed candidates — unconfirmed"
+    },
+    {
+      "barcode": "6933337311393",
+      "spikeStatus": "not-found",
+      "retailerItemId": null,
+      "retailerModel": null,
+      "retailerBrand": null,
+      "retailerBarcode": null,
+      "retailerSeller": null,
+      "queriesTried": [
+        "Tuniq TX-4",
+        "TX-4",
+        "Tuniq 31139",
+        "Tuniq TUNIQ-TX-4-HI",
+        "TUNIQ-TX-4-HI",
+        "Tuniq TURNIQ-TX-4-HI"
+      ],
+      "candidatesSeen": 36,
+      "probes": 8,
+      "note": "no candidate with model-level evidence — treat as not carried / unresolved"
+    },
+    {
+      "barcode": "812348012672",
+      "spikeStatus": "probable",
+      "retailerItemId": "N82E16817707143",
+      "retailerModel": "ST7202USB",
+      "retailerBrand": "STARTECH",
+      "retailerBarcode": null,
+      "retailerSeller": null,
+      "queriesTried": [
+        "Kingwin KW525-7U3C",
+        "KW525-7U3C",
+        "Kingwin 01267",
+        "Kingwin 7-PORT",
+        "7-PORT",
+        "Kingwin KW525"
+      ],
+      "candidatesSeen": 40,
+      "probes": 8,
+      "note": "no UPCCode match in 8 probed candidates — unconfirmed"
+    },
+    {
+      "barcode": "097855114693",
+      "spikeStatus": "upc-verified",
+      "retailerItemId": "N82E16826197074",
+      "retailerModel": "941-000121",
+      "retailerBrand": "Logitech",
+      "retailerBarcode": "00097855114693",
+      "retailerSeller": null,
+      "queriesTried": [
+        "Logitech G920",
+        "G920",
+        "Logitech 11469",
+        "Logitech 1374570-REG",
+        "1374570-REG",
+        "Logitech G920-DRI"
+      ],
+      "candidatesSeen": 72,
+      "probes": 2,
+      "note": null
+    },
+    {
+      "barcode": "097855112859",
+      "spikeStatus": "upc-verified",
+      "retailerItemId": "N82E16826197072",
+      "retailerModel": "941-000119",
+      "retailerBrand": "Logitech",
+      "retailerBarcode": "00097855112859",
+      "retailerSeller": "Electronic Express",
+      "queriesTried": [
+        "Logitech G920",
+        "G920",
+        "Logitech 11285",
+        "Logitech G923",
+        "G923",
+        "Logitech LOG-941-000119-B"
+      ],
+      "candidatesSeen": 144,
+      "probes": 1,
+      "note": null
+    },
+    {
+      "barcode": "619659075538",
+      "spikeStatus": "upc-verified",
+      "retailerItemId": "N82E16820171764",
+      "retailerModel": "SDCZ60-064G-A46",
+      "retailerBrand": "SanDisk",
+      "retailerBarcode": "0619659075538",
+      "retailerSeller": "Technology Galaxy",
+      "queriesTried": [
+        "Sandisk 64GB"
+      ],
+      "candidatesSeen": 36,
+      "probes": 1,
+      "note": null
+    },
+    {
+      "barcode": "848354017011",
+      "spikeStatus": "upc-verified",
+      "retailerItemId": "N82E16820232091",
+      "retailerModel": "F4-3200C16D-32GVK",
+      "retailerBrand": "G.SKILL",
+      "retailerBarcode": "848354017011",
+      "retailerSeller": null,
+      "queriesTried": [
+        "32GB"
+      ],
+      "candidatesSeen": 44,
+      "probes": 1,
+      "note": null
+    },
+    {
+      "barcode": "619659082321",
+      "spikeStatus": "probable",
+      "retailerItemId": "N82E16820173198",
+      "retailerModel": "SDCZ600-128G-G35",
+      "retailerBrand": "SanDisk",
+      "retailerBarcode": null,
+      "retailerSeller": "OEMPCWORLD",
+      "queriesTried": [
+        "Sandisk 128GB",
+        "128GB"
+      ],
+      "candidatesSeen": 72,
+      "probes": 8,
+      "note": "no UPCCode match in 8 probed candidates — unconfirmed"
+    },
+    {
+      "barcode": "663296420367",
+      "spikeStatus": "not-found",
+      "retailerItemId": null,
+      "retailerModel": null,
+      "retailerBrand": null,
+      "retailerBarcode": null,
+      "retailerSeller": null,
+      "queriesTried": [
+        "Thrustmaster RJ12",
+        "RJ12",
+        "Thrustmaster 42036",
+        "Thrustmaster 1250384-REG",
+        "1250384-REG",
+        "Thrustmaster QCHGV1Z00-6632"
+      ],
+      "candidatesSeen": 36,
+      "probes": 8,
+      "note": "no candidate with model-level evidence — treat as not carried / unresolved"
+    },
+    {
+      "barcode": "097855124197",
+      "spikeStatus": "upc-verified",
+      "retailerItemId": "N82E16826197304",
+      "retailerModel": "910-004941",
+      "retailerBrand": "Logitech",
+      "retailerBarcode": "097855124197",
+      "retailerSeller": "Triplenet Pricing",
+      "queriesTried": [
+        "Logitech M170",
+        "M170",
+        "Logitech 12419",
+        "Logitech LOGITECH-WIRELESS-"
+      ],
+      "candidatesSeen": 90,
+      "probes": 4,
+      "note": null
+    },
+    {
+      "barcode": "097855124180",
+      "spikeStatus": "upc-verified",
+      "retailerItemId": "N82E16826197146",
+      "retailerModel": "910-004940",
+      "retailerBrand": "Logitech",
+      "retailerBarcode": "097855124180",
+      "retailerSeller": "Fast Ecommerce LLC",
+      "queriesTried": [
+        "Logitech M170",
+        "M170",
+        "Logitech 12418",
+        "Logitech LOGITECH-WIRELESS-3-"
+      ],
+      "candidatesSeen": 85,
+      "probes": 2,
+      "note": null
+    },
+    {
+      "barcode": "812348012993",
+      "spikeStatus": "probable",
+      "retailerItemId": "04P-005W-000U8",
+      "retailerModel": "01299",
+      "retailerBrand": "Weiler",
+      "retailerBarcode": null,
+      "retailerSeller": "Zoro",
+      "queriesTried": [
+        "Powered KW525-3U3CR",
+        "KW525-3U3CR",
+        "Powered 01299"
+      ],
+      "candidatesSeen": 9,
+      "probes": 5,
+      "note": "no UPCCode match in 5 probed candidates — unconfirmed"
+    },
+    {
+      "barcode": "097855122834",
+      "spikeStatus": "upc-verified",
+      "retailerItemId": "N82E16823126476",
+      "retailerModel": "920-008149",
+      "retailerBrand": "Logitech",
+      "retailerBarcode": "097855122834",
+      "retailerSeller": null,
+      "queriesTried": [
+        "Logitech K780",
+        "K780",
+        "Logitech 12283",
+        "Logitech 34772439-LOGITE",
+        "34772439-LOGITE",
+        "Logitech PRODUCT115571"
+      ],
+      "candidatesSeen": 10,
+      "probes": 1,
+      "note": null
+    },
+    {
+      "barcode": "731304329374",
+      "spikeStatus": "upc-verified",
+      "retailerItemId": "N82E16842301682",
+      "retailerModel": "BN450M",
+      "retailerBrand": "APC",
+      "retailerBarcode": "731304329374",
+      "retailerSeller": null,
+      "queriesTried": [
+        "APC BN450M"
+      ],
+      "candidatesSeen": 2,
+      "probes": 1,
+      "note": null
+    },
+    {
+      "barcode": "074101944662",
+      "spikeStatus": "probable",
+      "retailerItemId": "34G-0001-002F3",
+      "retailerModel": "16437401_K2",
+      "retailerBrand": "FUJIFILM",
+      "retailerBarcode": null,
+      "retailerSeller": "Adorama",
+      "queriesTried": [
+        "Fujifilm FUJ16437401",
+        "FUJ16437401",
+        "Fujifilm 94466",
+        "Fujifilm instax mini Rainbow Instant Film"
+      ],
+      "candidatesSeen": 13,
+      "probes": 8,
+      "note": "no UPCCode match in 8 probed candidates — unconfirmed"
+    },
+    {
+      "barcode": "663296420732",
+      "spikeStatus": "upc-verified",
+      "retailerItemId": "N82E16826280097",
+      "retailerModel": "2960778",
+      "retailerBrand": "Thrustmaster",
+      "retailerBarcode": "0663296420732",
+      "retailerSeller": "Toinniker",
+      "queriesTried": [
+        "Thrustmaster T16000M",
+        "T16000M",
+        "Thrustmaster 42073",
+        "Thrustmaster 16000M",
+        "16000M",
+        "Thrustmaster THRUSTMASTER-"
+      ],
+      "candidatesSeen": 71,
+      "probes": 2,
+      "note": null
+    }
+  ]
+}
