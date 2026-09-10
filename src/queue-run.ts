@@ -13,6 +13,8 @@
  * Every dependency is injected for the same reason.
  */
 
+import { Capturer, tallyCaptures } from "./capture/capturer.js";
+import type { CaptureRecord } from "./capture/types.js";
 import type { RetailerAdapter } from "./adapters/types.js";
 import type { Fetcher } from "./fetcher/types.js";
 import type { GatewayClient, ResolutionJob } from "./gateway/client.js";
@@ -46,6 +48,8 @@ export interface QueueRunResult {
   readonly liveRequests: number;
   /** True when the gateway said the run no longer exists and we stopped. */
   readonly stoppedEarly: boolean;
+  /** One per resolution offered, whatever happened to it. */
+  readonly captures: readonly CaptureRecord[];
 }
 
 export async function runDispatchedJob(
@@ -80,6 +84,30 @@ export async function runDispatchedJob(
     );
   }
 
+  // The evidence keeper. Built from the JOB's policy, never from the dispatch:
+  // the organization's quota can be spent between dispatch and fetch, and the
+  // fetched job is the one the run works.
+  const capturer = new Capturer({
+    policy: job.capture,
+    fetcher: deps.fetcher,
+    runDir: deps.baseOptions.runDir,
+    upload: (args) => deps.client.postCapture(args),
+    log,
+  });
+  await capturer.load();
+  if (capturer.acceptedCount > 0) {
+    log(
+      `resuming: ${capturer.acceptedCount} page(s) were already stored and ` +
+        `will not be re-posted`,
+    );
+  }
+  if (job.capture.enabled) {
+    log(
+      `capturing evidence: up to ${job.capture.budget} page(s) this run, ` +
+        `format ${job.capture.format}`,
+    );
+  }
+
   let lastTick = 0;
 
   try {
@@ -92,7 +120,17 @@ export async function runDispatchedJob(
       deps.fetcher,
       {
         ...deps.baseOptions,
-        onResolved: (resolution) => deps.reporter.offer(resolution),
+        onResolved: async (resolution) => {
+          // 🔴 The finding first, the evidence second, and the order is a
+          // priority rather than a correctness argument: the finding is the
+          // product and the capture is a convenience. `offer` here is also
+          // what enforces journal-before-report, which `runList` guarantees by
+          // calling this only after the resolution is on disk.
+          await deps.reporter.offer(resolution);
+          // Never throws — see `Capturer`. A run must not lose a paid finding
+          // because a page could not be stored.
+          await capturer.offer(resolution);
+        },
         // The one thing that stops a run early: the gateway saying the run is
         // gone. Buying pages for findings nobody will accept is pure waste.
         shouldContinue: () => !deps.reporter.isRunGone,
@@ -128,7 +166,16 @@ export async function runDispatchedJob(
         resolutions,
         liveRequests: deps.fetcher.liveRequestCount,
         stoppedEarly: true,
+        captures: capturer.records,
       };
+    }
+
+    if (job.capture.enabled) {
+      const tally = tallyCaptures(capturer.records);
+      log(
+        `captures: ${tally.captured} stored, ${tally.failed} failed, ` +
+          `${tally.skipped_quota} over budget, ${capturer.remaining} left`,
+      );
     }
 
     await deps.reporter.reportCompleted(deps.fetcher.liveRequestCount);
@@ -136,6 +183,7 @@ export async function runDispatchedJob(
       resolutions,
       liveRequests: deps.fetcher.liveRequestCount,
       stoppedEarly: false,
+      captures: capturer.records,
     };
   } catch (error) {
     // 🔴 A crash that reported nothing would leave the run live until the

@@ -28,6 +28,12 @@
  * | 5xx / network | transient | retry with backoff |
  */
 
+import {
+  CAPTURE_DISABLED,
+  parseCapturePolicy,
+  type CaptureArtifact,
+  type CapturePolicy,
+} from "../capture/types.js";
 import type { Resolution } from "../resolve.js";
 
 export const GATEWAY_URL_ENV = "RESOLUTION_GATEWAY_URL";
@@ -63,6 +69,16 @@ export interface ResolutionJob {
   readonly retailerSlug: string;
   readonly itemsTotal: number;
   readonly items: readonly JobItem[];
+  /**
+   * What evidence to keep, and how much of it.
+   *
+   * 🔑 **Handed over with the job rather than decided here**, because the two
+   * halves of "within a budget" live in different places: the organization's
+   * quota, the retailer's registry capability and the selection rules are the
+   * gateway's to know, and the per-run ceiling is this container's to keep.
+   * ⚠️ Absent means disabled — see `parseCapturePolicy`.
+   */
+  readonly capture: CapturePolicy;
 }
 
 /**
@@ -89,6 +105,18 @@ export type ReportOutcome =
    */
   | { readonly kind: "run-gone"; readonly detail: string }
   /** Still failing after every attempt. Not acknowledged; a resume re-sends. */
+  | { readonly kind: "unreachable"; readonly detail: string };
+
+/**
+ * How a capture upload ended.
+ *
+ * Deliberately the same three shapes as `ReportOutcome` minus `run-gone`: a
+ * capture is evidence, so a run whose findings the gateway has stopped
+ * accepting is handled where the findings are, not here.
+ */
+export type CaptureUpload =
+  | { readonly kind: "stored"; readonly storageKey: string }
+  | { readonly kind: "refused"; readonly detail: string }
   | { readonly kind: "unreachable"; readonly detail: string };
 
 /** The run is not there to report to. */
@@ -257,6 +285,92 @@ export class GatewayClient {
     return this.postEvent({ type: "resolutions", resolutions });
   }
 
+  /**
+   * Post one captured page and learn where the gateway put it.
+   *
+   * 🔴 **Its own request, not a field on a finding.** A resolutions batch
+   * carries up to 250 findings, and 250 product pages is tens of megabytes
+   * against an endpoint whose cap is a JSON body — so a batch that happened to
+   * include captures would be refused with a non-retryable 400 and lose every
+   * finding in it. One capture, one request.
+   *
+   * ⚠️ **A 409 is `stored`, not a failure.** The gateway keys an artefact on its
+   * content hash, so a page two items resolved to — or one a resumed run
+   * re-posts — is already there. That is the receiver being idempotent, which is
+   * the property the whole reporting design rests on; reading it as an error
+   * would make a correct retry look like a fault.
+   *
+   * 🔑 **A 429 is refused rather than retried.** It means the organization's
+   * quota is spent, which asking again does not change — and a retry loop
+   * against a full quota would spend the run's wall clock on evidence it cannot
+   * store.
+   */
+  async postCapture(args: {
+    readonly clientSku: string;
+    readonly barcode: string;
+    readonly artifact: CaptureArtifact;
+  }): Promise<CaptureUpload> {
+    const body = JSON.stringify({
+      tenant_id: this.identity.tenantId,
+      organization_id: this.identity.organizationId,
+      runtime_version: process.env["RESOLUTION_BUILD_VERSION"] ?? "unknown",
+      client_sku: args.clientSku,
+      barcode: args.barcode,
+      format: args.artifact.format,
+      source_url: args.artifact.sourceUrl,
+      captured_at: args.artifact.capturedAt,
+      byte_size: args.artifact.byteSize,
+      sha256: args.artifact.sha256,
+      content_base64: args.artifact.contentBase64,
+    });
+
+    let lastDetail = "no attempt was made";
+    for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
+      if (attempt > 0) await this.sleep(BACKOFF_BASE_MS * 2 ** attempt);
+      let response: Response;
+      try {
+        response = await this.fetchImpl(`${this.runUrl}/captures`, {
+          method: "POST",
+          headers: {
+            Authorization: this.authHeader,
+            "Content-Type": "application/json",
+          },
+          body,
+          signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        });
+      } catch (error) {
+        lastDetail = error instanceof Error ? error.message : String(error);
+        continue;
+      }
+
+      if (response.ok || response.status === 409) {
+        const key = await storageKeyOf(response);
+        if (key !== null) return { kind: "stored", storageKey: key };
+        // 🔴 A 2xx with no key is the gateway and this build disagreeing about
+        // the response shape. Reported as refused rather than invented, because
+        // a fabricated key would put an unopenable link on a reviewer's screen.
+        return {
+          kind: "refused",
+          detail:
+            `the gateway accepted the capture with status ${response.status} ` +
+            `and returned no storage key`,
+        };
+      }
+
+      if (response.status < 500) {
+        const detail = await safeText(response);
+        return {
+          kind: "refused",
+          detail: `status ${response.status}: ${detail}`,
+        };
+      }
+
+      lastDetail = `status ${response.status}: ${await safeText(response)}`;
+    }
+
+    return { kind: "unreachable", detail: lastDetail };
+  }
+
   async reportCompleted(requestsSpent: number): Promise<ReportOutcome> {
     return this.postEvent({ type: "completed", requests_spent: requestsSpent });
   }
@@ -366,6 +480,24 @@ export class GatewayClient {
   }
 }
 
+/**
+ * The storage key out of a capture response, or `null` if there is none.
+ *
+ * ⚠️ Total: a body that is not JSON, or JSON without the field, is an absent
+ * key rather than a thrown error. The caller has a `refused` outcome for that
+ * and a throw here would turn a shape disagreement into a lost run.
+ */
+async function storageKeyOf(response: Response): Promise<string | null> {
+  try {
+    const body: unknown = await response.json();
+    if (body === null || typeof body !== "object") return null;
+    const key = (body as Record<string, unknown>)["storage_key"];
+    return typeof key === "string" && key !== "" ? key : null;
+  } catch {
+    return null;
+  }
+}
+
 async function safeText(response: Response): Promise<string> {
   try {
     return (await response.text()).slice(0, 500);
@@ -425,5 +557,12 @@ export function parseJob(body: unknown, runId: string): ResolutionJob {
     retailerSlug,
     itemsTotal: parsed.length,
     items: parsed,
+    // ⚠️ Absent is disabled, never enabled: a gateway that predates capture
+    // support carries no block, and defaulting to on would spend a budget
+    // nobody set. A MALFORMED block still throws — see `parseCapturePolicy`.
+    capture: parseCapturePolicy(raw["capture"], runId),
   };
 }
+
+/** Re-exported so a caller needs one import for the disabled default. */
+export { CAPTURE_DISABLED };

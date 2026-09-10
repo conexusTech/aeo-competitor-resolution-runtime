@@ -6,7 +6,9 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { neweggAdapter } from "../src/adapters/newegg.js";
 import type { RetailerAdapter } from "../src/adapters/types.js";
+import { CAPTURE_DISABLED } from "../src/capture/types.js";
 import type { Fetcher } from "../src/fetcher/types.js";
+import type { ResolutionJob } from "../src/gateway/client.js";
 import { PROGRESS_EVERY, runDispatchedJob } from "../src/queue-run.js";
 import type { DispatchPayload } from "../src/queue/task-record.js";
 import type { Resolution } from "../src/resolve.js";
@@ -30,7 +32,15 @@ const DISPATCH: DispatchPayload = {
   itemsTotal: 2,
 };
 
-const JOB = {
+/**
+ * ⚠️ **Typed, and that is a correction.** This was `const JOB = {…}` and
+ * `fakeClient(job: unknown)`, so the whole client double bypassed type checking
+ * — adding a required field to `ResolutionJob` failed at RUNTIME, nine tests
+ * deep, with a `Cannot read properties of undefined` pointing at the new code
+ * rather than at the fixture. A fake typed as the thing it fakes turns that
+ * into one compile error naming the missing field.
+ */
+const JOB: ResolutionJob = {
   runId: DISPATCH.resolutionRunId,
   retailerSlug: "newegg",
   itemsTotal: 2,
@@ -38,6 +48,7 @@ const JOB = {
     { barcode: "649532609635", clientSku: "SKU-001" },
     { barcode: "884102021862", clientSku: "SKU-011" },
   ],
+  capture: CAPTURE_DISABLED,
 };
 
 const resolution = (clientSku: string): Resolution =>
@@ -86,13 +97,15 @@ function fakeReporter(over: Record<string, unknown> = {}) {
   };
 }
 
-function fakeClient(job: unknown = JOB) {
+function fakeClient(job: ResolutionJob = JOB) {
   return {
     fetchJob: () => Promise.resolve(job),
     reportProgress: () => Promise.resolve({ kind: "applied" } as const),
     reportResolutions: () => Promise.resolve({ kind: "applied" } as const),
     reportCompleted: () => Promise.resolve({ kind: "applied" } as const),
     reportError: () => Promise.resolve({ kind: "applied" } as const),
+    postCapture: () =>
+      Promise.resolve({ kind: "stored", storageKey: "k/1" } as const),
   };
 }
 
@@ -458,5 +471,231 @@ describe("the onResolved seam", () => {
     // journal — so a resumed run reports the same set without re-fetching.
     expect(resolvedAgain).toBe(0);
     expect(second).toHaveLength(2);
+  });
+});
+
+/**
+ * Evidence, through the whole dispatched sequence.
+ *
+ * 🔑 What the unit checks in `capture.spec.ts` cannot show: that the capturer
+ * is built from the **job's** policy rather than the dispatch's, that it is
+ * loaded before the run starts, and that a finding is reported before its page
+ * is captured.
+ */
+describe("a dispatched run's evidence", () => {
+  let dir: string;
+
+  beforeEach(async () => {
+    dir = await mkdtemp(path.join(tmpdir(), "queue-capture-"));
+  });
+  afterEach(async () => {
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  const page = (url: string, sku: string) =>
+    ({
+      ...resolution(sku),
+      match: {
+        itemId: url.slice(-5),
+        url,
+        title: "A product",
+        brand: null,
+        model: null,
+        priceCents: 1999,
+        inStock: true,
+        isFirstParty: true,
+        sellerName: "Newegg",
+        retailerBarcode: "649532609635",
+        score: 7,
+      },
+    }) as unknown as Resolution;
+
+  const chosen = page("https://www.newegg.com/p/N82E1", "SKU-001");
+
+  /** A fetcher that can serve the chosen page back for capture. */
+  const servingFetcher = (): Fetcher => ({
+    fetch: (url: string) =>
+      Promise.resolve({ url, body: "<html>page</html>", cached: true }),
+    liveRequestCount: 7,
+  });
+
+  const capturingJob = (budget: number): ResolutionJob => ({
+    ...JOB,
+    capture: { enabled: true, budget, format: "page_html" },
+  });
+
+  it("captures the chosen page when the job asks for it", async () => {
+    const { reporter } = fakeReporter();
+    const posted: unknown[] = [];
+
+    const result = await runDispatchedJob({
+      dispatch: DISPATCH,
+      client: {
+        ...fakeClient(capturingJob(5)),
+        postCapture: (args: unknown) => {
+          posted.push(args);
+          return Promise.resolve({
+            kind: "stored",
+            storageKey: "org/run/xyz",
+          } as const);
+        },
+      } as never,
+      reporter: reporter as never,
+      adapterFor,
+      fetcher: servingFetcher(),
+      runList: async (_items, _adapter, _fetcher, options) => {
+        await options.onResolved?.(chosen);
+        return [chosen];
+      },
+      baseOptions: { ...RUN_DEFAULTS, runDir: dir },
+      log: () => {},
+    });
+
+    expect(posted).toHaveLength(1);
+    expect(result.captures).toHaveLength(1);
+    expect(result.captures[0]).toMatchObject({
+      state: "captured",
+      storageKey: "org/run/xyz",
+    });
+  });
+
+  /**
+   * 🔴 **Absent means disabled.** A gateway that predates capture support sends
+   * no policy, and capturing anyway would spend a budget nobody set — against
+   * a quota the gateway is not tracking.
+   */
+  it("captures nothing when the job carries no capture policy", async () => {
+    const { reporter } = fakeReporter();
+    const posted: unknown[] = [];
+
+    const result = await runDispatchedJob({
+      dispatch: DISPATCH,
+      client: {
+        ...fakeClient(),
+        postCapture: (args: unknown) => {
+          posted.push(args);
+          return Promise.resolve({ kind: "stored", storageKey: "k" } as const);
+        },
+      } as never,
+      reporter: reporter as never,
+      adapterFor,
+      fetcher: servingFetcher(),
+      runList: async (_items, _adapter, _fetcher, options) => {
+        await options.onResolved?.(chosen);
+        return [chosen];
+      },
+      baseOptions: { ...RUN_DEFAULTS, runDir: dir },
+      log: () => {},
+    });
+
+    expect(posted).toEqual([]);
+    expect(result.captures[0]).toMatchObject({ state: "skipped_disabled" });
+  });
+
+  /**
+   * 🔴 The finding is the product; the evidence is a convenience. A run that
+   * abandoned a paid finding because a capture failed would trade the thing
+   * worth money for the thing worth comfort.
+   */
+  it("reports the finding even when every capture fails", async () => {
+    const { reporter, offered } = fakeReporter();
+
+    const result = await runDispatchedJob({
+      dispatch: DISPATCH,
+      client: {
+        ...fakeClient(capturingJob(5)),
+        postCapture: () => Promise.reject(new Error("storage is down")),
+      } as never,
+      reporter: reporter as never,
+      adapterFor,
+      fetcher: servingFetcher(),
+      runList: async (_items, _adapter, _fetcher, options) => {
+        await options.onResolved?.(chosen);
+        return [chosen];
+      },
+      baseOptions: { ...RUN_DEFAULTS, runDir: dir },
+      log: () => {},
+    });
+
+    expect(offered).toEqual(["SKU-001"]);
+    expect(result.captures[0]).toMatchObject({ state: "failed" });
+    expect(result.captures[0]?.failureReason).toContain("storage is down");
+  });
+
+  /** The finding first, the evidence second — a priority, stated as an order. */
+  it("reports a finding before capturing its page", async () => {
+    const order: string[] = [];
+    const { reporter } = fakeReporter({
+      offer: (r: Resolution) => {
+        order.push(`offer:${r.clientSku}`);
+        return Promise.resolve();
+      },
+    });
+
+    await runDispatchedJob({
+      dispatch: DISPATCH,
+      client: {
+        ...fakeClient(capturingJob(5)),
+        postCapture: () => {
+          order.push("capture");
+          return Promise.resolve({ kind: "stored", storageKey: "k" } as const);
+        },
+      } as never,
+      reporter: reporter as never,
+      adapterFor,
+      fetcher: servingFetcher(),
+      runList: async (_items, _adapter, _fetcher, options) => {
+        await options.onResolved?.(chosen);
+        return [chosen];
+      },
+      baseOptions: { ...RUN_DEFAULTS, runDir: dir },
+      log: () => {},
+    });
+
+    expect(order).toEqual(["offer:SKU-001", "capture"]);
+  });
+
+  /**
+   * ⚠️ Built from the JOB's policy, never the dispatch's. The organization's
+   * quota can be spent between dispatch and fetch, and the fetched job is the
+   * one the run works — the same reason the item list comes from the job.
+   */
+  it("keeps to the job's budget across several pages", async () => {
+    const { reporter } = fakeReporter();
+    let posts = 0;
+
+    const result = await runDispatchedJob({
+      dispatch: { ...DISPATCH, itemsTotal: 3 },
+      client: {
+        ...fakeClient(capturingJob(1)),
+        postCapture: () => {
+          posts++;
+          return Promise.resolve({
+            kind: "stored",
+            storageKey: "k/" + String(posts),
+          } as const);
+        },
+      } as never,
+      reporter: reporter as never,
+      adapterFor,
+      fetcher: servingFetcher(),
+      runList: async (_items, _adapter, _fetcher, options) => {
+        // Two DIFFERENT pages, so the second reaches the budget rather than
+        // the already-accepted set.
+        await options.onResolved?.(chosen);
+        await options.onResolved?.(
+          page("https://www.newegg.com/p/N82E2", "SKU-002"),
+        );
+        return [];
+      },
+      baseOptions: { ...RUN_DEFAULTS, runDir: dir },
+      log: () => {},
+    });
+
+    expect(posts).toBe(1);
+    expect(result.captures.map((c) => c.state)).toEqual([
+      "captured",
+      "skipped_quota",
+    ]);
   });
 });

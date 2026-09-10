@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { artifactFrom, CAPTURE_DISABLED } from "../src/capture/types.js";
 import {
   GATEWAY_PASSWORD_ENV,
   GATEWAY_URL_ENV,
@@ -364,5 +365,188 @@ describe("the batch cap is a cross-repo contract", () => {
     const { client: c, calls } = client([ok()]);
     expect((await c.reportResolutions([])).kind).toBe("applied");
     expect(calls).toHaveLength(0);
+  });
+});
+
+describe("posting a capture", () => {
+  const artifact = artifactFrom({
+    sourceUrl: "https://www.newegg.com/p/N82E1",
+    body: "<html>a page</html>",
+  });
+  const post = (answers: (() => Response)[]) => {
+    const built = client(answers);
+    return {
+      ...built,
+      send: () =>
+        built.client.postCapture({
+          clientSku: "SKU-001",
+          barcode: "649532609635",
+          artifact,
+        }),
+    };
+  };
+
+  it("posts to the run's own captures route, with the credential", async () => {
+    const { send, calls } = post([ok({ storage_key: "org/run/abc" })]);
+    await send();
+
+    expect(calls[0]?.url).toBe(
+      `${CREDS.baseUrl}/runtime/insights/runs/${IDENTITY.runId}/captures`,
+    );
+    expect(calls[0]?.init?.method).toBe("POST");
+    expect(
+      (calls[0]?.init?.headers as Record<string, string>)["Authorization"],
+    ).toMatch(/^Basic /);
+  });
+
+  it("returns the storage key the gateway chose", async () => {
+    const { send } = post([ok({ storage_key: "org/run/abc" })]);
+    await expect(send()).resolves.toEqual({
+      kind: "stored",
+      storageKey: "org/run/abc",
+    });
+  });
+
+  /**
+   * 🔑 **A separate request, not a field on a finding.** The body carries the
+   * page, and a resolutions batch of 250 findings would be tens of megabytes
+   * against an endpoint whose cap is a JSON body — refused with a
+   * non-retryable 400, losing every finding in it.
+   */
+  it("carries the bytes and the hash in its own body", async () => {
+    const { send, calls } = post([ok({ storage_key: "k" })]);
+    await send();
+
+    // ⚠️ Narrowed rather than `String()`-ed. `init.body` is a `BodyInit`, so
+    // stringifying it would yield "[object Object]" for a Blob or a stream and
+    // the JSON.parse below would throw — or worse, a future change to a
+    // non-string body would make this assert nothing while staying green. The
+    // same finding row 5's review made four times over.
+    const raw = calls[0]?.init?.body;
+    expect(typeof raw).toBe("string");
+    const body = JSON.parse(raw as string) as Record<string, unknown>;
+    expect(body["client_sku"]).toBe("SKU-001");
+    expect(body["sha256"]).toBe(artifact.sha256);
+    expect(body["byte_size"]).toBe(artifact.byteSize);
+    expect(body["format"]).toBe("page_html");
+    expect(
+      Buffer.from(String(body["content_base64"]), "base64").toString("utf8"),
+    ).toBe("<html>a page</html>");
+    // The envelope stays snake_case, like every other event on this route.
+    expect(body["tenant_id"]).toBe(IDENTITY.tenantId);
+  });
+
+  /**
+   * ⚠️ **A 409 is `stored`, not a failure.** The gateway keys an artefact on
+   * its content hash, so a page two items resolved to — or one a resumed run
+   * re-posts — is already there. Reading that as an error would make a correct
+   * retry look like a fault.
+   */
+  it("treats a 409 as stored, because the receiver is idempotent", async () => {
+    const { send, calls } = post([
+      () =>
+        new Response(JSON.stringify({ storage_key: "org/run/existing" }), {
+          status: 409,
+        }),
+    ]);
+    await expect(send()).resolves.toEqual({
+      kind: "stored",
+      storageKey: "org/run/existing",
+    });
+    expect(calls).toHaveLength(1);
+  });
+
+  /**
+   * 🔑 A full quota does not improve by asking again, and a retry loop against
+   * one would spend the run's wall clock on evidence it cannot store.
+   */
+  it("refuses a 429 rather than retrying it", async () => {
+    const { send, calls } = post([status(429, "quota exhausted")]);
+    const outcome = await send();
+
+    expect(outcome.kind).toBe("refused");
+    expect(calls).toHaveLength(1);
+  });
+
+  it("refuses a 400 rather than retrying it", async () => {
+    const { send, calls } = post([status(400, "sha256 mismatch")]);
+    const outcome = await send();
+
+    expect(outcome.kind).toBe("refused");
+    if (outcome.kind === "refused") {
+      expect(outcome.detail).toContain("sha256 mismatch");
+    }
+    expect(calls).toHaveLength(1);
+  });
+
+  it("retries a 5xx and succeeds when it clears", async () => {
+    const { send, calls } = post([
+      status(503),
+      status(503),
+      ok({ storage_key: "k" }),
+    ]);
+    await expect(send()).resolves.toEqual({ kind: "stored", storageKey: "k" });
+    expect(calls).toHaveLength(3);
+  });
+
+  it("retries a transport failure and gives up as unreachable", async () => {
+    const { send, calls } = post([boom()]);
+    const outcome = await send();
+
+    expect(outcome.kind).toBe("unreachable");
+    expect(calls).toHaveLength(4);
+  });
+
+  /**
+   * 🔴 A 2xx with no key is the gateway and this build disagreeing about the
+   * response shape. Refused rather than invented — a fabricated key would put
+   * an unopenable link on a reviewer's screen.
+   */
+  it("refuses a 2xx that carries no storage key", async () => {
+    const { send } = post([ok({ applied: 1 })]);
+    const outcome = await send();
+
+    expect(outcome.kind).toBe("refused");
+    if (outcome.kind === "refused") {
+      expect(outcome.detail).toMatch(/no storage key/);
+    }
+  });
+
+  it("refuses a 2xx whose body is not JSON at all", async () => {
+    const { send } = post([() => new Response("<html>", { status: 200 })]);
+    expect((await send()).kind).toBe("refused");
+  });
+});
+
+describe("the job's capture policy", () => {
+  const jobBody = (capture?: unknown) => ({
+    runId: IDENTITY.runId,
+    retailerSlug: "newegg",
+    items: [{ barcode: "649532609635", clientSku: "SKU-001" }],
+    ...(capture === undefined ? {} : { capture }),
+  });
+
+  /**
+   * 🔑 **Absent means disabled, never enabled.** A gateway that predates
+   * capture support carries no block, and defaulting to on would spend a
+   * budget nobody set.
+   */
+  it("defaults to disabled when the gateway sends no policy", () => {
+    expect(parseJob(jobBody(), IDENTITY.runId).capture).toEqual(
+      CAPTURE_DISABLED,
+    );
+  });
+
+  it("reads the policy the gateway sent", () => {
+    expect(
+      parseJob(jobBody({ enabled: true, budget: 40 }), IDENTITY.runId).capture,
+    ).toEqual({ enabled: true, budget: 40, format: "page_html" });
+  });
+
+  /** A malformed budget is two builds disagreeing, not a reason to capture nothing. */
+  it("refuses a malformed policy rather than defaulting it away", () => {
+    expect(() =>
+      parseJob(jobBody({ enabled: true, budget: "lots" }), IDENTITY.runId),
+    ).toThrow(/non-negative integer/);
   });
 });

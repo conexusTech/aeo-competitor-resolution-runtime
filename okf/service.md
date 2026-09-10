@@ -49,6 +49,31 @@ organization, then fetches the client's list from
 dispatch payload: the real client export is 8,926 rows, and the queue persists
 a payload in its own tables.
 
+## Evidence — since 2026-09-11
+
+After each finding the run offers the **page that finding was decided on** to
+`POST /runtime/insights/runs/:runId/captures`, and the gateway answers with the
+key it stored it under. Full behaviour:
+[resolution-evidence-capture](/capabilities/resolution-evidence-capture.md).
+
+🔴 **The artefact is the page's bytes, not a picture of it, and that is
+structural rather than provisional.** This runtime has no browser and cannot
+usefully have one: the proxy exists because the retailer refuses a plain
+request, so a headless browser in a Kubernetes Job would fail on exactly the
+sites this is for. `png` is in the format vocabulary and **no code path produces
+one** — a job asking for it is refused by name rather than served HTML labelled
+as an image.
+
+🔑 **The bytes cost nothing**: the chosen page was fetched moments earlier, so
+re-reading it is a cache hit. That is what makes evidence free rather than a
+second paid request per item, and it is why captures are offered per
+**resolution** rather than per fetch.
+
+⚠️ **The budget travels with the job.** The organization's quota, the retailer's
+registry capability and which items qualify are the gateway's to know; the
+per-run ceiling is this container's to keep. A job carrying no capture policy
+means captures are **off** — never on.
+
 🔑 **Two journals, and they answer different questions.**
 `resolutions.jsonl` is what the run **found** — it stops a resume re-buying
 pages. `reported.jsonl` is what the gateway **accepted** — it stops a resume
