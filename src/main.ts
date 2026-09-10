@@ -1,18 +1,35 @@
 /**
  * The container entry point.
  *
- * Reads the job's envelope from the environment, resolves the list, journals as
- * it goes, and reports what it spent. Deliberately thin: everything it calls is
- * covered offline, so this file holds no logic worth testing through a container.
+ * Two ways in, one pipeline:
+ *
+ * - **Queue mode**, selected by `TASK_RECORD_ID` being present. The job is read
+ *   from the queue **by reference** and the findings stream back to the gateway
+ *   as they are made. This is how production runs.
+ * - **File mode**, `RESOLUTION_JOB_FILE`. No queue, no gateway, output to
+ *   standard output. This is how a local run, a manual re-run and every offline
+ *   proof are driven, and it is why the whole suite needs neither service.
+ *
+ * ⚠️ **File mode is kept deliberately, not left behind.** The previous change's
+ * exit criterion is met by replaying a committed corpus with no network;
+ * removing the path that makes that possible would trade a free deterministic
+ * check for a paid manual one.
+ *
+ * Deliberately thin: it reads the environment and picks a mode. The sequence a
+ * queue run follows lives in `queue-run.ts`, where it can be tested without a
+ * container — see that file's docblock for why that split exists.
  */
-
-import { readFile } from "node:fs/promises";
 
 import { neweggAdapter } from "./adapters/newegg.js";
 import type { RetailerAdapter } from "./adapters/types.js";
 import { liveFetcherFromEnv } from "./fetcher/live.js";
+import { jobFileFromEnv, readJobEnvelope } from "./job-file.js";
+import { GatewayClient, RunGone, gatewayFromEnv } from "./gateway/client.js";
+import { bootstrapFromQueue, inQueueMode } from "./queue/task-record.js";
+import { runDispatchedJob } from "./queue-run.js";
+import { GatewayReporter } from "./reporting/reporter.js";
 import { estimateRun, runList, RUN_DEFAULTS } from "./run.js";
-import type { ResolveRequest } from "./resolve.js";
+import type { Resolution } from "./resolve.js";
 
 /**
  * Retailer capability is a registry row in the gateway, not a constant here.
@@ -24,70 +41,96 @@ const ADAPTERS: Record<string, RetailerAdapter> = {
   [neweggAdapter.slug]: neweggAdapter,
 };
 
-interface JobEnvelope {
-  readonly retailerSlug: string;
-  readonly items: readonly ResolveRequest[];
-  readonly clientCatalogueUrlTemplate?: string | null;
-}
-
-function requireEnv(name: string): string {
-  const value = process.env[name];
-  if (value == null || value === "") {
-    throw new Error(`${name} is required`);
-  }
-  return value;
-}
-
-async function readEnvelope(): Promise<JobEnvelope> {
-  // A path, not an inline blob: a client list is thousands of rows and an
-  // environment variable is not the place for it.
-  const path = requireEnv("RESOLUTION_JOB_FILE");
-  const parsed: unknown = JSON.parse(await readFile(path, "utf8"));
-  if (parsed === null || typeof parsed !== "object") {
-    throw new Error(`${path} does not hold a job envelope`);
-  }
-  const envelope = parsed as Partial<JobEnvelope>;
-  if (
-    typeof envelope.retailerSlug !== "string" ||
-    !Array.isArray(envelope.items)
-  ) {
-    throw new Error(
-      `${path} must carry a retailerSlug and an items array; got ` +
-        `${Object.keys(envelope).join(", ") || "nothing"}`,
-    );
-  }
-  return {
-    retailerSlug: envelope.retailerSlug,
-    items: envelope.items,
-    clientCatalogueUrlTemplate: envelope.clientCatalogueUrlTemplate ?? null,
-  };
-}
-
-async function main(): Promise<void> {
-  const version = process.env["RESOLUTION_BUILD_VERSION"] ?? "unknown";
-  const envelope = await readEnvelope();
-
-  const adapter = ADAPTERS[envelope.retailerSlug];
+/**
+ * Pick the adapter, refusing up front by name. Discovering this mid-run would
+ * waste whatever had already been paid for.
+ */
+function requireAdapter(retailerSlug: string): RetailerAdapter {
+  const adapter = ADAPTERS[retailerSlug];
   if (adapter === undefined) {
-    // Refused up front, by name. Discovering it mid-run would waste whatever
-    // had already been paid for.
     throw new Error(
-      `no adapter for retailer "${envelope.retailerSlug}"; this image carries: ` +
+      `no adapter for retailer "${retailerSlug}"; this image carries: ` +
         `${Object.keys(ADAPTERS).join(", ")}`,
     );
   }
+  return adapter;
+}
 
-  const { requests, usd } = estimateRun(envelope.items.length, 0);
+const version = (): string =>
+  process.env["RESOLUTION_BUILD_VERSION"] ?? "unknown";
+
+const runDir = (): string =>
+  process.env["RESOLUTION_RUN_DIR"] ?? RUN_DEFAULTS.runDir;
+
+function announce(itemCount: number, adapter: RetailerAdapter): void {
+  const { requests, usd } = estimateRun(itemCount, 0);
   console.log(
-    `resolution-runtime ${version}: ${envelope.items.length} items against ` +
+    `resolution-runtime ${version()}: ${itemCount} items against ` +
       `${adapter.slug}; worst-case ${requests.toFixed(0)} requests, ` +
       `~$${usd.toFixed(2)} ESTIMATED (the rate is not invoice-validated)`,
   );
+}
+
+function tally(results: readonly Resolution[], liveRequests: number): void {
+  const byOutcome = results.reduce<Record<string, number>>((acc, r) => {
+    acc[r.outcome] = (acc[r.outcome] ?? 0) + 1;
+    return acc;
+  }, {});
+  const failures = results.filter((r) => r.failure !== null).length;
+
+  console.log(`\n--- done ---`);
+  console.log(`items:     ${results.length}`);
+  for (const [outcome, count] of Object.entries(byOutcome)) {
+    console.log(`  ${outcome.padEnd(14)} ${count}`);
+  }
+  console.log(`failures:  ${failures}`);
+  console.log(`requests:  ${liveRequests}`);
+}
+
+async function runFromQueue(): Promise<void> {
+  const dispatch = await bootstrapFromQueue();
+  if (dispatch === null) {
+    // Unreachable: the caller checked. An assertion rather than a non-null
+    // cast, so the two checks cannot drift apart silently.
+    throw new Error("queue mode was selected but no dispatch was resolved");
+  }
+
+  const client = new GatewayClient(gatewayFromEnv(), {
+    runId: dispatch.resolutionRunId,
+    tenantId: dispatch.tenantId,
+    organizationId: dispatch.organizationId,
+  });
+  const reporter = new GatewayReporter(client, { runDir: runDir() });
+  const fetcher = liveFetcherFromEnv();
+
+  const result = await runDispatchedJob({
+    dispatch,
+    client,
+    reporter,
+    adapterFor: requireAdapter,
+    fetcher,
+    runList,
+    baseOptions: {
+      ...RUN_DEFAULTS,
+      runDir: runDir(),
+      clientCatalogueUrlTemplate:
+        process.env["RESOLUTION_CLIENT_CATALOGUE_URL_TEMPLATE"] ?? null,
+    },
+  });
+
+  tally(result.resolutions, result.liveRequests);
+}
+
+/** A local or manual run: no queue, no gateway, output to the console. */
+async function runFromFile(): Promise<void> {
+  const envelope = await readJobEnvelope(jobFileFromEnv());
+  const adapter = requireAdapter(envelope.retailerSlug);
+  announce(envelope.items.length, adapter);
 
   const fetcher = liveFetcherFromEnv();
   const results = await runList(envelope.items, adapter, fetcher, {
     ...RUN_DEFAULTS,
-    runDir: process.env["RESOLUTION_RUN_DIR"] ?? RUN_DEFAULTS.runDir,
+    runDir: runDir(),
     clientCatalogueUrlTemplate: envelope.clientCatalogueUrlTemplate ?? null,
     onProgress: (progress) => {
       if (progress.completed % 25 !== 0) return;
@@ -97,24 +140,31 @@ async function main(): Promise<void> {
           `unverifiable=${progress.outcomes.unverifiable} ` +
           `unconfirmed=${progress.outcomes.unconfirmed} ` +
           `not-found=${progress.outcomes["not-found"]} | ` +
-          `${progress.liveRequests} requests, ~$${progress.estimatedUsd.toFixed(2)}`,
+          `${progress.liveRequests} requests, ` +
+          `~$${progress.estimatedUsd.toFixed(2)}`,
       );
     },
   });
 
-  const tally = results.reduce<Record<string, number>>((acc, r) => {
-    acc[r.outcome] = (acc[r.outcome] ?? 0) + 1;
-    return acc;
-  }, {});
-  const failures = results.filter((r) => r.failure !== null).length;
+  tally(results, fetcher.liveRequestCount);
+}
 
-  console.log(`\n--- done ---`);
-  console.log(`items:     ${results.length}`);
-  for (const [outcome, count] of Object.entries(tally)) {
-    console.log(`  ${outcome.padEnd(14)} ${count}`);
+async function main(): Promise<void> {
+  if (!inQueueMode()) {
+    await runFromFile();
+    return;
   }
-  console.log(`failures:  ${failures}`);
-  console.log(`requests:  ${fetcher.liveRequestCount}`);
+  try {
+    await runFromQueue();
+  } catch (error) {
+    if (error instanceof RunGone) {
+      // Not a failure of this container. The run ended before it started, so
+      // there is nothing to report and nothing to retry.
+      console.log(error.message);
+      return;
+    }
+    throw error;
+  }
 }
 
 await main();

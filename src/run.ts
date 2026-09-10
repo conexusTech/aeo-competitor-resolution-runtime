@@ -50,6 +50,31 @@ export interface RunOptions extends ResolveOptions {
   /** Journal filename within `runDir`. */
   readonly journalName: string;
   readonly onProgress?: ((progress: RunProgress) => void) | undefined;
+
+  /**
+   * Called once per resolution, **after** it is on disk.
+   *
+   * 🔑 The ordering is the point. A caller reporting a finding somewhere else —
+   * the gateway — must never describe one the journal does not hold: a
+   * container dying in that window would leave the finding filed remotely and
+   * absent locally, so a resume would neither re-resolve it nor re-send it, and
+   * nothing anywhere would say what became of that item.
+   *
+   * Awaited, so a slow consumer applies backpressure rather than growing an
+   * unbounded queue behind a run that fetches for hours. A rejection is left to
+   * propagate — the pipeline does not decide what a reporting failure means.
+   */
+  readonly onResolved?:
+    ((resolution: Resolution) => void | Promise<void>) | undefined;
+
+  /**
+   * Asked before each item whether to keep going.
+   *
+   * The one thing that can stop a run early, and it exists for one case: the
+   * gateway saying the run no longer exists. Continuing to buy pages for
+   * findings nobody will accept is pure waste.
+   */
+  readonly shouldContinue?: (() => boolean) | undefined;
 }
 
 export const RUN_DEFAULTS: RunOptions = {
@@ -131,6 +156,9 @@ export async function runList(
 
   const worker = async (): Promise<void> => {
     while (cursor < pending.length) {
+      // Checked before taking an item rather than after finishing one, so a
+      // stop costs at most the item already in flight.
+      if (options.shouldContinue?.() === false) return;
       const item = pending[cursor++];
       if (item === undefined) return;
 
@@ -162,6 +190,10 @@ export async function runList(
       // Journalled per item, before anything else. A run must survive being
       // killed between any two items.
       await appendFile(journalPath, `${JSON.stringify(resolution)}\n`, "utf8");
+
+      // Only now, and never before — see `onResolved` on why that ordering is
+      // the correctness argument rather than a preference.
+      await options.onResolved?.(resolution);
 
       options.onProgress?.({
         completed,

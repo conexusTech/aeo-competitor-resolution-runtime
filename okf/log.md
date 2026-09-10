@@ -23,3 +23,113 @@
 - **Learning** — ⚠️ **The EAN-13 question that gates this row's outcome states is still open, and the 53-row sample cannot close it.** Exactly one row carries a 13-digit client value and it came back `not-found` — no product page, so no barcode to compare. **A 0-for-1 record is not evidence either way.** It matters because 1,081 of the client's 8,926 items are genuine EAN-13s: if the retailer's field never carries EAN-13 for an import, those are **unverifiable rather than mismatched**. So `unverifiable` is a first-class outcome from the first commit, and the question gets answered by a deliberate probe that costs real requests — not by inference from this sample.
 
 - **Learning** — **This repo pins `eol=lf` in `.gitattributes` from its first commit, and that is not housekeeping.** Two repos in this workspace carry a red lint baseline made *entirely* of `Delete ␍` — 9,216 in `aeo-howto-web`, most of `aeo-backend`'s 33,818 — because `core.autocrlf` is true globally and neither repo pinned line endings. Both cost real time to diagnose, and neither is fixable now without rewriting every file in the repo. It also lints the whole tree at `--max-warnings 0` rather than only changed files, which `aeo-backend` cannot do: a new repo has no debt to scope around.
+
+## 2026-09-10
+
+### Update — `resolution-runtime-gateway-dispatch`
+
+**Concepts added:** `capabilities/resolution-run-dispatch`,
+`qa/resolution-run-dispatch`. **Concepts updated:** `service.md`.
+
+The container now takes its job from `conqrse-queue` **by reference**, fetches
+the client's list from the gateway, and streams findings back as it makes them.
+New modules: `src/queue/task-record.ts`, `src/gateway/client.ts`,
+`src/reporting/reporter.ts`, `src/queue-run.ts`, `src/job-file.ts`.
+**250 tests, up from 160.**
+
+### Learning — `service.md` had been describing an intention as behaviour
+
+It said findings *"go back through that repo's runtime-callback controller"*.
+They did not: `main.ts` read its job from `RESOLUTION_JOB_FILE` — a path on
+disk — reported by `console.log`, and the repo contained **no HTTP call at all**
+outside the proxy fetcher. The sentence was true of the design and false of the
+code, which is the failure mode a bundle exists to prevent. Corrected, and the
+correction is marked as one rather than quietly rewritten.
+
+### Learning — the acknowledgement journal's write order is the whole argument
+
+Two journals, because they answer different questions and fail at different
+moments. `resolutions.jsonl` is what the run **found** and stops a resume
+re-buying; `reported.jsonl` is what the gateway **accepted** and stops a resume
+re-sending.
+
+🔴 The acknowledgement is written **after** the 200, never before:
+
+- **Before**, and a container dying in that window loses the finding
+  permanently — journalled so never re-resolved, marked reported so never
+  re-sent, and the client's item stays unresolved with nothing anywhere
+  explaining why.
+- **After**, and a death in that window re-sends on resume, which the gateway's
+  `(run_id, watchlist_item_id)` unique index turns into a no-op.
+
+**At-least-once delivery to an idempotent receiver is the only pair that cannot
+lose data**, and the gateway was built to be that receiver. Reversing the order
+in source turns four checks red, including the one that asserts an unreachable
+gateway records nothing.
+
+### Learning — dropping the already-accepted is what the criterion asked for
+
+Relying on the receiver's idempotency is *safe* — the gateway answers
+`applied: 0` — but it still re-sends. A resumed run over 8,926 items would
+re-post every finding it had already filed. So the reporter drops them locally
+**and** the gateway dedupes; the two are belt and braces rather than one
+mechanism written twice.
+
+⚠️ The opposite check is what makes that safe: a finding journalled but **never
+accepted** must be re-sent. Dropping those too would mean a gateway outage
+silently lost every finding made during it.
+
+### Learning — a real backoff makes the retry policy the untested part
+
+Four attempts at 500ms doubling is **seven seconds** of genuine waiting per
+retry case. The first version of the client had no sleep seam, and two tests
+timed out at five seconds — the honest reading of which is not "raise the
+timeout" but "a suite that pays that is a suite nobody runs, so the retry policy
+would end up the one untested part of the file". Injected, and the spec now runs
+in 207ms instead of 17s.
+
+### Learning — a line count asserted the concurrency, not the ordering
+
+The `onResolved` check first asserted the journal held **1 then 2** lines when
+the hook fired. It read `[2, 2]`, because the default concurrency is 3 and both
+items journalled before either hook ran — which says nothing about whether the
+ordering is right. Rewritten to assert that **this** finding is already in the
+journal, which is the invariant and is concurrency-independent.
+
+### Learning — the orchestration moved out of `main.ts` to be testable
+
+`main.ts` claims to hold "no logic worth testing through a container", and that
+was becoming false: the order of the job fetch, the acknowledgement load, the
+terminal report and the final flush each encode a decision whose failure appears
+only when a run dies part-way. Inside an entry point with a top-level `await`,
+those are provable only by running a container against a live gateway — the kind
+of check nobody runs. Now `queue-run.ts`, with every dependency injected.
+
+### Learning — the job fetch is a spend guard, so nothing may precede it
+
+A terminal run answers **404** at `GET /runtime/insights/runs/:runId`, and that
+is what stops a container restarted long after its run was cancelled from buying
+pages again — the queue deleting a Job is not instantaneous and its retry policy
+is not ours. So the fetch happens before the acknowledgement load and before the
+first request, and a check asserts that order rather than trusting it.
+
+### Learning — the batch cap is a cross-repo contract, matched not guessed
+
+The gateway's DTO declares `@ArrayMaxSize(250)`, and a larger batch is answered
+with a non-retryable **400** — a batch of paid findings lost to a number. The
+runtime matches 250 exactly and cites the gateway's constant, following the
+precedent `configurable-prospect-scanner` set for the scan-event cap. An
+over-cap batch is refused locally rather than sent to be refused remotely.
+
+### Learning — thirteen invariants, each shown to fail
+
+The acknowledge-before-accept inversion, re-sending the accepted, dropping the
+unaccepted, reporting before journalling, ignoring the early stop, both
+terminal-before-flush orderings, the missing crash report, retrying a 4xx, not
+retrying a 5xx, an over-cap batch, accepting `org_id`, and starting on an empty
+job. Each turned exactly the check that names it red; all five source files were
+then confirmed **byte-identical** to their pre-break state.
+
+⚠️ A **control** sits beside the early-stop check: without `shouldContinue`,
+every item must still be worked. A stop that fired unconditionally would pass
+the positive check while truncating every run.
