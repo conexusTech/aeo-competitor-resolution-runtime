@@ -1,0 +1,11 @@
+node_modules
+dist
+coverage
+.git
+.github
+artifacts
+test
+okf
+captures
+runs
+*.md
