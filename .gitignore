@@ -13,3 +13,7 @@ coverage/
 captures/
 runs/
 *.jsonl
+
+# The plan lives here during a change and is DELETED when it lands. The
+# permanent record is the capability, the QA checklist and the roadmap row.
+artifacts/
