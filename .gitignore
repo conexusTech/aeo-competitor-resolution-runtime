@@ -1,0 +1,15 @@
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Secrets. The runtime needs a Bright Data key; it never belongs in git.
+.env
+.env.*
+!.env.example
+
+# Live-run output: journals, per-run results and the paid response cache.
+# The COMMITTED replay corpus lives in test/corpus/ and is not ignored.
+captures/
+runs/
+*.jsonl

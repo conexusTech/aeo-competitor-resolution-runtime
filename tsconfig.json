@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2023"],
+    "types": ["node"],
+    "outDir": "dist",
+    "rootDir": ".",
+
+    // Strict, and the four beyond `strict` that catch the mistakes this engine
+    // is most exposed to: every parse result is a partial answer from a page
+    // nobody controls, so an unchecked index or an unhandled `undefined` is the
+    // default failure mode rather than an unusual one.
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+
+    "declaration": true,
+    "sourceMap": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts", "scripts/**/*.ts", "*.ts"]
+}

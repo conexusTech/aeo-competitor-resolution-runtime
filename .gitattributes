@@ -1,0 +1,15 @@
+# LF in the repository, LF in the working tree, on every platform.
+#
+# This file exists from the first commit deliberately. Two repos in this
+# workspace have a red lint baseline made entirely of `Delete ␍` — 9,216 in
+# `aeo-howto-web` and most of `aeo-backend`'s 33,818 — because `core.autocrlf`
+# is true globally, neither repo pinned line endings, and prettier then rejects
+# every line of every file on a Windows checkout. Both cost real time to
+# diagnose and neither is fixable without rewriting every file in the repo.
+* text=auto eol=lf
+
+# Binary, so git neither converts them nor tries to diff them.
+*.gz  binary
+*.png binary
+*.jpg binary
+*.ico binary

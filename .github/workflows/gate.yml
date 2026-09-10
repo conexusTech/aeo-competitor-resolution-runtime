@@ -1,0 +1,32 @@
+name: gate
+
+# CI runs the repo's own gate entry point, never its own list of steps. A CI list
+# that drifts from the local gate means one of them is lying, and the drift is
+# silent.
+
+on:
+  pull_request:
+    branches: [master, develop]
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      # The checker is only worth running if its rules still fire. A checker that
+      # silently no-ops looks exactly like a clean bundle from outside, which is
+      # the open finding on `enforce-okf-bundles` across this whole workspace.
+      - name: Prove the checker's rules still fire
+        run: npm run okf:check:test
+
+      - name: gate
+        run: npm run gate
