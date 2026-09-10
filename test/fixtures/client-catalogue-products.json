@@ -1,0 +1,865 @@
+{
+  "note": "Real schema.org Product nodes from client catalogue pages captured by the handover recon spike. Every URL is replaced with client.example and the client's name with a placeholder; FIELD VALUES AND KEY SETS ARE OTHERWISE UNTOUCHED, so the reader is checked against the shapes a real publisher emits rather than against invented ones. Brand and part numbers are manufacturer identifiers, not client data.",
+  "capturedBy": "handover recon spike",
+  "distilledOn": "2026-09-10",
+  "products": [
+    {
+      "clientSku": "082081",
+      "barcode": "035286301848",
+      "expected": {
+        "partNumber": "30184",
+        "brand": "Allsop"
+      },
+      "product": {
+        "@type": "Product",
+        "@id": "https://client.example/p/82081",
+        "name": "Allsop Mouse Pad Kittens",
+        "image": [
+          "https://client.example/p/82081",
+          "https://client.example/p/82081"
+        ],
+        "description": "Mouse Pad Kittens",
+        "brand": {
+          "@type": "Brand",
+          "name": "Allsop"
+        },
+        "sku": "82081",
+        "mpn": "30184",
+        "offers": {
+          "@type": "Offer",
+          "@id": "https://client.example/p/82081",
+          "url": "https://client.example/p/82081",
+          "priceCurrency": "USD",
+          "price": "11.99",
+          "priceValidUntil": "2026-08-12",
+          "itemCondition": "https://client.example/p/82081",
+          "availability": "https://client.example/p/82081"
+        },
+        "aggregateRating": {
+          "@type": "AggregateRating",
+          "ratingValue": "5.000000",
+          "reviewCount": "2"
+        },
+        "review": [
+          {
+            "@type": "Review",
+            "reviewBody": "Love this mouse pad. Comfy. Feels about how you’d expect. Super cute though!! Pushes me through the workday.",
+            "reviewRating": {
+              "@type": "Rating",
+              "ratingValue": "5",
+              "bestRating": "5",
+              "worstRating": "1"
+            },
+            "datePublished": "2026-08-10",
+            "author": {
+              "@type": "Person",
+              "name": "lucarami"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "clientSku": "271361",
+      "barcode": "649833101746",
+      "expected": {
+        "partNumber": "10174",
+        "brand": "IMAK Products"
+      },
+      "product": {
+        "@type": "Product",
+        "@id": "https://client.example/p/271361",
+        "name": "IMAK Products ErgoBeads Non-skid Mouse Wrist Cushion",
+        "image": [
+          "https://client.example/p/271361",
+          "https://client.example/p/271361"
+        ],
+        "description": "ErgoBeads Non-skid Mouse Wrist Cushion",
+        "brand": {
+          "@type": "Brand",
+          "name": "IMAK Products"
+        },
+        "sku": "271361",
+        "mpn": "10174",
+        "offers": {
+          "@type": "Offer",
+          "@id": "https://client.example/p/271361",
+          "url": "https://client.example/p/271361",
+          "priceCurrency": "USD",
+          "price": "16.99",
+          "priceValidUntil": "2026-08-12",
+          "itemCondition": "https://client.example/p/271361",
+          "availability": "https://client.example/p/271361"
+        },
+        "aggregateRating": {
+          "@type": "AggregateRating",
+          "ratingValue": "4.250000",
+          "reviewCount": "8"
+        },
+        "review": [
+          {
+            "@type": "Review",
+            "reviewBody": "I needed it for leaning on when I'm using my mouse so I don't feel the corner edge of my desk. After a while that does start to bother me. Trying the other pads which are similar, the only difference is this one doesn't move as much when I use my mouse, I like that. I was glad I bought it and would recommend it to someone if they needed it.",
+            "reviewRating": {
+              "@type": "Rating",
+              "ratingValue": "5",
+              "bestRating": "5",
+              "worstRating": "1"
+            },
+            "datePublished": "2026-08-10",
+            "author": {
+              "@type": "Person",
+              "name": "DarkStar"
+            }
+          },
+          {
+            "@type": "Review",
+            "reviewBody": "Been looking for a cheap and yet comfortable wrist cushion. Not only is it washable but the pads on the bottom keep it from sliding around on my desk. I highly recommend this to anyone who is looking for a wrist cushion!",
+            "reviewRating": {
+              "@type": "Rating",
+              "ratingValue": "5",
+              "bestRating": "5",
+              "worstRating": "1"
+            },
+            "datePublished": "2026-08-10",
+            "author": {
+              "@type": "Person",
+              "name": "Joe Melito"
+            }
+          },
+          {
+            "@type": "Review",
+            "reviewBody": "i bought a similar one for work. this one is almost identical but not reversible and not quite as filled. it still works as intended, stops my palm and wrist impacting glass table tops and causing irritation.\n\nyou can also use it as a sqeezy",
+            "reviewRating": {
+              "@type": "Rating",
+              "ratingValue": "4",
+              "bestRating": "5",
+              "worstRating": "1"
+            },
+            "datePublished": "2026-08-10",
+            "author": {
+              "@type": "Person",
+              "name": "pfisher44"
+            }
+          },
+          {
+            "@type": "Review",
+            "reviewBody": "I work and type at the computer a lot, and ever since getting CTS I've been exploring any kind of assistive aid. I like the gel pads, but ultimately they put too much pressure on my wrists while resting. The beads have worked better, even though they sometimes feel a little lumpy, this provides a much more comfortable resting service. Note: to minimize risk of CTS, do not rest your writs on anything while you are typing.",
+            "reviewRating": {
+              "@type": "Rating",
+              "ratingValue": "4",
+              "bestRating": "5",
+              "worstRating": "1"
+            },
+            "datePublished": "2026-08-10",
+            "author": {
+              "@type": "Person",
+              "name": "JustJames73"
+            }
+          },
+          {
+            "@type": "Review",
+            "reviewBody": "Bought this for my wife, she says it's really comfortable and her wrist aches much less than without it",
+            "reviewRating": {
+              "@type": "Rating",
+              "ratingValue": "5",
+              "bestRating": "5",
+              "worstRating": "1"
+            },
+            "datePublished": "2026-08-10",
+            "author": {
+              "@type": "Person",
+              "name": "Waterdragon"
+            }
+          },
+          {
+            "@type": "Review",
+            "reviewBody": "Works great to provide a cushion when using my sharp cornered laptop stand. Doesn't slip around, although it would be perfect if it were slightly flatter. Sadly I still find myself not using it more often than not while gaming because of that. Quality is good though!",
+            "reviewRating": {
+              "@type": "Rating",
+              "ratingValue": "4",
+              "bestRating": "5",
+              "worstRating": "1"
+            },
+            "datePublished": "2026-08-10",
+            "author": {
+              "@type": "Person",
+              "name": "Jack2338"
+            }
+          },
+          {
+            "@type": "Review",
+            "reviewBody": "No more wrist soreness. I like this bean bag for wrists.",
+            "reviewRating": {
+              "@type": "Rating",
+              "ratingValue": "5",
+              "bestRating": "5",
+              "worstRating": "1"
+            },
+            "datePublished": "2026-08-10",
+            "author": {
+              "@type": "Person",
+              "name": "bhargav90"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "clientSku": "994905",
+      "barcode": "035286296489",
+      "expected": {
+        "partNumber": "29648",
+        "brand": "Allsop"
+      },
+      "product": {
+        "@type": "Product",
+        "@id": "https://client.example/p/994905",
+        "name": "Allsop Widescreen Mouse Pad Raindrop",
+        "image": [
+          "https://client.example/p/994905",
+          "https://client.example/p/994905"
+        ],
+        "description": "Widescreen Mouse Pad Raindrop",
+        "brand": {
+          "@type": "Brand",
+          "name": "Allsop"
+        },
+        "sku": "994905",
+        "mpn": "29648",
+        "offers": {
+          "@type": "Offer",
+          "@id": "https://client.example/p/994905",
+          "url": "https://client.example/p/994905",
+          "priceCurrency": "USD",
+          "price": "15.99",
+          "priceValidUntil": "2026-08-12",
+          "itemCondition": "https://client.example/p/994905",
+          "availability": "https://client.example/p/994905"
+        },
+        "aggregateRating": {
+          "@type": "AggregateRating",
+          "ratingValue": "4.600000",
+          "reviewCount": "15"
+        },
+        "review": [
+          {
+            "@type": "Review",
+            "reviewBody": "It’s a mouse pad. What’s not to work? Eventually, the corners will come up and I’ll buy a new one. Hopefully, that won’t be for a while. I like the design, decent quality.",
+            "reviewRating": {
+              "@type": "Rating",
+              "ratingValue": "5",
+              "bestRating": "5",
+              "worstRating": "1"
+            },
+            "datePublished": "2026-08-10",
+            "author": {
+              "@type": "Person",
+              "name": "David St"
+            }
+          },
+          {
+            "@type": "Review",
+            "reviewBody": "It's a mouse pad and sits there waiting for my mouse to skim across the surface.",
+            "reviewRating": {
+              "@type": "Rating",
+              "ratingValue": "5",
+              "bestRating": "5",
+              "worstRating": "1"
+            },
+            "datePublished": "2026-08-10",
+            "author": {
+              "@type": "Person",
+              "name": "MacroAlan"
+            }
+          },
+          {
+            "@type": "Review",
+            "reviewBody": "Exactly what I was looking for.  Needed something on my Office Desk to accommodate not only my\nmouse, but other devices.",
+            "reviewRating": {
+              "@type": "Rating",
+              "ratingValue": "5",
+              "bestRating": "5",
+              "worstRating": "1"
+            },
+            "datePublished": "2026-08-10",
+            "author": {
+              "@type": "Person",
+              "name": "Lilly C"
+            }
+          },
+          {
+            "@type": "Review",
+            "reviewBody": "I bought this mousepad a month ago because I pretty much wore my other one out..",
+            "reviewRating": {
+              "@type": "Rating",
+              "ratingValue": "5",
+              "bestRating": "5",
+              "worstRating": "1"
+            },
+            "datePublished": "2026-08-10",
+            "author": {
+              "@type": "Person",
+              "name": "Telecastoff"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "clientSku": "531814",
+      "barcode": "812348010548",
+      "expected": {
+        "partNumber": "CF-08LB",
+        "brand": "Kingwin"
+      },
+      "product": {
+        "@type": "Product",
+        "@id": "https://client.example/p/531814",
+        "name": "Kingwin Advance CF-08LB Long Life Bearing 80mm Case Fan",
+        "image": [
+          "https://client.example/p/531814",
+          "https://client.example/p/531814"
+        ],
+        "description": "Advance CF-08LB Long Life Bearing 80mm Case Fan",
+        "brand": {
+          "@type": "Brand",
+          "name": "Kingwin"
+        },
+        "sku": "531814",
+        "mpn": "CF-08LB",
+        "offers": {
+          "@type": "Offer",
+          "@id": "https://client.example/p/531814",
+          "url": "https://client.example/p/531814",
+          "priceCurrency": "USD",
+          "price": "5.99",
+          "priceValidUntil": "2026-08-12",
+          "itemCondition": "https://client.example/p/531814",
+          "availability": "https://client.example/p/531814"
+        },
+        "aggregateRating": {
+          "@type": "AggregateRating",
+          "ratingValue": "2.363600",
+          "reviewCount": "11"
+        }
+      }
+    },
+    {
+      "clientSku": "314393",
+      "barcode": "813810010431",
+      "expected": {
+        "partNumber": "63005",
+        "brand": "SteelSeries"
+      },
+      "product": {
+        "@type": "Product",
+        "@id": "https://client.example/p/314393",
+        "name": "SteelSeries QcK mini Gaming Mouse Pad",
+        "image": [
+          "https://client.example/p/314393",
+          "https://client.example/p/314393"
+        ],
+        "description": "QcK mini Gaming Mouse Pad",
+        "brand": {
+          "@type": "Brand",
+          "name": "SteelSeries"
+        },
+        "sku": "314393",
+        "mpn": "63005",
+        "offers": {
+          "@type": "Offer",
+          "@id": "https://client.example/p/314393",
+          "url": "https://client.example/p/314393",
+          "priceCurrency": "USD",
+          "price": "9.99",
+          "priceValidUntil": "2026-08-12",
+          "itemCondition": "https://client.example/p/314393",
+          "availability": "https://client.example/p/314393"
+        },
+        "aggregateRating": {
+          "@type": "AggregateRating",
+          "ratingValue": "4.000000",
+          "reviewCount": "5"
+        },
+        "review": [
+          {
+            "@type": "Review",
+            "reviewBody": "However, lowering your sensitivity--which requires a larger mousepad surface area--allows for more precise mouse movements because arm mouse movement precision is more easily replicable than wrist mouse movement precision.\n\n\n\nGo with the regular QcK instead since it allows for more varied arm and wrist positioning.",
+            "reviewRating": {
+              "@type": "Rating",
+              "ratingValue": "1",
+              "bestRating": "5",
+              "worstRating": "1"
+            },
+            "datePublished": "2026-08-10",
+            "author": {
+              "@type": "Person",
+              "name": "Knickerbockers"
+            }
+          },
+          {
+            "@type": "Review",
+            "reviewBody": "This is perfect as a regular mouse pad and despite being marketed for gamers it's not large enough for that unless you play using wrist movements. Even then I'd recommend getting the next size up but this is a very nice quality mousepad for normal PC users.",
+            "reviewRating": {
+              "@type": "Rating",
+              "ratingValue": "4",
+              "bestRating": "5",
+              "worstRating": "1"
+            },
+            "datePublished": "2026-08-10",
+            "author": {
+              "@type": "Person",
+              "name": "Client Retailer Customer"
+            }
+          },
+          {
+            "@type": "Review",
+            "reviewBody": "For anyone wondering out there, this is the normal mouse pad size. This is the mouse pad size that your are probably used to and has a relatively small desk footprint. In my opinion if you require a mouse pad bigger than this you need to increase the sensitivity of your mouse settings.",
+            "reviewRating": {
+              "@type": "Rating",
+              "ratingValue": "5",
+              "bestRating": "5",
+              "worstRating": "1"
+            },
+            "datePublished": "2026-08-10",
+            "author": {
+              "@type": "Person",
+              "name": "theRedButton1"
+            }
+          },
+          {
+            "@type": "Review",
+            "reviewBody": "I was initially going to get the regular Qck mouse pad, but when I went to buy it at MC I realized how big it is. They had 2 Qck mini pads left so I bought one. The size is perfect for my desk as I don't have the most amount of room. It doesn't slip at all and my Deathadder works flawlessly on it. It's pretty portable. Won't fit in my laptop when I close the screen, but it rolls up which is good enough for me.",
+            "reviewRating": {
+              "@type": "Rating",
+              "ratingValue": "5",
+              "bestRating": "5",
+              "worstRating": "1"
+            },
+            "datePublished": "2026-08-10",
+            "author": {
+              "@type": "Person",
+              "name": "Client Retailer Customer"
+            }
+          },
+          {
+            "@type": "Review",
+            "reviewBody": "i love this mouse pad it has a smooth consistent glide,compact, great for travel and use in small places.",
+            "reviewRating": {
+              "@type": "Rating",
+              "ratingValue": "5",
+              "bestRating": "5",
+              "worstRating": "1"
+            },
+            "datePublished": "2026-08-10",
+            "author": {
+              "@type": "Person",
+              "name": "Ronnie95"
+            }
+          },
+          {
+            "@type": "Review",
+            "reviewBody": "If space is an issue, this is your mousepad! This one fit perfectly on my crowded desk. I don't game with this one, I have the larger ones on my gaming PC's, but you don't have to be a gamer to enjoy the benefits of this great inexpensive mousepad.",
+            "reviewRating": {
+              "@type": "Rating",
+              "ratingValue": "5",
+              "bestRating": "5",
+              "worstRating": "1"
+            },
+            "datePublished": "2026-08-10",
+            "author": {
+              "@type": "Person",
+              "name": "pcdocstl"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "clientSku": "497966",
+      "barcode": "188218000453",
+      "expected": {
+        "partNumber": "CRW-UINB",
+        "brand": "Sabrent"
+      },
+      "product": {
+        "@type": "Product",
+        "@id": "https://client.example/p/497966",
+        "name": "Sabrent CRW-UINB 75-in-1 Internal Memory Card Reader/Writer USB 2.0 3.5 Drive Bay Insert - Black",
+        "image": [
+          "https://client.example/p/497966",
+          "https://client.example/p/497966",
+          "https://client.example/p/497966",
+          "https://client.example/p/497966"
+        ],
+        "description": "CRW-UINB 75-in-1 Internal Memory Card Reader/Writer USB 2.0 3.5 Drive Bay Insert - Black",
+        "brand": {
+          "@type": "Brand",
+          "name": "Sabrent"
+        },
+        "sku": "497966",
+        "mpn": "CRW-UINB",
+        "offers": {
+          "@type": "Offer",
+          "@id": "https://client.example/p/497966",
+          "url": "https://client.example/p/497966",
+          "priceCurrency": "USD",
+          "price": "9.99",
+          "priceValidUntil": "2026-08-12",
+          "itemCondition": "https://client.example/p/497966",
+          "availability": "https://client.example/p/497966"
+        },
+        "aggregateRating": {
+          "@type": "AggregateRating",
+          "ratingValue": "3.684200",
+          "reviewCount": "19"
+        },
+        "review": [
+          {
+            "@type": "Review",
+            "reviewBody": "I had to tweak the alignment of the SD slot with the face, just a little bit, I used a Popsicle stick. That aside, all the slots are working great. I can use multiple drives of different types simultaneously. Great value for the price and puts the old school 3 .5 inch drive bay to fashionably functional good use.",
+            "reviewRating": {
+              "@type": "Rating",
+              "ratingValue": "5",
+              "bestRating": "5",
+              "worstRating": "1"
+            },
+            "datePublished": "2026-08-10",
+            "author": {
+              "@type": "Person",
+              "name": "scruffydog57"
+            }
+          },
+          {
+            "@type": "Review",
+            "reviewBody": "In need of an inexpensive, multimedia card reader since I work with various devices and require to transfer between them. After comparing this one with the Inland card reader, I decided to give this one a shot as it appeared and felt better quality, up close. Installation was a hassle with the converter bay because the screws didn't fit. The software booted and installed on its own once it had connected to the mobo. Every slot works and detects any memory card when inserted. One thing I will note is that it's somewhat slower than my old HP desktop's card reader. Another thing I dislike is the blue light aka Power that glows on the left hand side (the image shown is upside down). The Power stays on, proudly, whether the pc is on or off. Overall, this card reader works, there's just nothing really fancy. Hence the 3-star rating.",
+            "reviewRating": {
+              "@type": "Rating",
+              "ratingValue": "3",
+              "bestRating": "5",
+              "worstRating": "1"
+            },
+            "datePublished": "2026-08-10",
+            "author": {
+              "@type": "Person",
+              "name": "Rev1val"
+            }
+          },
+          {
+            "@type": "Review",
+            "reviewBody": "The ugly: The blue power LED is powered on whenever the computer is plugged into power, even when it's turned off. It is extremely bright; if you're not sitting directly in front of your computer it's not any more noticeable than your typical front-panel LEDs, but it's quite distracting at night without covering it. Electrical tape is your friend.",
+            "reviewRating": {
+              "@type": "Rating",
+              "ratingValue": "3",
+              "bestRating": "5",
+              "worstRating": "1"
+            },
+            "datePublished": "2026-08-10",
+            "author": {
+              "@type": "Person",
+              "name": "jcamit"
+            }
+          },
+          {
+            "@type": "Review",
+            "reviewBody": "It is hard to insert a normal SD card into this. The card does fit, but more than half of people who tried assumed a normal SD card does not fit in any of the slots because it doesn't quite feel right when you are trying to put it in. I did not check if the box works, I just removed it because it didn't feel like good quality.",
+            "reviewRating": {
+              "@type": "Rating",
+              "ratingValue": "2",
+              "bestRating": "5",
+              "worstRating": "1"
+            },
+            "datePublished": "2026-08-10",
+            "author": {
+              "@type": "Person",
+              "name": "Steven M"
+            }
+          },
+          {
+            "@type": "Review",
+            "reviewBody": "Reboot and slide in a card to load the pictures.\nIt also adds a USB 2.0 port to the front of the computer.",
+            "reviewRating": {
+              "@type": "Rating",
+              "ratingValue": "5",
+              "bestRating": "5",
+              "worstRating": "1"
+            },
+            "datePublished": "2026-08-10",
+            "author": {
+              "@type": "Person",
+              "name": "filterxpert"
+            }
+          },
+          {
+            "@type": "Review",
+            "reviewBody": "I have taped over the annoying LEDs.",
+            "reviewRating": {
+              "@type": "Rating",
+              "ratingValue": "2",
+              "bestRating": "5",
+              "worstRating": "1"
+            },
+            "datePublished": "2026-08-10",
+            "author": {
+              "@type": "Person",
+              "name": "WhatnameISavailable?"
+            }
+          },
+          {
+            "@type": "Review",
+            "reviewBody": "USB 2.0 port was busted from Day one. The power light is ALWAYS ON. It was a nuisance for me. The speed the of the other ports was adequate. Otherwise, a no go for me.",
+            "reviewRating": {
+              "@type": "Rating",
+              "ratingValue": "1",
+              "bestRating": "5",
+              "worstRating": "1"
+            },
+            "datePublished": "2026-08-10",
+            "author": {
+              "@type": "Person",
+              "name": "NitroBravo"
+            }
+          },
+          {
+            "@type": "Review",
+            "reviewBody": "I purchased a cheaper brand card reader and it failed when I plugged it into my new computer. The company Inland has absolutely no support online and windows couldn't find a fix for the driver. Took it back and purchased the Sabrent and wow, what a difference in feel and performance! Spend the extra couple of dollars...",
+            "reviewRating": {
+              "@type": "Rating",
+              "ratingValue": "5",
+              "bestRating": "5",
+              "worstRating": "1"
+            },
+            "datePublished": "2026-08-10",
+            "author": {
+              "@type": "Person",
+              "name": "cpsaunders"
+            }
+          },
+          {
+            "@type": "Review",
+            "reviewBody": "I think this fits mainly micro to mid tower due to cable lengths.",
+            "reviewRating": {
+              "@type": "Rating",
+              "ratingValue": "5",
+              "bestRating": "5",
+              "worstRating": "1"
+            },
+            "datePublished": "2026-08-10",
+            "author": {
+              "@type": "Person",
+              "name": "Bloodrain"
+            }
+          },
+          {
+            "@type": "Review",
+            "reviewBody": "I needed a reliable reader and wanted it to be internal mounted. This one works great with absolutely no issues from the beginning.",
+            "reviewRating": {
+              "@type": "Rating",
+              "ratingValue": "5",
+              "bestRating": "5",
+              "worstRating": "1"
+            },
+            "datePublished": "2026-08-10",
+            "author": {
+              "@type": "Person",
+              "name": "Howard R."
+            }
+          }
+        ]
+      }
+    },
+    {
+      "clientSku": "531822",
+      "barcode": "812348010555",
+      "expected": {
+        "partNumber": "CF-012LB",
+        "brand": "Kingwin"
+      },
+      "product": {
+        "@type": "Product",
+        "@id": "https://client.example/p/531822",
+        "name": "Kingwin Advance CF-12LB Long Life Bearing 120mm Case Fan",
+        "image": [
+          "https://client.example/p/531822",
+          "https://client.example/p/531822",
+          "https://client.example/p/531822"
+        ],
+        "description": "Advance CF-12LB Long Life Bearing 120mm Case Fan",
+        "brand": {
+          "@type": "Brand",
+          "name": "Kingwin"
+        },
+        "sku": "531822",
+        "mpn": "CF-012LB",
+        "offers": {
+          "@type": "Offer",
+          "@id": "https://client.example/p/531822",
+          "url": "https://client.example/p/531822",
+          "priceCurrency": "USD",
+          "price": "7.99",
+          "priceValidUntil": "2026-08-12",
+          "itemCondition": "https://client.example/p/531822",
+          "availability": "https://client.example/p/531822"
+        },
+        "aggregateRating": {
+          "@type": "AggregateRating",
+          "ratingValue": "4.375000",
+          "reviewCount": "48"
+        },
+        "review": [
+          {
+            "@type": "Review",
+            "reviewBody": "very silent fan, bought two of these to help with my airflow a bit, was a little disappointed as they only came in at 40cfm, but for the price you really cant beat it. If you need that little bit of extra airflow these will do the job just fine, just dont try to put these on your heatsink!",
+            "reviewRating": {
+              "@type": "Rating",
+              "ratingValue": "4",
+              "bestRating": "5",
+              "worstRating": "1"
+            },
+            "datePublished": "2026-08-10",
+            "author": {
+              "@type": "Person",
+              "name": "one2bit"
+            }
+          },
+          {
+            "@type": "Review",
+            "reviewBody": "Its a Great Fan overall, Cheap, and a Name brand i trust. Cool thing that it has the 3 Pin and the Molex Connectors,",
+            "reviewRating": {
+              "@type": "Rating",
+              "ratingValue": "5",
+              "bestRating": "5",
+              "worstRating": "1"
+            },
+            "datePublished": "2026-08-10",
+            "author": {
+              "@type": "Person",
+              "name": "pigpottomus"
+            }
+          },
+          {
+            "@type": "Review",
+            "reviewBody": "So I can stay a bit cool while I do the occasional World Of Warship - ing.. \n\n\n\n\n\nThe fan isn't loud and puts out a decent amount of air. So far so good.",
+            "reviewRating": {
+              "@type": "Rating",
+              "ratingValue": "5",
+              "bestRating": "5",
+              "worstRating": "1"
+            },
+            "datePublished": "2026-08-10",
+            "author": {
+              "@type": "Person",
+              "name": "annelid"
+            }
+          },
+          {
+            "@type": "Review",
+            "reviewBody": "it looks square... if i know the bolt circle i could know it would fit in my case.\nhow thick is it? (high profile)",
+            "reviewRating": {
+              "@type": "Rating",
+              "ratingValue": "4",
+              "bestRating": "5",
+              "worstRating": "1"
+            },
+            "datePublished": "2026-08-10",
+            "author": {
+              "@type": "Person",
+              "name": "Pete T."
+            }
+          },
+          {
+            "@type": "Review",
+            "reviewBody": "It started spinning freely and is still working.",
+            "reviewRating": {
+              "@type": "Rating",
+              "ratingValue": "2",
+              "bestRating": "5",
+              "worstRating": "1"
+            },
+            "datePublished": "2026-08-10",
+            "author": {
+              "@type": "Person",
+              "name": "spanky22"
+            }
+          },
+          {
+            "@type": "Review",
+            "reviewBody": "I have 3 of these in my computer I built. they have been working for fine for 6 months. These don't move a huge amount of aif but are quiet so stick a few more in the case and you should be good. At about $4 each they are hard to beat and a worthwhile purchase.",
+            "reviewRating": {
+              "@type": "Rating",
+              "ratingValue": "5",
+              "bestRating": "5",
+              "worstRating": "1"
+            },
+            "datePublished": "2026-08-10",
+            "author": {
+              "@type": "Person",
+              "name": "Kromagv0"
+            }
+          },
+          {
+            "@type": "Review",
+            "reviewBody": "I did not use it as a case fan . The cooling fans on the 2 metre amplifier failed and I needed 2 quiet fans that would fit the existing mounts . cannot hear the fans running even though the amp is mounted to the side of the operating desk and it does not overheat like it did with old fans .\nThey have been in 24/7 use for 3 years with no problems .",
+            "reviewRating": {
+              "@type": "Rating",
+              "ratingValue": "5",
+              "bestRating": "5",
+              "worstRating": "1"
+            },
+            "datePublished": "2026-08-10",
+            "author": {
+              "@type": "Person",
+              "name": "Aztec"
+            }
+          },
+          {
+            "@type": "Review",
+            "reviewBody": "As it's doesn't have that high of airflow, I wouldn't recommend this as a primary case fan, but it's quite and cheap so it makes a good secondary, tertiary, etc fan.",
+            "reviewRating": {
+              "@type": "Rating",
+              "ratingValue": "4",
+              "bestRating": "5",
+              "worstRating": "1"
+            },
+            "datePublished": "2026-08-10",
+            "author": {
+              "@type": "Person",
+              "name": "ftwelve"
+            }
+          },
+          {
+            "@type": "Review",
+            "reviewBody": "This is a low priced fan I have used in several builds. OK air flow, OK on the noise. Just a decent fan for a cheap price to hold the price of your build down. Does the job. If you need the very best fan with all the lights and such look somewhere else. But actually, I'm impressed with this fan for the price.\nOne last thing. Three and four pin plugs (plug into MB or PSU).",
+            "reviewRating": {
+              "@type": "Rating",
+              "ratingValue": "5",
+              "bestRating": "5",
+              "worstRating": "1"
+            },
+            "datePublished": "2026-08-10",
+            "author": {
+              "@type": "Person",
+              "name": "cooldude"
+            }
+          },
+          {
+            "@type": "Review",
+            "reviewBody": "High CFM and average db, recommended for a budget gaming build. about 6 db quieter and it would be listed as a silent.",
+            "reviewRating": {
+              "@type": "Rating",
+              "ratingValue": "5",
+              "bestRating": "5",
+              "worstRating": "1"
+            },
+            "datePublished": "2026-08-10",
+            "author": {
+              "@type": "Person",
+              "name": "jcrew3002"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

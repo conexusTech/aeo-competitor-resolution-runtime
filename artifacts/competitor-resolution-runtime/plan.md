@@ -137,6 +137,79 @@ The handover already has the seam: `packages/scraper/src/adapters/types.ts` with
 
 ---
 
+## 1.8 🔑 The client publishes the identity step 1 was guessing — decided 2026-09-10
+
+**Measured, on the 7 client pages the handover spike captured.** They are the
+**client's own catalogue**, not a second competitor: 7 of 7 match a client row on
+**both** SKU and barcode. ⚠️ I first read them as a second retailer's captures and
+said so; that was wrong, and the correction is what produced this finding.
+
+Every one publishes a manufacturer part number **and** a brand in structured JSON:
+
+| client SKU | barcode | published MPN | barcode-derived ref | agrees |
+|---|---|---|---|---|
+| 82081 | 035286301848 | `30184` | `30184` | **yes** |
+| 271361 | 649833101746 | `10174` | `10174` | **yes** |
+| 994905 | 035286296489 | `29648` | `29648` | **yes** |
+| 314393 | 813810010431 | `63005` | `01043` | no |
+| 531814 | 812348010548 | `CF-08LB` | `01054` | no |
+| 497966 | 188218000453 | `CRW-UINB` | `00045` | no |
+| 531822 | 812348010555 | `CF-012LB` | `01055` | no |
+
+Three things follow, and the third is the design.
+
+**1. The weakest step is replaceable.** Step 1 infers identity from search-engine
+`<h3>` titles — the inference §8 rejected, the origin of **every observed
+mis-resolution**, the thing that once matched a $3,727 server to a $13 accessory.
+The client's own site states it. Authoritative beats inferred.
+
+**2. It answers D-6's open commercial residue by measurement.** The roadmap asks
+*"does the client's system hold a part number at all? If it does, the path is ~2
+requests/row at far higher verification."* **It does, and it is published.**
+
+**3. The barcode already yields 3 of 7 for free, and that is evidence, not a
+shortcut.** The spike's `upcItemRef` — the 5 digits before a UPC-A's check digit —
+reproduces the published MPN **exactly** for 3 of the 4 numeric ones, at zero
+request cost. It misses `63005` and cannot produce an alphanumeric MPN by
+construction. So it is a **corroborator**, not a source to stop at: two
+independent derivations agreeing is stronger evidence than either alone, and
+trying it first *and stopping* would take a wrong identity when an authoritative
+one was one request away.
+
+⚠️ **7 of 8,926 is 0.08%.** That every client SKU publishes an MPN is **unmeasured**
+and must not be assumed. The design therefore treats an absent client identity as
+ordinary, not exceptional.
+
+✅ **Permission settled by the lead 2026-09-10: reading the client's own public
+product pages is within what they are paying for.** Recorded because it is a
+question about someone else's property, not an engineering detail.
+
+### The decision — the long-term shape, per the lead: no temporary implementation
+
+**Identity becomes a first-class, provenanced input rather than a hidden step.**
+
+```
+IdentitySource         request cost   authority
+client-catalogue       1              states the fact
+barcode-derived        0              derives it, 3 of 4 numeric correct
+search-inference       1+             infers it — §8 rejected, last resort
+```
+
+- Sources are **independent evidence**, tried **in order of authority, not cost**,
+  and **agreement between them raises confidence** rather than being discarded.
+- Every resolved identity carries **which source produced it**. That is not
+  bookkeeping: an item paired through an inferred identity deserves different
+  treatment from one paired through the client's own published part number, and
+  today nothing can tell them apart.
+- The client's catalogue is **configuration** — a URL template on the retailer or
+  organization registry row, never a named customer in a code path.
+
+**Why not the cheap version.** Building only the search inference now and adding
+the seam later means the pipeline's most important input has no provenance for a
+release, and every consumer downstream — the review queue, the coverage figure —
+would be built against an identity that cannot say where it came from. That is the
+kind of thing that is cheap now and expensive later.
+
 ## 2. Shape
 
 Stack: **TypeScript + npm**, matching the handover so the algorithm ports rather
