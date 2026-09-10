@@ -174,6 +174,8 @@ export async function runList(
           clientSku: item.clientSku,
           outcome: "not-found",
           identity: null,
+          // A pipeline that could not complete has no ranking to offer.
+          alternatives: [],
           queriesTried: [],
           candidatesSeen: 0,
           probes: 0,

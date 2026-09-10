@@ -110,12 +110,42 @@ export function hasPartNumberEvidence(input: ScoreInput): boolean {
   });
 }
 
-export function scoreCandidate(input: ScoreInput): number {
+/** A signal the scorer can credit. The keys of `WEIGHTS`, and nothing else. */
+export type ScoreSignal = keyof typeof WEIGHTS;
+
+/**
+ * The score, and which named signals produced it.
+ *
+ * 🔑 **`scoreCandidate` delegates to this rather than the reverse.** Two
+ * implementations of this arithmetic is how a signal list comes to disagree
+ * with the number it explains — and the number is load-bearing: the 53-row
+ * replay's outcome split is the only property of this module anybody has
+ * measured. A check pins the score against the corpus for exactly that
+ * reason.
+ *
+ * ⚠️ `signals` is a SET, so `queryToken` appears once however many tokens
+ * hit. The score still counts every one — it is computed in the same pass —
+ * because the count is what ranks a candidate and the name is only what
+ * explains it to a person.
+ */
+export interface ScoreBreakdown {
+  readonly score: number;
+  /** Which signals fired, strongest weight first. Deduplicated. */
+  readonly signals: readonly ScoreSignal[];
+}
+
+export function scoreBreakdown(input: ScoreInput): ScoreBreakdown {
   const { candidate, partNumbers, brand, barcode, queryTokens } = input;
   const haystack =
     `${candidate.title} ${candidate.model ?? ""} ${candidate.brand ?? ""}`.toLowerCase();
   const model = (candidate.model ?? "").toUpperCase();
   let score = 0;
+  const fired = new Set<ScoreSignal>();
+  // 🔑 One helper, so a credit cannot be added without naming its signal.
+  const credit = (signal: ScoreSignal): void => {
+    score += WEIGHTS[signal];
+    fired.add(signal);
+  };
 
   // The manufacturer encoded its item reference in the barcode, and the
   // retailer's model field carries it — near-conclusive before spending a probe.
@@ -123,19 +153,18 @@ export function scoreCandidate(input: ScoreInput): number {
   if (core !== "" && model !== "") {
     const digits = model.replace(/\D/g, "");
     if (digits.length >= 4 && core.padStart(12, "0").includes(digits)) {
-      score += WEIGHTS.partNumberInsideBarcode;
+      credit("partNumberInsideBarcode");
     }
   }
 
   for (const partNumber of partNumbers) {
     const p = partNumber.toUpperCase();
-    if (model !== "" && model === p) score += WEIGHTS.partNumberExact;
+    if (model !== "" && model === p) credit("partNumberExact");
     else if (model !== "" && (model.includes(p) || p.includes(model)))
-      score += WEIGHTS.partNumberContains;
+      credit("partNumberContains");
     else if (model !== "" && sharedPrefixLength(model, p) >= 5)
-      score += WEIGHTS.partNumberSharedPrefix;
-    else if (haystack.includes(p.toLowerCase()))
-      score += WEIGHTS.partNumberInText;
+      credit("partNumberSharedPrefix");
+    else if (haystack.includes(p.toLowerCase())) credit("partNumberInText");
   }
 
   // Sibling variants cluster on consecutive barcodes, so once the brand is
@@ -146,11 +175,11 @@ export function scoreCandidate(input: ScoreInput): number {
     candidate.brand !== null &&
     candidate.brand.toLowerCase() === brand.toLowerCase()
   ) {
-    score += WEIGHTS.brandMatch;
+    credit("brandMatch");
   }
 
   for (const token of queryTokens) {
-    if (haystack.includes(token)) score += WEIGHTS.queryToken;
+    if (haystack.includes(token)) credit("queryToken");
   }
 
   // 🔴 First-party outranks marketplace, and the reason is whose barcode the
@@ -159,10 +188,22 @@ export function scoreCandidate(input: ScoreInput): number {
   // first-party match is strong evidence and a marketplace mismatch is weak.
   // `null` means the retailer does not expose the distinction, and scores
   // nothing rather than being assumed either way.
-  if (candidate.isFirstParty === true) score += WEIGHTS.firstParty;
-  if (candidate.inStock) score += WEIGHTS.inStock;
+  if (candidate.isFirstParty === true) credit("firstParty");
+  if (candidate.inStock) credit("inStock");
 
-  return score;
+  // Strongest weight first, so a reader sees the load-bearing signal first.
+  const signals = [...fired].sort((a, b) => WEIGHTS[b] - WEIGHTS[a]);
+  return { score, signals };
+}
+
+/**
+ * The score alone.
+ *
+ * ⚠️ Delegates rather than duplicating: see `ScoreBreakdown`. Every existing
+ * caller keeps this signature, so nothing about ranking changed.
+ */
+export function scoreCandidate(input: ScoreInput): number {
+  return scoreBreakdown(input).score;
 }
 
 /** Best first. Ties keep their original order, so a run is deterministic. */

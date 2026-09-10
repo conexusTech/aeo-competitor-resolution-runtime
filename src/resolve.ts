@@ -6,6 +6,11 @@
  * is. It never learns which retailer it is talking to.
  */
 
+import {
+  alternativesFor,
+  type ProbeOutcome,
+  type ResolutionAlternative,
+} from "./alternatives.js";
 import { canQuery, type RetailerAdapter } from "./adapters/types.js";
 import { FetchFailed, type Fetcher } from "./fetcher/types.js";
 import { gtinMatches } from "./gtin.js";
@@ -79,6 +84,18 @@ export interface Resolution {
   readonly probes: number;
   readonly requests: number;
   readonly match: ResolutionEvidence | null;
+  /**
+   * The runners-up worth offering instead, best first.
+   *
+   * 🔴 **Only candidates that cleared the same evidence floor the match had
+   * to clear.** A candidate below it is the top hit for a vague phrase, and
+   * the reviewed screen puts a *use this listing instead* button next to
+   * every one of these — offering junk would hand a reviewer the
+   * $3,727-server-for-a-$13-accessory mistake with a control on it.
+   *
+   * ⚠️ Empty for a `not-found`: there is no pairing to swap.
+   */
+  readonly alternatives: readonly ResolutionAlternative[];
   /** Set only when the pipeline could not complete — never for a clean miss. */
   readonly failure: string | null;
 }
@@ -207,6 +224,7 @@ export async function resolveItem(
     candidatesSeen: 0,
     probes: 0,
     match: null,
+    alternatives: [],
     failure: null,
   };
 
@@ -288,6 +306,16 @@ export async function resolveItem(
   /** The best listing we found but could not compare — an `unverifiable`. */
   let noBarcodeFound: { candidate: ParsedCandidate; score: number } | null =
     null;
+  /**
+   * What each probe learned, keyed by url.
+   *
+   * 🔑 Recorded as the loop goes rather than reconstructed afterwards: an
+   * alternative nobody opened and one opened to find no barcode are
+   * different facts, and only the loop knows which is which. Reconstructing
+   * it from `probes` and the ranking order would be a guess that looks like
+   * a record.
+   */
+  const probeOutcomes = new Map<string, ProbeOutcome>();
 
   for (const entry of ranked.slice(0, options.maxProbes)) {
     const body = await tryFetch(fetcher, entry.candidate.url);
@@ -295,6 +323,9 @@ export async function resolveItem(
     if (body === null) continue;
 
     const product = adapter.parseProductPage(body);
+    probeOutcomes.set(entry.candidate.url, {
+      retailerBarcode: product.barcode,
+    });
 
     if (
       product.barcode !== null &&
@@ -309,6 +340,12 @@ export async function resolveItem(
         probes,
         requests: fetcher.liveRequestCount - startedAt,
         match: evidence(entry.candidate, entry.score, product.barcode),
+        alternatives: alternativesFor({
+          ranked,
+          chosen: entry.candidate,
+          probed: probeOutcomes,
+          scoreInput: rankInput,
+        }),
       };
     }
 
@@ -365,6 +402,12 @@ export async function resolveItem(
       probes,
       requests: fetcher.liveRequestCount - startedAt,
       match: evidence(noBarcodeFound.candidate, noBarcodeFound.score, null),
+      alternatives: alternativesFor({
+        ranked,
+        chosen: noBarcodeFound.candidate,
+        probed: probeOutcomes,
+        scoreInput: rankInput,
+      }),
     };
   }
 
@@ -377,6 +420,12 @@ export async function resolveItem(
     probes,
     requests: fetcher.liveRequestCount - startedAt,
     match: evidence(best.candidate, best.score, null),
+    alternatives: alternativesFor({
+      ranked,
+      chosen: best.candidate,
+      probed: probeOutcomes,
+      scoreInput: rankInput,
+    }),
   };
 }
 

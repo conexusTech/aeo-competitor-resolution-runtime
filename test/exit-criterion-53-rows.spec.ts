@@ -6,6 +6,8 @@ import { beforeAll, describe, expect, it } from "vitest";
 
 import { neweggAdapter } from "../src/adapters/newegg.js";
 import { ReplayFetcher, type Corpus } from "../src/fetcher/replay.js";
+import { MAX_ALTERNATIVES } from "../src/alternatives.js";
+import { MIN_EVIDENCE_TO_REPORT } from "../src/ranking.js";
 import { NotInCorpus } from "../src/fetcher/types.js";
 import {
   DEFAULT_OPTIONS,
@@ -236,6 +238,104 @@ describe("53 rows, replayed offline", () => {
 
   it("spends nothing", () => {
     expect(fetcher.liveRequestCount).toBe(0);
+  });
+
+  /**
+   * 🔑 **On real pages, not a fixture.** `alternativesFor` is pure and unit
+   * tested, but whether a real run has runners-up worth offering at all is a
+   * property of the corpus — a pipeline that reported one candidate per item
+   * would satisfy every unit test and leave the swap control dead.
+   */
+  it("offers runners-up on the real corpus, and only above the floor", () => {
+    const reported = resolutions.filter(
+      ({ resolution }) => resolution?.match != null,
+    );
+    expect(reported.length).toBeGreaterThan(0);
+
+    const withAlternatives = reported.filter(
+      ({ resolution }) => (resolution?.alternatives.length ?? 0) > 0,
+    );
+    // Not every item has a plausible second candidate, and that is honest —
+    // but if NONE did, this row would have changed nothing observable.
+    expect(withAlternatives.length).toBeGreaterThan(0);
+
+    for (const { resolution } of reported) {
+      for (const alt of resolution?.alternatives ?? []) {
+        // 🔴 The floor the chosen candidate had to clear.
+        expect(alt.score).toBeGreaterThanOrEqual(MIN_EVIDENCE_TO_REPORT);
+        // 🔴 And never the chosen listing itself.
+        expect(alt.url).not.toBe(resolution?.match?.url);
+        // Every one says what is known about its barcode, and says why.
+        expect(["disagreed", "absent", "unprobed"]).toContain(alt.barcodeState);
+        expect(alt.reasonRankedLower.length).toBeGreaterThan(0);
+      }
+      // Ordered best first, by the same ranking.
+      const scores = (resolution?.alternatives ?? []).map((a) => a.score);
+      expect([...scores].sort((a, b) => b - a)).toEqual(scores);
+      expect(scores.length).toBeLessThanOrEqual(MAX_ALTERNATIVES);
+    }
+  });
+
+  /**
+   * 🔴 A `not-found` has no pairing to swap, so offering a list of things to
+   * swap it for would be a screen inventing a decision.
+   */
+  /**
+   * 🔴 **This check exists because a mutation proved the one above did not
+   * cover it.** Deleting the line that records what each probe published left
+   * that check green — it asserted only that `barcodeState` was one of three
+   * values, and `unprobed` is one of three.
+   *
+   * Measured on this corpus before being asserted: **71 alternatives across
+   * 18 rows — 12 `disagreed`, 6 `absent`, 53 `unprobed`**. So all three
+   * states genuinely occur here and all three can be required.
+   *
+   * ⚠️ Asserted as *at least one of each* rather than the exact counts: the
+   * counts are a property of this corpus and would make a legitimate ranking
+   * change look like a regression, while nought `disagreed` means the probe
+   * recording is gone.
+   */
+  it("records what each probe published, on real pages", () => {
+    const states = { disagreed: 0, absent: 0, unprobed: 0 };
+    for (const { resolution } of resolutions) {
+      for (const alt of resolution?.alternatives ?? []) {
+        states[alt.barcodeState] += 1;
+      }
+    }
+
+    // 🔴 A probed alternative whose barcode disagreed. Nought here means
+    // nothing is recording probe outcomes, and every alternative is claiming
+    // nobody looked.
+    expect(states.disagreed).toBeGreaterThan(0);
+    // 🔴 And a probed one that published none — the distinction that would
+    // otherwise collapse into a mismatch. 91 of 255 captured pages are like
+    // this.
+    expect(states.absent).toBeGreaterThan(0);
+    // 🔑 And most are unprobed, which is the honest shape: probes are the
+    // expensive part, measured at 2.70 per row against a ceiling of eight.
+    expect(states.unprobed).toBeGreaterThan(states.disagreed + states.absent);
+
+    // A probed alternative carries the barcode it published; an unprobed one
+    // carries none, because nothing was read.
+    for (const { resolution } of resolutions) {
+      for (const alt of resolution?.alternatives ?? []) {
+        if (alt.barcodeState === "disagreed") {
+          expect(alt.retailerBarcode).not.toBeNull();
+        } else {
+          expect(alt.retailerBarcode).toBeNull();
+        }
+      }
+    }
+  });
+
+  it("offers nothing on a row that resolved nothing", () => {
+    const misses = resolutions.filter(
+      ({ resolution }) => resolution != null && resolution.match === null,
+    );
+    expect(misses.length).toBeGreaterThan(0);
+    for (const { resolution } of misses) {
+      expect(resolution?.alternatives).toEqual([]);
+    }
   });
 
   it("records identity provenance on every resolution that has an identity", () => {
