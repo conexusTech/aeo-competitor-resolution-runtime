@@ -550,3 +550,43 @@ describe("the job's capture policy", () => {
     ).toThrow(/non-negative integer/);
   });
 });
+
+describe("the job's per-item selection", () => {
+  const jobWith = (items: unknown[]) => ({
+    runId: IDENTITY.runId,
+    retailerSlug: "newegg",
+    items,
+  });
+
+  /** Absent means not selected — the same direction as the policy itself. */
+  it("defaults an unmarked item to not selected", () => {
+    const job = parseJob(
+      jobWith([{ barcode: "649532609635", clientSku: "SKU-001" }]),
+      IDENTITY.runId,
+    );
+    expect(job.items[0]?.capture).toBe(false);
+  });
+
+  it("reads the flag the gateway sent", () => {
+    const job = parseJob(
+      jobWith([
+        { barcode: "649532609635", clientSku: "SKU-001", capture: true },
+        { barcode: "884102021862", clientSku: "SKU-011", capture: false },
+      ]),
+      IDENTITY.runId,
+    );
+    expect(job.items.map((i) => i.capture)).toEqual([true, false]);
+  });
+
+  /** Strict about presence: a malformed flag is two builds disagreeing. */
+  it("refuses a non-boolean flag rather than reading it as false", () => {
+    expect(() =>
+      parseJob(
+        jobWith([
+          { barcode: "649532609635", clientSku: "SKU-001", capture: "yes" },
+        ]),
+        IDENTITY.runId,
+      ),
+    ).toThrow(/non-boolean 'capture' flag/);
+  });
+});

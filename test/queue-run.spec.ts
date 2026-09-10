@@ -45,8 +45,8 @@ const JOB: ResolutionJob = {
   retailerSlug: "newegg",
   itemsTotal: 2,
   items: [
-    { barcode: "649532609635", clientSku: "SKU-001" },
-    { barcode: "884102021862", clientSku: "SKU-011" },
+    { barcode: "649532609635", clientSku: "SKU-001", capture: true },
+    { barcode: "884102021862", clientSku: "SKU-011", capture: true },
   ],
   capture: CAPTURE_DISABLED,
 };
@@ -521,6 +521,15 @@ describe("a dispatched run's evidence", () => {
 
   const capturingJob = (budget: number): ResolutionJob => ({
     ...JOB,
+    // ⚠️ Every SKU these checks resolve is marked, so they exercise the BUDGET
+    // rather than the selection. The unselected path has its own describe
+    // block — and this fixture originally omitted SKU-002, which made the
+    // budget check trip the selection branch instead.
+    items: [
+      { barcode: "649532609635", clientSku: "SKU-001", capture: true },
+      { barcode: "884102021862", clientSku: "SKU-002", capture: true },
+      { barcode: "884102021862", clientSku: "SKU-011", capture: true },
+    ],
     capture: { enabled: true, budget, format: "page_html" },
   });
 
@@ -697,5 +706,130 @@ describe("a dispatched run's evidence", () => {
       "captured",
       "skipped_quota",
     ]);
+  });
+});
+
+/**
+ * Per-item selection, through the dispatched sequence.
+ *
+ * 🔴 A budget says HOW MANY; only the job's per-item flags say WHICH. A run
+ * that captured the first budget-many findings would be doing exactly what the
+ * gateway's selection rules exist to replace.
+ */
+describe("a dispatched run's selection", () => {
+  let dir: string;
+
+  beforeEach(async () => {
+    dir = await mkdtemp(path.join(tmpdir(), "queue-select-"));
+  });
+  afterEach(async () => {
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  // ⚠️ No cast, and the lint rule is what pointed that out: this literal
+  // already satisfies `Resolution`, so `as unknown as Resolution` would have
+  // been a weakening that hides nothing today and could hide a real mismatch
+  // the next time the type moves.
+  const withPage = (sku: string): Resolution => ({
+    ...resolution(sku),
+    match: {
+      itemId: "N82E1",
+      url: `https://www.newegg.com/p/${sku}`,
+      title: "A product",
+      brand: null,
+      model: null,
+      priceCents: 1999,
+      inStock: true,
+      isFirstParty: true,
+      sellerName: "Newegg",
+      retailerBarcode: "649532609635",
+      score: 7,
+    },
+  });
+
+  const serving = (): Fetcher => ({
+    fetch: (url: string) =>
+      Promise.resolve({ url, body: "<html>page</html>", cached: true }),
+    liveRequestCount: 3,
+  });
+
+  it("captures only the items the job marked", async () => {
+    const { reporter } = fakeReporter();
+    const posted: string[] = [];
+
+    const result = await runDispatchedJob({
+      dispatch: DISPATCH,
+      client: {
+        ...fakeClient({
+          ...JOB,
+          items: [
+            { barcode: "649532609635", clientSku: "SKU-001", capture: false },
+            { barcode: "884102021862", clientSku: "SKU-011", capture: true },
+          ],
+          capture: { enabled: true, budget: 10, format: "page_html" },
+        }),
+        postCapture: (args: { clientSku: string }) => {
+          posted.push(args.clientSku);
+          return Promise.resolve({ kind: "stored", storageKey: "k" } as const);
+        },
+      } as never,
+      reporter: reporter as never,
+      adapterFor,
+      fetcher: serving(),
+      runList: async (_items, _adapter, _fetcher, options) => {
+        await options.onResolved?.(withPage("SKU-001"));
+        await options.onResolved?.(withPage("SKU-011"));
+        return [];
+      },
+      baseOptions: { ...RUN_DEFAULTS, runDir: dir },
+      log: () => {},
+    });
+
+    // Only the marked item, and the unmarked one is not a failure or a quota
+    // refusal — it is a rule's answer.
+    expect(posted).toEqual(["SKU-011"]);
+    expect(result.captures.map((c) => c.state)).toEqual([
+      "skipped_unselected",
+      "captured",
+    ]);
+  });
+
+  /**
+   * ⚠️ Absent means not selected, the same direction as the capture policy
+   * itself: a gateway that predates selection marks nothing, and capturing
+   * anyway would spend a budget against items no rule chose.
+   */
+  it("captures nothing when the job marks no item", async () => {
+    const { reporter } = fakeReporter();
+    const posted: string[] = [];
+
+    const result = await runDispatchedJob({
+      dispatch: DISPATCH,
+      client: {
+        ...fakeClient({
+          ...JOB,
+          items: [
+            { barcode: "649532609635", clientSku: "SKU-001", capture: false },
+          ],
+          capture: { enabled: true, budget: 10, format: "page_html" },
+        }),
+        postCapture: (args: { clientSku: string }) => {
+          posted.push(args.clientSku);
+          return Promise.resolve({ kind: "stored", storageKey: "k" } as const);
+        },
+      } as never,
+      reporter: reporter as never,
+      adapterFor,
+      fetcher: serving(),
+      runList: async (_items, _adapter, _fetcher, options) => {
+        await options.onResolved?.(withPage("SKU-001"));
+        return [];
+      },
+      baseOptions: { ...RUN_DEFAULTS, runDir: dir },
+      log: () => {},
+    });
+
+    expect(posted).toEqual([]);
+    expect(result.captures[0]?.state).toBe("skipped_unselected");
   });
 });

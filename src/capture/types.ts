@@ -33,19 +33,26 @@ export type CaptureFormat = (typeof CAPTURE_FORMATS)[number];
 /**
  * How a capture ended.
  *
- * ⚠️ **`skipped_disabled` is a fifth value the frontend contract lacks** — it
+ * ⚠️ **Two values the frontend contract lacks** — it
  * names `captured`, `failed`, `pending` and `skipped_quota`. A retailer whose
  * registry capability is off, or a job that asked for no captures, is neither a
  * failure nor a quota refusal, and reporting it as either would be a lie about
  * which knob to turn. Same call `insights-run-orchestration` made for
  * `MatchMethod`'s fifth value: the runtime reports the truth and the type
  * catches up in `insights-frontend-live-data`.
+ *
+ * 🔴 **`skipped_unselected` is the sixth, and it is a DIFFERENT answer from
+ * `skipped_quota`.** No rule chose the item, so nothing ran out — reporting it
+ * as a quota refusal would send an operator to raise a budget that was never
+ * the reason. It is recorded before the budget is touched for exactly that
+ * reason: a rule is not a quota.
  */
 export const CAPTURE_STATES = [
   "captured",
   "failed",
   "skipped_quota",
   "skipped_disabled",
+  "skipped_unselected",
 ] as const;
 export type CaptureState = (typeof CAPTURE_STATES)[number];
 

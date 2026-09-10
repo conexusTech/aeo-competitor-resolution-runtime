@@ -50,6 +50,19 @@ qualify are **the gateway's** to know. The per-run ceiling is **this
 container's** to keep. So the policy travels with the job, and a job that
 carries none means captures are off.
 
+## 🔴 A budget says how many; only the job's per-item flags say which
+
+This was **missing when the row first closed, and the correction is recorded
+rather than quietly folded in.** A run holding a budget of fifty and no
+per-item answer captures the first fifty findings it happens to make — which is
+exactly the *"whatever the run happened to do"* the gateway's selection rules
+exist to replace. So each job item carries a `capture` flag, and an unmarked
+one is **not selected**.
+
+⚠️ **An unselected item is a different answer from an exhausted budget**, and it
+does not consume one. Reporting it as a quota refusal would send an operator to
+raise a budget that was never the reason.
+
 ## Requirements
 
 #### Scenario: The page a finding was decided on is kept
@@ -93,6 +106,20 @@ carries none means captures are off.
 **Checked by:** capture-names-the-page-it-would-have-kept
 **Checked by:** capture-refuses-a-malformed-policy
 **Checked by:** capture-refuses-an-image-request
+
+#### Scenario: Only the items a rule chose are kept
+- GIVEN a job marking some items for capture and not others
+- WHEN findings are made for both
+- THEN only the marked ones are read and posted
+- AND an unmarked one is recorded as unselected rather than failed or over budget
+- AND it consumes no budget
+- AND a job marking nothing captures nothing
+- AND a malformed flag is refused rather than read as unmarked
+
+**Checked by:** capture-keeps-only-selected-items
+**Checked by:** capture-does-not-charge-for-an-unselected-item
+**Checked by:** capture-unmarked-is-not-selected
+**Checked by:** capture-refuses-a-malformed-selection-flag
 
 #### Scenario: One page two items share is kept once
 - GIVEN two items that resolve to the same competitor listing

@@ -61,6 +61,21 @@ const REQUEST_TIMEOUT_MS = 30_000;
 export interface JobItem {
   readonly barcode: string;
   readonly clientSku: string;
+  /**
+   * Whether this item's page is worth keeping.
+   *
+   * 🔴 **Per item, because a budget alone cannot express "which".** A run with
+   * a budget of 50 and no per-item answer captures the first fifty findings it
+   * happens to make — which is exactly the "whatever the run happened to do"
+   * that the selection rules exist to replace. The rules are the gateway's
+   * (scoped by list, category or retailer); this flag is their answer for one
+   * item.
+   *
+   * ⚠️ **Absent means not selected**, the same direction as the capture policy
+   * itself: a gateway that predates selection marks nothing, and capturing
+   * anyway would spend a budget against items no rule chose.
+   */
+  readonly capture: boolean;
 }
 
 /** The job for a live run. */
@@ -542,7 +557,16 @@ export function parseJob(body: unknown, runId: string): ResolutionJob {
         `item ${index} of run ${runId} is missing barcode or clientSku`,
       );
     }
-    parsed.push({ barcode, clientSku });
+    const capture = item["capture"];
+    if (capture !== undefined && typeof capture !== "boolean") {
+      // Strict about presence, tolerant of absence — the same rule the capture
+      // policy follows, and for the same reason: a malformed answer is two
+      // builds disagreeing, and reading it as "not selected" would hide that.
+      throw new Error(
+        `item ${index} of run ${runId} has a non-boolean 'capture' flag`,
+      );
+    }
+    parsed.push({ barcode, clientSku, capture: capture === true });
   }
 
   if (parsed.length === 0) {

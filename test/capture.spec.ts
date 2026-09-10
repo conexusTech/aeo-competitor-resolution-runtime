@@ -281,12 +281,17 @@ describe("capturing a resolution's page", () => {
       policy?: CapturePolicy;
       fetcher?: ReturnType<typeof fakeFetcher>;
       upload?: ReturnType<typeof fakeUpload>;
+      isSelected?: (clientSku: string) => boolean;
     } = {},
   ) => {
     const fetcher = over.fetcher ?? fakeFetcher();
     const upload = over.upload ?? fakeUpload();
     const capturer = new Capturer({
       policy: over.policy ?? ENABLED,
+      // Selected unless a check says otherwise: these are checks about the
+      // MECHANISM. Which items a rule chooses is the gateway's, and the
+      // unselected path has its own checks below.
+      isSelected: over.isSelected ?? (() => true),
       fetcher,
       runDir,
       upload: upload.upload,
@@ -515,6 +520,7 @@ describe("capturing a resolution's page", () => {
   it("refuses to offer before its journal has been read", async () => {
     const capturer = new Capturer({
       policy: ENABLED,
+      isSelected: () => true,
       fetcher: fakeFetcher(),
       runDir,
       upload: fakeUpload().upload,
@@ -523,6 +529,46 @@ describe("capturing a resolution's page", () => {
     await expect(capturer.offer(resolution())).rejects.toThrow(
       /load\(\) must be called/,
     );
+  });
+
+  /**
+   * 🔴 A budget says HOW MANY; only the rules say WHICH. A run with a budget
+   * and no per-item answer captures the first budget-many findings it happens
+   * to make — exactly the "whatever the run happened to do" that selection
+   * rules exist to replace.
+   */
+  it("captures nothing for an item no rule chose", async () => {
+    const { capturer, fetcher, upload } = await build({
+      isSelected: (sku) => sku === "SKU-999",
+    });
+    const record = await capturer.offer(resolution({ clientSku: "SKU-001" }));
+
+    expect(record.state).toBe("skipped_unselected");
+    expect(record.sourceUrl).toBe("https://www.newegg.com/p/N82E16820233852");
+    expect(fetcher.calls).toEqual([]);
+    expect(upload.sent).toEqual([]);
+  });
+
+  /**
+   * 🔴 An unselected item is a DIFFERENT answer from an exhausted budget, and
+   * it must not consume one: reporting it as a quota refusal would send an
+   * operator to raise a budget that was never the reason.
+   */
+  it("does not charge the budget for an item no rule chose", async () => {
+    const { capturer, upload } = await build({
+      policy: { ...ENABLED, budget: 1 },
+      isSelected: (sku) => sku !== "SKU-001",
+    });
+
+    const skipped = await capturer.offer(resolution({ clientSku: "SKU-001" }));
+    const kept = await capturer.offer(
+      resolution({ clientSku: "SKU-002", match: otherPage }),
+    );
+
+    expect(skipped.state).toBe("skipped_unselected");
+    expect(kept.state).toBe("captured");
+    expect(capturer.spent).toBe(1);
+    expect(upload.sent).toHaveLength(1);
   });
 
   it("tallies what happened, by state", async () => {
@@ -542,6 +588,7 @@ describe("capturing a resolution's page", () => {
       skipped_quota: 0,
       // B had no chosen page, so there was nothing to be evidence of.
       skipped_disabled: 1,
+      skipped_unselected: 0,
     });
     expect(capturer.spent).toBe(1);
   });
@@ -560,6 +607,7 @@ describe("resuming a run that already captured", () => {
   const capturerIn = async (upload: ReturnType<typeof fakeUpload>) => {
     const capturer = new Capturer({
       policy: ENABLED,
+      isSelected: () => true,
       fetcher: fakeFetcher(),
       runDir,
       upload: upload.upload,

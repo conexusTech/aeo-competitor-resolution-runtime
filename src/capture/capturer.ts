@@ -52,6 +52,16 @@ export type CaptureUploadOutcome =
 
 export interface CapturerDeps {
   readonly policy: CapturePolicy;
+  /**
+   * Whether this item's page is worth keeping, per the gateway's rules.
+   *
+   * 🔴 **Required, with no default, deliberately.** A budget alone cannot
+   * express *which* items — a run with a budget of 50 and no per-item answer
+   * captures the first fifty findings it happens to make, which is precisely
+   * the "whatever the run happened to do" the selection rules replace. A
+   * default here would be a fail-open direction hidden in a constructor.
+   */
+  readonly isSelected: (clientSku: string) => boolean;
   readonly fetcher: Fetcher;
   readonly runDir: string;
   readonly upload: (args: {
@@ -149,6 +159,24 @@ export class Capturer {
         barcode: resolution.barcode,
         state: "skipped_disabled",
         sourceUrl: null,
+        storageKey: null,
+        byteSize: null,
+        sha256: null,
+        failureReason: null,
+        at,
+      });
+    }
+
+    // 🔴 No rule chose this item, so its page is not evidence anybody asked
+    // for. Recorded before the budget is touched: a rule is not a quota, and
+    // charging one against the other would make an unselected item look like a
+    // reason the budget ran out.
+    if (!this.deps.isSelected(resolution.clientSku)) {
+      return this.remember({
+        clientSku: resolution.clientSku,
+        barcode: resolution.barcode,
+        state: "skipped_unselected",
+        sourceUrl: url,
         storageKey: null,
         byteSize: null,
         sha256: null,
@@ -292,6 +320,7 @@ export function tallyCaptures(
     failed: 0,
     skipped_quota: 0,
     skipped_disabled: 0,
+    skipped_unselected: 0,
   };
   for (const record of records) tally[record.state] += 1;
   return tally;

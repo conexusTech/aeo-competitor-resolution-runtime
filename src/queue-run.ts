@@ -87,8 +87,15 @@ export async function runDispatchedJob(
   // The evidence keeper. Built from the JOB's policy, never from the dispatch:
   // the organization's quota can be spent between dispatch and fetch, and the
   // fetched job is the one the run works.
+  // 🔴 Built from the job's own per-item flags. A budget says HOW MANY; only
+  // these say WHICH — and a run that captured the first budget-many findings
+  // would be doing exactly what the selection rules exist to replace.
+  const selected = new Set(
+    job.items.filter((item) => item.capture).map((item) => item.clientSku),
+  );
   const capturer = new Capturer({
     policy: job.capture,
+    isSelected: (clientSku) => selected.has(clientSku),
     fetcher: deps.fetcher,
     runDir: deps.baseOptions.runDir,
     upload: (args) => deps.client.postCapture(args),
@@ -103,8 +110,8 @@ export async function runDispatchedJob(
   }
   if (job.capture.enabled) {
     log(
-      `capturing evidence: up to ${job.capture.budget} page(s) this run, ` +
-        `format ${job.capture.format}`,
+      `capturing evidence: up to ${job.capture.budget} page(s) this run of ` +
+        `${selected.size} selected item(s), format ${job.capture.format}`,
     );
   }
 
@@ -174,7 +181,9 @@ export async function runDispatchedJob(
       const tally = tallyCaptures(capturer.records);
       log(
         `captures: ${tally.captured} stored, ${tally.failed} failed, ` +
-          `${tally.skipped_quota} over budget, ${capturer.remaining} left`,
+          `${tally.skipped_quota} over budget, ` +
+          `${tally.skipped_unselected} not selected, ` +
+          `${capturer.remaining} left`,
       );
     }
 

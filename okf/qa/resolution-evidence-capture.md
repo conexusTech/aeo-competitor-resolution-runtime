@@ -246,6 +246,76 @@ for an image would otherwise receive bytes labelled as one, and the reviewer
 screen would show a broken picture with no explanation. **Mutation-tested** by
 letting the request through.
 
+### Check: capture-keeps-only-selected-items
+
+**Requirement:** Only the items a rule chose are kept
+**Surface:** `CapturerDeps.isSelected`, `runDispatchedJob`
+**Automated:** `test/capture.spec.ts`, `test/queue-run.spec.ts`
+
+**Do**
+
+Dispatch a run whose job marks one of two items, and resolve both.
+
+**Expect**
+
+Only the marked item posted; the other recorded `skipped_unselected`, nothing
+read for it.
+
+🔴 **A budget says HOW MANY; only these flags say WHICH.** A run with a budget
+and no per-item answer captures the first budget-many findings it happens to
+make — exactly what the selection rules exist to replace. **This was missing
+when the row first closed**, and `isSelected` is required with no default so
+the fail-open direction cannot hide in a constructor.
+
+### Check: capture-does-not-charge-for-an-unselected-item
+
+**Requirement:** Only the items a rule chose are kept
+**Surface:** the order of the selection check and the budget
+**Automated:** `test/capture.spec.ts`
+
+**Do**
+
+With a budget of one, offer an unselected item and then a selected one.
+
+**Expect**
+
+The first `skipped_unselected`, the second `captured`, one capture spent.
+
+🔴 An unselected item is a **different answer** from an exhausted budget and
+must not consume one — reporting it as a quota refusal would send an operator to
+raise a budget that was never the reason.
+
+### Check: capture-unmarked-is-not-selected
+
+**Requirement:** Only the items a rule chose are kept
+**Surface:** `parseJob`
+**Automated:** `test/gateway-client.spec.ts`, `test/queue-run.spec.ts`
+
+**Do**
+
+Parse a job item with no `capture` field, and dispatch a run whose job marks
+nothing.
+
+**Expect**
+
+`false`, and nothing captured. ⚠️ The same direction as the policy itself: a
+gateway that predates selection marks nothing, and capturing anyway would spend
+a budget against items no rule chose.
+
+### Check: capture-refuses-a-malformed-selection-flag
+
+**Requirement:** Only the items a rule chose are kept
+**Surface:** `parseJob`
+**Automated:** `test/gateway-client.spec.ts`
+
+**Do**
+
+Parse an item whose `capture` is the string `"yes"`.
+
+**Expect**
+
+Refused by name. Strict about presence, tolerant of absence.
+
 ### Check: capture-keeps-a-shared-page-once
 
 **Requirement:** One page two items share is kept once
