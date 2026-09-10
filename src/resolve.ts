@@ -20,6 +20,7 @@ import {
 import { planQueries } from "./query-plan.js";
 import {
   hasConclusiveCandidate,
+  hasPartNumberEvidence,
   MIN_EVIDENCE_TO_REPORT,
   probeOrder,
   rankCandidates,
@@ -333,7 +334,16 @@ export async function resolveItem(
 
   // Without part-number-level evidence the "best" candidate is just the top hit
   // for a vague phrase. Report nothing rather than something wrong.
-  if (best.score < MIN_EVIDENCE_TO_REPORT) {
+  //
+  // 🔴 Both conditions, not just the score. With the inherited weights, brand +
+  // first-party + in-stock totals exactly the floor, so the numeric test alone
+  // admitted a candidate with NO part-number evidence — the precise case this
+  // guard exists to refuse.
+  const bestHasEvidence = hasPartNumberEvidence({
+    ...rankInput,
+    candidate: best.candidate,
+  });
+  if (best.score < MIN_EVIDENCE_TO_REPORT || !bestHasEvidence) {
     return {
       ...base,
       outcome: "not-found",

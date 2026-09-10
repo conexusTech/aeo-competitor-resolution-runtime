@@ -61,6 +61,55 @@ export interface ScoreInput {
   readonly queryTokens: readonly string[];
 }
 
+/**
+ * Score, plus whether any of it came from part-number-level evidence.
+ *
+ * 🔴 **The flag exists because the numeric floor alone did not hold, and the
+ * arithmetic is inherited from the handover.** With these weights a candidate
+ * that is merely the right brand, first-party and in stock totals
+ * `6 + 3 + 1 = 10` — **exactly** `MIN_EVIDENCE_TO_REPORT`. So the guard whose
+ * stated purpose is "no part-number evidence, report nothing" was reachable
+ * with no part-number evidence at all, and would have reported a same-brand
+ * in-stock listing as a candidate for review. Caught by a check written about
+ * the invariant rather than about the behaviour.
+ *
+ * Raising the floor to 11 would fix this instance and leave the next weight
+ * change to break it again silently. Requiring the evidence explicitly cannot
+ * drift.
+ */
+export interface CandidateScore {
+  readonly score: number;
+  readonly hasPartNumberEvidence: boolean;
+}
+
+export function scoreCandidateDetailed(input: ScoreInput): CandidateScore {
+  const score = scoreCandidate(input);
+  return { score, hasPartNumberEvidence: hasPartNumberEvidence(input) };
+}
+
+/** Did anything about the part number match, at any strength? */
+export function hasPartNumberEvidence(input: ScoreInput): boolean {
+  const { candidate, partNumbers, barcode } = input;
+  const model = (candidate.model ?? "").toUpperCase();
+  const haystack =
+    `${candidate.title} ${candidate.model ?? ""} ${candidate.brand ?? ""}`.toLowerCase();
+
+  const core = gtinCore(barcode);
+  if (core !== "" && model !== "") {
+    const digits = model.replace(/\D/g, "");
+    if (digits.length >= 4 && core.padStart(12, "0").includes(digits))
+      return true;
+  }
+
+  return partNumbers.some((partNumber) => {
+    const p = partNumber.toUpperCase();
+    if (model !== "" && model === p) return true;
+    if (model !== "" && (model.includes(p) || p.includes(model))) return true;
+    if (model !== "" && sharedPrefixLength(model, p) >= 5) return true;
+    return haystack.includes(p.toLowerCase());
+  });
+}
+
 export function scoreCandidate(input: ScoreInput): number {
   const { candidate, partNumbers, brand, barcode, queryTokens } = input;
   const haystack =

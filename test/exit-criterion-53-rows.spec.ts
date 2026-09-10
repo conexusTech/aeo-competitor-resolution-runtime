@@ -155,10 +155,34 @@ describe("53 rows, replayed offline", () => {
           .join("; ")}`,
     );
 
-    // ⚠️ Not asserted at zero. The spike's 5 `error` rows are network failures
-    // that a replay cannot reproduce by construction — a cached response is
-    // never a timeout — so those rows must disagree. What is asserted is that
-    // every VERIFIED row of the spike's is also verified here.
+    // ⚠️ Not asserted at zero, and the reasons are asserted instead.
+    //
+    // The spike's 5 `error` rows are network failures a replay cannot
+    // reproduce by construction — a cached response is never a timeout.
+    //
+    // 🔴 And this pipeline is deliberately STRICTER on one class of row. The
+    // spike's reporting floor was reachable with no part-number evidence at
+    // all (brand + first-party + in-stock totals exactly the threshold), so it
+    // reported same-brand in-stock listings as `probable` against its own
+    // stated rule — "no model-level evidence, report nothing". This pipeline
+    // requires the evidence explicitly, which turns 4 of those rows into
+    // `not-found`. Reporting nothing beats reporting something unproven, so
+    // that is the criterion being beaten rather than missed.
+    //
+    // Every disagreement must be one of those two kinds. An unexplained one
+    // fails here.
+    for (const d of disagreements) {
+      const ours = d.resolution.outcome;
+      const theirs = d.row.spikeStatus;
+      const strictness = theirs === "probable" && ours === "not-found";
+      const unreproducibleError = theirs === "error";
+      expect(
+        strictness || unreproducibleError,
+        `unexplained disagreement on ${d.row.barcode}: spike=${theirs} ours=${ours}`,
+      ).toBe(true);
+    }
+
+    // What is asserted absolutely: no verification is ever lost.
     const lostVerifications = served.filter(
       (r) =>
         r.row.spikeStatus === "upc-verified" &&
