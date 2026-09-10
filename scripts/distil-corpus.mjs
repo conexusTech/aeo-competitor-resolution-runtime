@@ -163,17 +163,33 @@ function distilProduct(html) {
 }
 
 /**
- * A result page distils to its `<h3>` blocks plus the page's stripped text.
- * `resultTitles` needs the tags; `candidatePartNumbers` strips tags itself and
- * so reads pre-stripped text identically.
+ * A result page distils to its `<h3>` blocks plus the stripped text of
+ * everything else. `resultTitles` needs the tags; `candidatePartNumbers` strips
+ * tags itself and reads pre-stripped text identically.
+ *
+ * 🔴 **The `h3` content must NOT also appear in the text half**, and getting
+ * that wrong is what the equivalence proof caught. Emitting the headings and
+ * then the whole page's stripped text duplicates every heading token — and
+ * `candidatePartNumbers` keeps a token only if it recurs at least twice, so a
+ * token appearing once in a heading crossed the threshold in the distilled body
+ * and not in the original. 21 of 71 result pages parsed differently. Without
+ * the proof that would have shipped as a corpus that quietly disagrees with the
+ * pages it came from.
  */
 function distilResults(html) {
-  const heads = [...html.matchAll(/<h3[^>]*>([\s\S]*?)<\/h3>/g)]
+  const headingBlock = /<h3[^>]*>([\s\S]*?)<\/h3>/g;
+  // Every heading, including any inside a script — `resultTitles` sees those.
+  const heads = [...html.matchAll(headingBlock)]
     .map((m) => `<h3>${m[1]}</h3>`)
     .join("\n");
+  // ⚠️ Scripts and styles go FIRST, in the token extractor's own order. A
+  // heading inside a script contributes no tokens in the original (scripts are
+  // stripped before tags), but promoting it to a top-level heading here would
+  // make its text survive — extra tokens, and a corpus that parses differently.
   const text = html
     .replace(/<script[\s\S]*?<\/script>/g, " ")
     .replace(/<style[\s\S]*?<\/style>/g, " ")
+    .replace(headingBlock, " ") // carried above, exactly once
     .replace(/<[^>]+>/g, " ")
     .replace(/&[a-z]+;|&#\d+;/gi, " ")
     .replace(/\s+/g, " ")
@@ -210,27 +226,64 @@ for (const f of files) {
 }
 
 // Recover urls from the run's own record.
-const resultsCsv = path.join(CACHE, "results.csv");
-const urls = new Set();
-if (fs.existsSync(resultsCsv)) {
-  for (const row of readCsv(resultsCsv)) {
-    if (row.upc) {
-      urls.add(
-        `https://www.google.com/search?q=%22${encodeURIComponent(row.upc)}%22`,
-      );
-    }
-    for (const q of (row.neweggQuery ?? "").split(" | ")) {
-      const query = q.trim();
-      if (query !== "") {
-        urls.add(`https://www.newegg.com/p/pl?d=${encodeURIComponent(query)}`);
-      }
-    }
-    if (row.neweggUrl) urls.add(row.neweggUrl);
+//
+// ⚠️ Two traps here, both hit on the way to getting this right, and both of the
+// same kind: the script recovered SOMETHING and so looked like it worked.
+//
+//   1. The spike wrote its record BESIDE the cache directory, not inside it.
+//      Looking only inside recovered no search-engine or search urls at all,
+//      and the corpus came out holding product pages only — 255 entries, which
+//      is a plausible-looking number.
+//   2. `results.csv` is a 53-row EXPORT; `full.jsonl` is the complete journal —
+//      73 rows and 213 distinct queries, of which 211 match a capture. Reading
+//      the csv recovered 8 of 271 search pages.
+//
+// So: prefer the journal, fall back to the csv, and refuse if neither is there.
+const RECORDS = ["full.jsonl", "results.csv"].flatMap((name) => [
+  path.join(CACHE, "..", name),
+  path.join(CACHE, name),
+]);
+const record = RECORDS.find((p) => fs.existsSync(p));
+
+if (record === undefined) {
+  console.error(
+    `no full.jsonl or results.csv in ${CACHE} or its parent — without one, no ` +
+      `search-engine or search urls can be recovered and the corpus would ` +
+      `silently hold product pages only. Refusing.`,
+  );
+  process.exit(3);
+}
+console.log(`recovering urls from ${record}`);
+
+/** The journal is one JSON object per completed row; the csv is a table. */
+function readRecord(file) {
+  if (file.endsWith(".jsonl")) {
+    return fs
+      .readFileSync(file, "utf8")
+      .split("\n")
+      .filter((l) => l.trim() !== "")
+      .map((l) => JSON.parse(l));
   }
+  return readCsv(file);
 }
 
-// Product urls the searches returned, which the results.csv only records for
-// the winner.
+const urls = new Set();
+for (const row of readRecord(record)) {
+  if (row.upc) {
+    urls.add(
+      `https://www.google.com/search?q=%22${encodeURIComponent(row.upc)}%22`,
+    );
+  }
+  for (const q of (row.neweggQuery ?? "").split(" | ")) {
+    const query = q.trim();
+    if (query !== "") {
+      urls.add(`https://www.newegg.com/p/pl?d=${encodeURIComponent(query)}`);
+    }
+  }
+  if (row.neweggUrl) urls.add(row.neweggUrl);
+}
+
+// Product urls the searches returned — the record only names the winner.
 for (const [key, file] of byKey) {
   if (!key.startsWith("search:")) continue;
   const html = fs.readFileSync(path.join(CACHE, file), "utf8");
