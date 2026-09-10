@@ -1,0 +1,67 @@
+{
+  "note": "Real captured pages from the launch retailer, gzipped. Public retailer pages, not customer data. Chosen one per parser case; the facts below were produced by the committed parsers at selection time and are re-asserted by the spec.",
+  "capturedBy": "handover recon spike",
+  "selectedOn": "2026-09-10",
+  "fixtures": [
+    {
+      "name": "search-many-results",
+      "why": "the most populated search page captured",
+      "facts": {
+        "candidates": 44,
+        "firstParty": 22,
+        "marketplace": 22
+      },
+      "gzBytes": 88633
+    },
+    {
+      "name": "search-no-results",
+      "why": "embedded state with no Products array — 156 of 271 captured pages",
+      "facts": {
+        "candidates": 0
+      },
+      "gzBytes": 36258
+    },
+    {
+      "name": "search-warehouse-id-named-seller",
+      "why": "a warehouse-shaped item id carrying a named third-party seller — the 260-listing case where the id shape and the seller field disagree",
+      "facts": {
+        "itemId": "N82E16833156419",
+        "sellerName": "NothingButSavings",
+        "isFirstParty": false
+      },
+      "gzBytes": 48188
+    },
+    {
+      "name": "pdp-barcode-12",
+      "why": "publishes a 12-digit barcode",
+      "facts": {
+        "barcode": "065030870382"
+      },
+      "gzBytes": 53244
+    },
+    {
+      "name": "pdp-barcode-empty",
+      "why": "publishes an EMPTY barcode — 91 of 255 captured product pages, and the case that makes an item unverifiable rather than mismatched",
+      "facts": {
+        "barcode": null
+      },
+      "gzBytes": 45057
+    },
+    {
+      "name": "pdp-barcode-13",
+      "why": "publishes a 13-digit barcode",
+      "facts": {
+        "barcode": "5028551561707"
+      },
+      "gzBytes": 47455
+    },
+    {
+      "name": "pdp-barcode-14",
+      "why": "publishes a 14-digit barcode",
+      "facts": {
+        "barcode": "00097855114693"
+      },
+      "gzBytes": 58615
+    }
+  ]
+}
