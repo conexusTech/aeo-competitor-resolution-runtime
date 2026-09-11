@@ -5,6 +5,12 @@ coverage
 .github
 artifacts
 test
+# ⚠️ EXCEPT the replay corpus, which the Dockerfile copies to /app/corpus so
+# RESOLUTION_REPLAY_CORPUS can name a path inside the image. Without this line
+# the COPY fails the BUILD outright — which is how it was found — so deleting
+# it is loud rather than silent. Do not "tidy" it away: replay mode is the only
+# way the queue-to-gateway path can be exercised without a paid credential.
+!test/corpus
 okf
 captures
 runs

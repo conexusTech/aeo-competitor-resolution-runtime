@@ -34,6 +34,7 @@ import {
   type CaptureArtifact,
   type CapturePolicy,
 } from "../capture/types.js";
+import { buildVersion } from "../fetcher/select.js";
 import type { Resolution } from "../resolve.js";
 
 export const GATEWAY_URL_ENV = "RESOLUTION_GATEWAY_URL";
@@ -328,7 +329,7 @@ export class GatewayClient {
     const body = JSON.stringify({
       tenant_id: this.identity.tenantId,
       organization_id: this.identity.organizationId,
-      runtime_version: process.env["RESOLUTION_BUILD_VERSION"] ?? "unknown",
+      runtime_version: buildVersion(),
       client_sku: args.clientSku,
       barcode: args.barcode,
       format: args.artifact.format,
@@ -416,7 +417,7 @@ export class GatewayClient {
     const body = JSON.stringify({
       tenant_id: this.identity.tenantId,
       organization_id: this.identity.organizationId,
-      runtime_version: process.env["RESOLUTION_BUILD_VERSION"] ?? "unknown",
+      runtime_version: buildVersion(),
       ...event,
     });
 

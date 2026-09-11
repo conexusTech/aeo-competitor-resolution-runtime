@@ -56,6 +56,22 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY package.json ./
 
+# The committed replay corpus, so RESOLUTION_REPLAY_CORPUS can name a path
+# inside the image.
+#
+# ⚠️ **~1 MB, and it ships in every image on purpose.** The queue's catalog
+# entry declares no volumes — command, resources, retry, timeoutSec, namespace,
+# envFrom, payloadFields and serviceAccountName, and nothing else — so there is
+# no way to mount a corpus into a dispatched Job. Baking it in is the only
+# shape that lets the dispatch path be exercised without a paid credential.
+#
+# 🔴 It changes nothing about a normal run: replay is selected only by an
+# explicit env var, the live path is what an absent one gets, and a replayed
+# run stamps "+replay" into the runtime_version the gateway persists. The bodies
+# are public retailer pages already committed to this repo, so shipping them
+# discloses nothing new.
+COPY test/corpus ./corpus
+
 # Not root. The run writes only its journal and response cache, both mounted.
 RUN addgroup -S runner && adduser -S runner -G runner \
  && mkdir -p /app/runs /app/captures \

@@ -22,7 +22,7 @@
 
 import { neweggAdapter } from "./adapters/newegg.js";
 import type { RetailerAdapter } from "./adapters/types.js";
-import { liveFetcherFromEnv } from "./fetcher/live.js";
+import { buildVersion, fetcherFromEnv } from "./fetcher/select.js";
 import { jobFileFromEnv, readJobEnvelope } from "./job-file.js";
 import { GatewayClient, RunGone, gatewayFromEnv } from "./gateway/client.js";
 import { bootstrapFromQueue, inQueueMode } from "./queue/task-record.js";
@@ -56,8 +56,12 @@ function requireAdapter(retailerSlug: string): RetailerAdapter {
   return adapter;
 }
 
-const version = (): string =>
-  process.env["RESOLUTION_BUILD_VERSION"] ?? "unknown";
+/**
+ * ⚠️ **Delegated rather than read here.** The same value is reported by the
+ * gateway client from two other places, and a replayed run has to carry its
+ * stamp on all three — see `fetcher/select.ts`.
+ */
+const version = (): string => buildVersion();
 
 const runDir = (): string =>
   process.env["RESOLUTION_RUN_DIR"] ?? RUN_DEFAULTS.runDir;
@@ -101,7 +105,11 @@ async function runFromQueue(): Promise<void> {
     organizationId: dispatch.organizationId,
   });
   const reporter = new GatewayReporter(client, { runDir: runDir() });
-  const fetcher = liveFetcherFromEnv();
+  // 🔴 **Live unless the environment names a corpus.** Until this row, both
+  // paths built the live fetcher unconditionally, so the committed corpus was
+  // unreachable from the container and a dispatched run could not happen
+  // without a paid credential.
+  const fetcher = fetcherFromEnv();
 
   const result = await runDispatchedJob({
     dispatch,
@@ -127,7 +135,7 @@ async function runFromFile(): Promise<void> {
   const adapter = requireAdapter(envelope.retailerSlug);
   announce(envelope.items.length, adapter);
 
-  const fetcher = liveFetcherFromEnv();
+  const fetcher = fetcherFromEnv();
   const results = await runList(envelope.items, adapter, fetcher, {
     ...RUN_DEFAULTS,
     runDir: runDir(),
