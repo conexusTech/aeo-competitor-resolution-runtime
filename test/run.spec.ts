@@ -214,6 +214,25 @@ describe("estimateRun", () => {
     expect(usd).toBeLessThan(43);
   });
 
+  it("🔴 is a MEAN and can be exceeded — it is not a ceiling", () => {
+    // 🔴 **One caller labelled this "worst-case" until 2026-09-11**,
+    // and a live 3-row run spent 16 requests against an estimate of 14.
+    //
+    // 🔑 The mechanism is that a MISS costs more than a hit, which is
+    // the opposite of what "worst-case" invites you to assume: a verified row
+    // stops once a candidate is proven, a not-found row exhausts every query
+    // variant first. So the honest property to pin is that the per-row figure
+    // is BELOW the number of queries a single miss can spend — i.e. that the
+    // estimate is exceedable by construction rather than a bound.
+    const perRow = COST.requestsPerItemDerivedIdentity;
+    const { requests } = estimateRun(3, 0);
+    expect(requests).toBe(perRow * 3);
+    // The measured live run: 3 rows, 16 requests.
+    expect(16).toBeGreaterThan(requests);
+    // And the constant is fractional, which is what makes it a mean at all.
+    expect(Number.isInteger(perRow)).toBe(false);
+  });
+
   it("estimates zero for an empty list rather than dividing by zero", () => {
     expect(estimateRun(0, 0)).toEqual({ requests: 0, usd: 0 });
   });

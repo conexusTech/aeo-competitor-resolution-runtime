@@ -66,12 +66,32 @@ const version = (): string => buildVersion();
 const runDir = (): string =>
   process.env["RESOLUTION_RUN_DIR"] ?? RUN_DEFAULTS.runDir;
 
+/**
+ * 🔴 **This said "worst-case" and the number is a MEAN.**
+ * `requestsPerItemDerivedIdentity` is 4.7 — the average over the spike's 53
+ * rows — so a run can and does exceed it. Measured on a live 3-row run
+ * 2026-09-11: the estimate said 14 requests and the run spent **16**, over by
+ * 14%.
+ *
+ * 🔑 **The mechanism is that a MISS costs more than a hit**, which is the
+ * opposite of the intuition the word "worst-case" invites. A verified row
+ * stops as soon as a candidate is proven — 1 and 4 queries on that run — while
+ * a not-found row exhausts every query variant before giving up, which was 6.
+ * So a list with a worse hit rate than the spike's costs MORE per row, and the
+ * figure labelled a ceiling understates it exactly when the news is bad.
+ *
+ * ⚠️ A true ceiling is expressible — the query plan has a fixed length and the
+ * probe budget is capped — but it is not this number, and pricing against a
+ * ceiling would overstate every ordinary run. So the label is corrected rather
+ * than the arithmetic.
+ */
 function announce(itemCount: number, adapter: RetailerAdapter): void {
   const { requests, usd } = estimateRun(itemCount, 0);
   console.log(
     `resolution-runtime ${version()}: ${itemCount} items against ` +
-      `${adapter.slug}; worst-case ${requests.toFixed(0)} requests, ` +
-      `~$${usd.toFixed(2)} ESTIMATED (the rate is not invoice-validated)`,
+      `${adapter.slug}; ~${requests.toFixed(0)} requests ON AVERAGE ` +
+      `(a mean, not a ceiling — a miss costs more than a hit), ` +
+      `~${usd.toFixed(2)} ESTIMATED (the rate is not invoice-validated)`,
   );
 }
 

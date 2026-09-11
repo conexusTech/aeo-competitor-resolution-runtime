@@ -25,6 +25,14 @@ import {
  * ⚠️ **`USD_PER_1000_REQUESTS` has never been checked against an invoice.** The
  * request COUNTS are measured; the money is not. A figure derived from it is an
  * estimate and must never be presented to a client as a price.
+ *
+ * 🔴 **These are MEANS, not ceilings, and one caller labelled them
+ * "worst-case" until 2026-09-11.** A live 3-row run spent 16 requests against
+ * an estimate of 14. 🔑 **A miss costs more than a hit** — a verified row
+ * stops when a candidate is proven, a not-found row exhausts every query
+ * variant first — so a list with a worse hit rate than the spike's 53 rows
+ * costs more per row than this predicts. Anything rendering these must not
+ * call the result a maximum.
  */
 export const COST = {
   /** With a part number in hand: one search, roughly one probe. */
