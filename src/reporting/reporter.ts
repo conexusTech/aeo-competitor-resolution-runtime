@@ -97,6 +97,16 @@ export interface ReporterOptions {
   /** Flush threshold; the gateway's cap is the ceiling. */
   readonly flushAt?: number;
   readonly log?: (message: string) => void;
+  /**
+   * What the run has bought so far, read **at send time**.
+   *
+   * 🔑 A thunk rather than a number, because the reporter outlives any
+   * single reading: a batch is sent after the pages that produced it were
+   * bought, and a captured value would be stale by exactly the amount the last
+   * batch cost. Omitted, no counter is sent and the gateway falls back to
+   * summing the per-item figures.
+   */
+  readonly requestsSpent?: () => number;
 }
 
 /**
@@ -110,6 +120,7 @@ export class GatewayReporter {
   private readonly flushAt: number;
   private readonly journalPath: string;
   private readonly log: (message: string) => void;
+  private readonly requestsSpent: (() => number) | null;
 
   /** Set when the gateway refuses in a way retrying cannot fix. */
   private reportingDisabled = false;
@@ -129,6 +140,7 @@ export class GatewayReporter {
     );
     this.journalPath = path.join(options.runDir, REPORTED_JOURNAL);
     this.log = options.log ?? console.warn;
+    this.requestsSpent = options.requestsSpent ?? null;
   }
 
   /** Whether the gateway has said this run no longer exists. */
@@ -180,7 +192,10 @@ export class GatewayReporter {
 
     let outcome: ReportOutcome;
     try {
-      outcome = await this.client.reportResolutions(batch);
+      outcome = await this.client.reportResolutions(
+        batch,
+        this.requestsSpent?.(),
+      );
     } catch (error) {
       // A throw here is a programming error rather than a network one — the
       // client only throws on an over-cap batch, which this cannot produce.
@@ -265,7 +280,7 @@ export class GatewayReporter {
     // says the resolutions disagree about their shape, which says nothing about
     // whether an error event can be delivered — and a run that dies silently is
     // worse than one that dies loudly.
-    await this.client.reportError(message, context);
+    await this.client.reportError(message, context, this.requestsSpent?.());
   }
 
   private async recordAcknowledged(

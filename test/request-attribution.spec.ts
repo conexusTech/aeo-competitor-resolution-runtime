@@ -12,6 +12,9 @@ import type {
 import { RequestMeter } from "../src/fetcher/meter.js";
 import type { Fetcher, FetchResult } from "../src/fetcher/types.js";
 import { DEFAULT_OPTIONS, resolveItem } from "../src/resolve.js";
+import type { GatewayClient } from "../src/gateway/client.js";
+import { GatewayReporter } from "../src/reporting/reporter.js";
+import type { Resolution } from "../src/resolve.js";
 import { RUN_DEFAULTS, runList } from "../src/run.js";
 
 /**
@@ -207,5 +210,113 @@ describe("RequestMeter", () => {
     await meter.fetch("https://r.test/already-had-it");
 
     expect(meter.liveRequestCount).toBe(0);
+  });
+});
+
+/**
+ * The counter on the wire.
+ *
+ * 🔑 **The gateway takes a `GREATEST` of this, so it has to be a RUNNING total
+ * read at send time** — not a captured number, and not this batch's share. A
+ * batch is sent after the pages that produced it were bought, so a value
+ * captured at construction is stale by exactly the last batch's cost.
+ */
+describe("what the reporter tells the gateway it spent", () => {
+  /** Records the events a reporter posts, and answers every one. */
+  function recordingClient(): {
+    readonly events: Record<string, unknown>[];
+    readonly client: GatewayClient;
+  } {
+    const events: Record<string, unknown>[] = [];
+    const client = {
+      reportResolutions: (
+        resolutions: readonly unknown[],
+        requestsSpent?: number,
+      ) => {
+        events.push({
+          type: "resolutions",
+          n: resolutions.length,
+          requestsSpent,
+        });
+        return Promise.resolve({ kind: "applied" as const });
+      },
+      reportError: (
+        message: string,
+        context?: Record<string, unknown>,
+        requestsSpent?: number,
+      ) => {
+        events.push({ type: "error", message, requestsSpent });
+        return Promise.resolve({ kind: "applied" as const });
+      },
+    } as unknown as GatewayClient;
+    return { events, client };
+  }
+
+  const resolution = (barcode: string): Resolution => ({
+    barcode,
+    clientSku: `SKU-${barcode}`,
+    outcome: "not-found",
+    identity: null,
+    queriesTried: [],
+    candidatesSeen: 0,
+    probes: 0,
+    requests: 1,
+    match: null,
+    alternatives: [],
+    failure: null,
+  });
+
+  it("sends the counter as it reads WHEN THE BATCH GOES, not when the reporter was built", async () => {
+    const runDir = await mkdtemp(path.join(os.tmpdir(), "reporter-"));
+    try {
+      let spent = 0;
+      const { events, client } = recordingClient();
+      const reporter = new GatewayReporter(client, {
+        runDir,
+        flushAt: 1,
+        log: () => {},
+        requestsSpent: () => spent,
+      });
+
+      spent = 11;
+      await reporter.offer(resolution("111111111111"));
+      spent = 26;
+      await reporter.offer(resolution("222222222222"));
+      spent = 26;
+      await reporter.reportError("the proxy refused every attempt");
+
+      expect(events).toEqual([
+        { type: "resolutions", n: 1, requestsSpent: 11 },
+        { type: "resolutions", n: 1, requestsSpent: 26 },
+        {
+          type: "error",
+          message: "the proxy refused every attempt",
+          requestsSpent: 26,
+        },
+      ]);
+    } finally {
+      await rm(runDir, { recursive: true, force: true });
+    }
+  });
+
+  it("sends no counter at all when none is configured", async () => {
+    const runDir = await mkdtemp(path.join(os.tmpdir(), "reporter-"));
+    try {
+      const { events, client } = recordingClient();
+      const reporter = new GatewayReporter(client, {
+        runDir,
+        flushAt: 1,
+        log: () => {},
+      });
+
+      await reporter.offer(resolution("333333333333"));
+
+      // ⚠️ `undefined`, never `0`. The gateway reads an absent counter as
+      // "this container predates the field" and falls back to summing the
+      // per-item figures; a zero would tell it the run bought nothing.
+      expect(events[0]?.requestsSpent).toBeUndefined();
+    } finally {
+      await rm(runDir, { recursive: true, force: true });
+    }
   });
 });

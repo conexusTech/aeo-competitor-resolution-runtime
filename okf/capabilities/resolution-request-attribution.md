@@ -71,6 +71,56 @@ nothing for pages it had already bought.
 
 **Checked by:** meters-are-isolated-from-each-other
 
+## Telling the gateway, which is where the number is read
+
+Attribution makes the per-item figures honest. It does **not** make the
+gateway's *run* total right, because the gateway was summing them — and a sum
+double-counts a resent batch and drops every suppressed finding. See
+`aeo-backend:/capabilities/insights-run-cost.md` for that half.
+
+What this repo owes it is the run's own counter, on every report.
+
+#### Scenario: A findings batch carries what the run has bought so far
+- GIVEN a batch of findings being sent to the gateway
+- WHEN the run has bought 62 pages
+- THEN the event carries `requests_spent: 62`
+
+**Checked by:** a-batch-carries-the-running-counter
+
+#### Scenario: A run that reports no counter is not reporting zero
+- GIVEN a reporter configured with no counter to read
+- WHEN it sends a batch
+- THEN the event carries no `requests_spent` field at all
+
+**Checked by:** an-absent-counter-is-omitted-not-zeroed
+
+#### Scenario: A run that fails reports what it spent before it died
+- GIVEN a run that gives up after buying 31 pages
+- WHEN it reports the error
+- THEN the error event carries `requests_spent: 31`
+
+**Checked by:** an-error-event-carries-the-counter
+
+#### Scenario: The counter is read when the batch goes, not when the reporter was built
+- GIVEN a reporter that has sent one batch at 11 requests
+- WHEN a second batch goes after 26
+- THEN the two events carry 11 and 26
+
+**Checked by:** the-counter-is-read-at-send-time
+
+⚠️ **An absent counter is deliberately not zero.** The gateway reads its absence
+as "this container predates the field" and falls back to the per-item sum; a
+zero would tell it the run bought nothing, which is never true of a batch. The
+queue catalog pins the image by digest and a rollback is one `PUT` away, so the
+fallback has to stay reachable.
+
+⚠️ **The gateway must declare a field before this repo sends it.**
+`forbidNonWhitelisted` answers an undeclared property with a **400 on the whole
+batch** rather than stripping it, and the runtime treats a 4xx as
+non-retryable — so the batch is lost, not delayed. This board has been burned by
+exactly that once, when `alternatives` was added here first. The gateway's
+declaration landed before this.
+
 ## Why a meter rather than better arithmetic
 
 A counter per item, not a subtraction on a shared one. Two meters over one

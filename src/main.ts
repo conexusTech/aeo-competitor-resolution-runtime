@@ -124,12 +124,22 @@ async function runFromQueue(): Promise<void> {
     tenantId: dispatch.tenantId,
     organizationId: dispatch.organizationId,
   });
-  const reporter = new GatewayReporter(client, { runDir: runDir() });
   // 🔴 **Live unless the environment names a corpus.** Until this row, both
   // paths built the live fetcher unconditionally, so the committed corpus was
   // unreachable from the container and a dispatched run could not happen
   // without a paid credential.
+  //
+  // ⚠️ Built BEFORE the reporter now, because the reporter reads its counter.
   const fetcher = fetcherFromEnv();
+  const reporter = new GatewayReporter(client, {
+    runDir: runDir(),
+    // 🔑 **Every event this run sends carries what it has bought so far**, and
+    // the gateway takes a `GREATEST` of it. Without this the gateway summed the
+    // per-item figures out of each batch, which under-reports by every
+    // suppressed finding and double-counts a resend — and recorded nothing at
+    // all for a run that died before its first progress tick.
+    requestsSpent: () => fetcher.liveRequestCount,
+  });
 
   const result = await runDispatchedJob({
     dispatch,

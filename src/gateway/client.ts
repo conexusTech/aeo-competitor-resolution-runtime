@@ -285,8 +285,16 @@ export class GatewayClient {
    * The resolutions go in **as they are** — the same objects written to the
    * journal, with no field renamed. See the module docblock.
    */
+  /**
+   * @param requestsSpent What the run has bought **so far** — a running total,
+   * not this batch's share. The gateway takes a `GREATEST` of it, which is what
+   * makes it survive a resend and an out-of-order callback. Omitted, the
+   * gateway falls back to summing the per-item figures, which under-reports by
+   * every suppressed finding.
+   */
   async reportResolutions(
     resolutions: readonly Resolution[],
+    requestsSpent?: number,
   ): Promise<ReportOutcome> {
     if (resolutions.length === 0) return { kind: "applied" };
     if (resolutions.length > MAX_RESOLUTIONS_PER_EVENT) {
@@ -298,7 +306,11 @@ export class GatewayClient {
           `answers a larger batch with a non-retryable 400`,
       );
     }
-    return this.postEvent({ type: "resolutions", resolutions });
+    return this.postEvent({
+      type: "resolutions",
+      resolutions,
+      ...(requestsSpent === undefined ? {} : { requests_spent: requestsSpent }),
+    });
   }
 
   /**
@@ -391,12 +403,20 @@ export class GatewayClient {
     return this.postEvent({ type: "completed", requests_spent: requestsSpent });
   }
 
+  /**
+   * @param requestsSpent What the run bought before it died. 🔴 **A failed run
+   * still spent money**, and without this the gateway recorded zero for one
+   * that crashed before its first progress tick — and ticks are throttled, so a
+   * short run may send none at all.
+   */
   async reportError(
     message: string,
     context?: Record<string, unknown>,
+    requestsSpent?: number,
   ): Promise<ReportOutcome> {
     return this.postEvent({
       type: "error",
+      ...(requestsSpent === undefined ? {} : { requests_spent: requestsSpent }),
       // The gateway stores 2,000 characters; a stack is longer and the tail is
       // the useless half.
       message: message.slice(0, 2000),

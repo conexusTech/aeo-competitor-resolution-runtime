@@ -71,6 +71,69 @@ pipeline swallows into a clean miss — on the product probe.
 The resolution carries a non-null `failure`, and its `requests`
 equals what the fetcher sold, which is greater than zero.
 
+### Check: a-batch-carries-the-running-counter
+
+**Requirement:** A findings batch carries what the run has bought so far
+**Surface:** `GatewayClient.reportResolutions`
+**Automated:** test/gateway-client.spec.ts
+
+**Do**
+
+Report one finding with a counter of 62 and read the posted body.
+
+**Expect**
+
+`requests_spent` is `62`.
+
+### Check: an-absent-counter-is-omitted-not-zeroed
+
+**Requirement:** A run that reports no counter is not reporting zero
+**Surface:** `GatewayClient.reportResolutions`
+**Automated:** test/gateway-client.spec.ts
+
+**Do**
+
+Report one finding with no counter and read the posted body.
+
+**Expect**
+
+The body has no `requests_spent` key at all. ⚠️ Not `0` — the gateway reads an
+absent counter as an older container and falls back to the per-item sum, while a
+zero would tell it the run bought nothing.
+
+### Check: an-error-event-carries-the-counter
+
+**Requirement:** A run that fails reports what it spent before it died
+**Surface:** `GatewayClient.reportError`
+**Automated:** test/gateway-client.spec.ts
+
+**Do**
+
+Report an error with a counter of 31 and read the posted body.
+
+**Expect**
+
+`type` is `error` and `requests_spent` is `31`.
+
+### Check: the-counter-is-read-at-send-time
+
+**Requirement:** The counter is read when the batch goes, not when the reporter was built
+**Surface:** `GatewayReporter`
+**Automated:** test/request-attribution.spec.ts
+
+**Do**
+
+Build a reporter over a thunk reading a mutable total, flushing every finding.
+Offer one at 11, one at 26, then report an error at 26.
+
+**Expect**
+
+The three events carry 11, 26 and 26.
+
+🔑 **A batch is sent after the pages that produced it were bought**, so a value
+captured at construction is stale by exactly the last batch's cost. The mutation
+that captures it once turns this red.
+
 ### Check: a-cache-hit-is-not-a-purchase
 
 **Requirement:** A page a previous run bought is not charged to this one

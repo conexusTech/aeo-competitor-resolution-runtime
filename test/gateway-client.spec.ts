@@ -234,6 +234,36 @@ describe("posting an event", () => {
     expect(Object.keys(body).filter((k) => /[A-Z]/.test(k))).toEqual([]);
   });
 
+  it("carries the running request counter on a findings batch", async () => {
+    // 🔑 The gateway takes a `GREATEST` of this, which is what makes the
+    // figure survive a resend. Summing the per-item numbers instead
+    // under-reports by every suppressed finding — a live run stored 171 where
+    // the container's own counter said 62.
+    const { client: c, calls } = client([ok()]);
+    await c.reportResolutions([resolution("SKU-001")], 62);
+    const body = bodyOf(calls[0]);
+    expect(body["requests_spent"]).toBe(62);
+  });
+
+  it("omits the counter entirely rather than sending zero", async () => {
+    // ⚠️ The gateway reads an ABSENT counter as "this container predates the
+    // field" and falls back to the per-item sum. A `0` would tell it the run
+    // bought nothing, which is the one answer that is never true of a batch.
+    const { client: c, calls } = client([ok()]);
+    await c.reportResolutions([resolution("SKU-001")]);
+    expect("requests_spent" in bodyOf(calls[0])).toBe(false);
+  });
+
+  it("carries what a failed run spent, on the error event", async () => {
+    // 🔴 Progress ticks are throttled, so a run that dies early sends none
+    // — and the gateway recorded zero spend for exactly that run.
+    const { client: c, calls } = client([ok()]);
+    await c.reportError("the proxy refused every attempt", undefined, 31);
+    const body = bodyOf(calls[0]);
+    expect(body["type"]).toBe("error");
+    expect(body["requests_spent"]).toBe(31);
+  });
+
   it("keeps the resolutions camelCase, byte for byte", async () => {
     // 🔑 Two contracts in one body, deliberately. A resolution is the object
     // journalled to disk, reposted verbatim — renaming its fields would put a
