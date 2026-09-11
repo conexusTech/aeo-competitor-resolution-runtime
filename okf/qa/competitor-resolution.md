@@ -780,3 +780,72 @@ increments `throttleCount`.
 
 🔑 A run reporting `failures: 16` says something went wrong. One reporting
 `16 throttled` says what to change.
+
+### Check: resolution-failed-item-retried-after-the-run
+
+**Requirement:** An item whose pipeline failed is tried once more
+**Surface:** `runList`
+**Automated:** test/request-attribution.spec.ts
+
+**Do**
+
+Resolve items against a fetcher that refuses each product probe its first
+attempt and answers thereafter.
+
+**Expect**
+
+Every item settles with no failure, and each is reported exactly once.
+
+### Check: resolution-retry-runs-one-at-a-time
+
+**Requirement:** The retry does not recreate the throttle
+**Surface:** `runList`
+**Automated:** test/request-attribution.spec.ts
+
+**Do**
+
+Defer six items from a run at concurrency 3 and record the number of fetches in
+flight whenever a search-engine url is fetched for the second time.
+
+**Expect**
+
+Never more than one.
+
+🔴 **This check exists because a mutation reported GREEN, twice.** Running the
+retry at full concurrency passed every other check. And the first version of this
+one was itself vacuous: the fake failed the product probe **by url**, and every
+item here derives the same identity and so shares one product url — so only the
+first item failed, one item was deferred, and a serial retry was guaranteed
+whatever the code did. It fails the product probe by count now, and asserts that
+more than one item really was deferred.
+
+### Check: resolution-retry-charges-both-attempts
+
+**Requirement:** A retried item is charged for both attempts
+**Surface:** `runList`
+**Automated:** test/request-attribution.spec.ts
+
+**Do**
+
+Resolve one item that fails once and succeeds on the retry; compare its
+`requests` against the fetcher's own count.
+
+**Expect**
+
+They agree. 🔴 A retry's meter starts at zero, so settling on it alone drops the
+first attempt's spend — the vanishing-spend defect the per-item meter exists to
+remove, reintroduced by the retry. An existing check caught exactly that.
+
+### Check: resolution-retry-happens-once-only
+
+**Requirement:** An item that fails twice is settled, not retried for ever
+**Surface:** `runList`
+**Automated:** test/request-attribution.spec.ts
+
+**Do**
+
+Resolve items against a fetcher that never answers the product probe.
+
+**Expect**
+
+Each settles with a failure, and the total charged equals what the fetcher sold.

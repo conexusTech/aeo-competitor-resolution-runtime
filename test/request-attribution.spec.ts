@@ -320,3 +320,204 @@ describe("what the reporter tells the gateway it spent", () => {
     }
   });
 });
+
+/**
+ * A pipeline that could not complete gets one more go, once the run stops
+ * pressing.
+ *
+ * 🔴 **Measured: the throttle is OURS.** A live 73-row run left 6 items whose
+ * identity lookup the vendor answered with an empty body even after the
+ * 15-second backoff — and every one of those six returned 250–390 KB on the
+ * FIRST attempt, with no wait, once the run was over. The vendor is not blocking
+ * those urls; it is rate-limiting us while three workers press it.
+ *
+ * 🔑 **So the retry waits for the pressure to stop rather than for a timer**, and
+ * runs one at a time, because retrying three-at-once would recreate the very
+ * condition being recovered from.
+ */
+describe("a failed item is retried once, after the run", () => {
+  /**
+   * Refuses each matching url its first `failTimes` attempts, then answers.
+   *
+   * ⚠️ **Self-healing by attempt count, not by a flag a callback sets.** The
+   * first version healed inside `onResolved`, which never fires for a deferred
+   * item — that being the whole point of deferring it. The double was modelling
+   * the fix wrongly, and the check failed for the double's reason rather than
+   * the code's.
+   */
+  class HealingFetcher implements Fetcher {
+    liveRequestCount = 0;
+    private readonly attempts = new Map<string, number>();
+    constructor(
+      private readonly failOn: RegExp,
+      private readonly failTimes = 1,
+    ) {}
+    async fetch(url: string): Promise<FetchResult> {
+      await sleep(1);
+      if (this.failOn.test(url)) {
+        const n = (this.attempts.get(url) ?? 0) + 1;
+        this.attempts.set(url, n);
+        if (n <= this.failTimes) throw new Error(`boom on ${url}`);
+      }
+      this.liveRequestCount++;
+      const body = url.includes("google.com/search")
+        ? SERP_BODY
+        : url.includes("/s?q=")
+          ? `SEARCH ${url}`
+          : `PRODUCT ${url}`;
+      return { url, body, cached: false };
+    }
+  }
+
+  it("resolves on the second pass what it could not on the first", async () => {
+    const runDir = await mkdtemp(path.join(os.tmpdir(), "retry-"));
+    try {
+      const fetcher = new HealingFetcher(/\/p\//);
+      const seen: string[] = [];
+      const results = await runList(items(3), adapter(), fetcher, {
+        ...RUN_DEFAULTS,
+        concurrency: 3,
+        runDir,
+        onResolved: (r) => {
+          seen.push(r.clientSku);
+          return Promise.resolve();
+        },
+      });
+
+      // Every item settled, and none reported as a failure.
+      expect(results).toHaveLength(3);
+      expect(results.every((r) => r.failure === null)).toBe(true);
+      // ⚠️ Reported ONCE each. `offer` skips an acknowledged SKU, so an
+      // item reported on the first pass and again on the retry would be
+      // silently dropped by the gateway — which is why a failed item is
+      // deferred BEFORE it is reported rather than retried after.
+      expect(seen.sort()).toEqual(results.map((r) => r.clientSku).sort());
+      expect(new Set(seen).size).toBe(3);
+    } finally {
+      await rm(runDir, { recursive: true, force: true });
+    }
+  });
+
+  it("charges a retried item for BOTH attempts", async () => {
+    const runDir = await mkdtemp(path.join(os.tmpdir(), "retry-"));
+    try {
+      const fetcher = new HealingFetcher(/\/p\//);
+      let settled = 0;
+      const results = await runList(items(1), adapter(), fetcher, {
+        ...RUN_DEFAULTS,
+        concurrency: 1,
+        runDir,
+        onResolved: () => {
+          settled += 1;
+          return Promise.resolve();
+        },
+      });
+
+      // 🔴 A retry's meter starts at zero. Settling on it alone would drop
+      // the first attempt's requests — the spend-vanishing defect the
+      // per-item meter exists to remove, reintroduced by the retry.
+      expect(settled).toBe(1);
+      expect(results[0]?.requests).toBe(fetcher.liveRequestCount);
+    } finally {
+      await rm(runDir, { recursive: true, force: true });
+    }
+  });
+
+  it("retries once and no more, so a hopeless item cannot loop", async () => {
+    const runDir = await mkdtemp(path.join(os.tmpdir(), "retry-"));
+    try {
+      // Never heals: every attempt fails, so both passes fail.
+      const fetcher = new HealingFetcher(/\/p\//, Number.MAX_SAFE_INTEGER);
+      const results = await runList(items(2), adapter(), fetcher, {
+        ...RUN_DEFAULTS,
+        concurrency: 2,
+        runDir,
+      });
+
+      expect(results).toHaveLength(2);
+      // ⚠️ Settled as failures rather than retried for ever, and still
+      // charged what they spent.
+      expect(results.every((r) => r.failure !== null)).toBe(true);
+      const charged = results.reduce((n, r) => n + r.requests, 0);
+      expect(charged).toBe(fetcher.liveRequestCount);
+    } finally {
+      await rm(runDir, { recursive: true, force: true });
+    }
+  });
+});
+
+/**
+ * The retry pass runs ONE at a time.
+ *
+ * 🔴 **This check exists because a mutation reported GREEN.** Running the second
+ * pass at full concurrency left every other check passing — and it is the one
+ * property that matters most, because three workers pressing at once is exactly
+ * what the vendor rate-limits. A retry at full concurrency recreates the
+ * condition it exists to recover from.
+ */
+describe("the retry pass does not recreate the throttle", () => {
+  it("never has more than one fetch in flight during the retry", async () => {
+    const runDir = await mkdtemp(path.join(os.tmpdir(), "retry-conc-"));
+    try {
+      let inFlight = 0;
+      let maxDuringRetry = 0;
+      let productFetches = 0;
+      const serpAttempts = new Map<string, number>();
+
+      // ⚠️ **The product probe fails by COUNT, not by url.** Every item here
+      // derives the same identity and so shares one product url — keyed on
+      // the url, only the FIRST item would fail and the rest would succeed on
+      // pass one, leaving a single deferred item and a retry that cannot be
+      // concurrent whatever the code does. The check passed against a
+      // deliberately-broken retry for exactly that reason.
+      const fetcher: Fetcher = {
+        liveRequestCount: 0,
+        async fetch(url: string) {
+          inFlight += 1;
+          // 🔑 The search-engine url carries the barcode, so it is unique
+          // per item and its second attempt marks the retry pass.
+          if (url.includes("google.com/search")) {
+            const n = (serpAttempts.get(url) ?? 0) + 1;
+            serpAttempts.set(url, n);
+            if (n > 1) {
+              maxDuringRetry = Math.max(maxDuringRetry, inFlight);
+            }
+          }
+          try {
+            await sleep(5);
+            if (url.includes("/p/") && productFetches < 6) {
+              productFetches += 1;
+              throw new Error(`boom on ${url}`);
+            }
+            (fetcher as { liveRequestCount: number }).liveRequestCount += 1;
+            const body = url.includes("google.com/search")
+              ? SERP_BODY
+              : url.includes("/s?q=")
+                ? `SEARCH ${url}`
+                : `PRODUCT ${url}`;
+            return { url, body, cached: false };
+          } finally {
+            inFlight -= 1;
+          }
+        },
+      };
+
+      const results = await runList(items(6), adapter(), fetcher, {
+        ...RUN_DEFAULTS,
+        concurrency: 3,
+        runDir,
+      });
+
+      expect(results).toHaveLength(6);
+      // Several items really were deferred, or the check proves nothing.
+      expect(serpAttempts.size).toBeGreaterThan(1);
+      expect(
+        [...serpAttempts.values()].filter((n) => n > 1).length,
+      ).toBeGreaterThan(1);
+      // 🔑 And the retry ran one at a time.
+      expect(maxDuringRetry).toBe(1);
+    } finally {
+      await rm(runDir, { recursive: true, force: true });
+    }
+  });
+});

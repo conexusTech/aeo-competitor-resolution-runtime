@@ -199,14 +199,46 @@ export async function runList(
   for (const resolution of done.values()) outcomes[resolution.outcome]++;
 
   let cursor = 0;
+  /** What a deferred item spent on its first attempt, by barcode. */
+  const carried = new Map<string, number>();
   let completed = 0;
 
-  const worker = async (): Promise<void> => {
-    while (cursor < pending.length) {
+  /**
+   * Items whose pipeline could not complete, held back for one retry after
+   * the run has stopped pressing.
+   *
+   * 🔴 **Measured: the throttle is OURS.** A live 73-row run left 6 items
+   * whose identity lookup the vendor answered with an empty body even after
+   * the 15-second backoff — and every one of those six returned 250-390 KB on
+   * the FIRST attempt, with no wait, once the run was over. The vendor is not
+   * blocking those urls; it is rate-limiting us while three workers press it.
+   *
+   * 🔑 **So the retry waits for the pressure to stop rather than for a timer.**
+   * A second pass at the end, one at a time, costs only the failed rows — 8%
+   * of that run — and asks at the moment the evidence says the answer is
+   * available.
+   *
+   * ⚠️ **Deferred BEFORE being reported, not retried after.** `offer` skips a
+   * clientSku the gateway has already acknowledged, so a sweep that ran after
+   * reporting would be silently dropped — and, worse, would appear to work on
+   * a short list, because nothing is flushed until 100 findings have piled up.
+   */
+  //
+  // ⚠️ **Each carries what the first attempt already spent.** A retry's meter
+  // starts at zero, so settling on it alone would drop the first attempt's
+  // requests — the same spend-vanishing defect the per-item meter was built to
+  // remove, reintroduced by the retry. A check caught exactly that.
+  const deferred: { item: ResolveRequest; spent: number }[] = [];
+
+  const worker = async (
+    queue: readonly ResolveRequest[],
+    isRetry = false,
+  ): Promise<void> => {
+    while (cursor < queue.length) {
       // Checked before taking an item rather than after finishing one, so a
       // stop costs at most the item already in flight.
       if (options.shouldContinue?.() === false) return;
-      const item = pending[cursor++];
+      const item = queue[cursor++];
       if (item === undefined) return;
 
       let resolution: Resolution;
@@ -241,6 +273,22 @@ export async function runList(
         };
       }
 
+      // ⚠️ One retry per item, and only for a pipeline that could not
+      // complete — never for a clean miss, which is a finding.
+      if (resolution.failure !== null && !isRetry) {
+        deferred.push({ item, spent: resolution.requests });
+        continue;
+      }
+
+      // A retried item is charged for both attempts, because both were paid.
+      const alreadySpent = carried.get(item.barcode) ?? 0;
+      if (alreadySpent > 0) {
+        resolution = {
+          ...resolution,
+          requests: resolution.requests + alreadySpent,
+        };
+      }
+
       done.set(resolution.barcode, resolution);
       outcomes[resolution.outcome]++;
       completed++;
@@ -264,11 +312,26 @@ export async function runList(
   };
 
   await Promise.all(
-    Array.from(
-      { length: Math.min(options.concurrency, pending.length) },
-      worker,
+    Array.from({ length: Math.min(options.concurrency, pending.length) }, () =>
+      worker(pending),
     ),
   );
+
+  // ── The second pass ────────────────────────────────────────────────
+  //
+  // 🔑 **One worker, not three.** The whole reason these failed is that three
+  // of them pressing at once is what the vendor rate-limits; retrying them
+  // three at a time would recreate the condition being recovered from.
+  //
+  // ⚠️ Every item is settled after this pass whatever it returns — `isRetry`
+  // stops it being deferred a second time, so the queue cannot grow.
+  if (deferred.length > 0 && options.shouldContinue?.() !== false) {
+    const held = deferred.map((d) => d.item);
+    for (const d of deferred) carried.set(d.item.barcode, d.spent);
+    deferred.length = 0;
+    cursor = 0;
+    await worker(held, true);
+  }
 
   // Emit in input order regardless of completion order, so a run's output is
   // comparable across runs.

@@ -235,3 +235,50 @@ than a number in a loop.
 ⚠️ **Distinguishing the two failures is the load-bearing part**, not the bigger
 number. A fix that simply made every retry slow would pass the first check and
 make every transient error cost fifteen seconds — which the second check refuses.
+
+## An item the run could not complete gets one more go, after the pressure stops
+
+🔴 **Measured: the throttle is ours.** After the backoff landed, a live 73-row run
+still left 6 items whose identity lookup the vendor answered with an empty body
+even after 15 seconds of waiting — and **every one of those six returned
+250–390 KB on the first attempt, with no wait at all, once the run was over**.
+The vendor is not blocking those urls. It is rate-limiting us while three workers
+press it.
+
+🔑 **So the retry waits for the pressure to stop rather than for a timer.** A
+second pass at the end, **one item at a time**, costs only the rows that failed —
+8% of that run — and asks at the moment the evidence says the answer is
+available.
+
+#### Scenario: An item whose pipeline failed is tried once more
+- GIVEN an item whose fetch failed during the run
+- WHEN the list finishes
+- THEN it is attempted again, and a success settles it as a finding
+
+**Checked by:** resolution-failed-item-retried-after-the-run
+
+#### Scenario: The retry does not recreate the throttle
+- GIVEN several items deferred from one run
+- WHEN they are retried
+- THEN no more than one fetch is in flight at a time
+
+**Checked by:** resolution-retry-runs-one-at-a-time
+
+#### Scenario: A retried item is charged for both attempts
+- GIVEN an item that failed once and succeeded on the retry
+- WHEN the run reports what it spent
+- THEN the item carries the requests from both attempts
+
+**Checked by:** resolution-retry-charges-both-attempts
+
+#### Scenario: An item that fails twice is settled, not retried for ever
+- GIVEN an item whose every attempt fails
+- WHEN the retry pass ends
+- THEN it is recorded as a failure and the queue does not grow
+
+**Checked by:** resolution-retry-happens-once-only
+
+⚠️ **Deferred BEFORE being reported, never retried after.** The reporter skips a
+client SKU the gateway has already acknowledged, so a sweep that ran after
+reporting would be silently dropped — and would appear to work on a short list,
+because nothing is flushed until a hundred findings have piled up.
