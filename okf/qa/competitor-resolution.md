@@ -597,10 +597,26 @@ npx vitest run test/run.spec.ts -t "prices"
 
 **Expect**
 
-200 requests for 100 items with a part number, 470 without, and the real
-8,926-row list between $41 and $43 — which is where the roadmap's ~$42 comes
-from, so a rate change surfaces here. A single blended rate reports the same
-number for any mix of list, which is precisely what an operator is asking about.
+The with-part-number path prices at `100 × requestsPerItemWithPartNumber` and
+the derived path at `100 × requestsPerItemDerivedIdentity`, with the second
+dearer than the first. The real 8,926-row list prices **between $59 and $61**.
+
+🔴 **This section carried the literals `200` and `470` and the range `$41–$43`
+until 2026-09-12, and every one of them was stale.** The derived-identity
+constant was corrected from 4.7 to 6.7 on 2026-09-11; `test/run.spec.ts` was
+corrected in the same change and now multiplies the constant instead of
+repeating it — this permanent document was not, so it contradicted both the
+code and the very test it cites. Found by a review pass, not by a gate.
+
+⚠️ **So the figures above are deliberately expressed as the arithmetic rather
+than as numbers.** A literal here is a second copy of the constant, which is
+the defect the constant exists to prevent. The dollar range stays a number
+because it is the thing a rate change must surface — and it is the one figure
+to update, in the same motion, if `usdPer1000Requests` is ever validated
+against an invoice.
+
+A single blended rate would report the same number for any mix of list, which
+is precisely what an operator is asking about.
 
 ---
 

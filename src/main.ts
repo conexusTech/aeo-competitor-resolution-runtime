@@ -68,22 +68,32 @@ const runDir = (): string =>
 
 /**
  * 🔴 **This said "worst-case" and the number is a MEAN.**
- * `requestsPerItemDerivedIdentity` is 4.7 — the average over the spike's 53
- * rows — so a run can and does exceed it. Measured on a live 3-row run
- * 2026-09-11: the estimate said 14 requests and the run spent **16**, over by
- * 14%.
+ * `requestsPerItemDerivedIdentity` is the average over the spike's 53 rows,
+ * so a run can exceed it.
  *
- * 🔑 **The mechanism is that a MISS costs more than a hit**, which is the
- * opposite of the intuition the word "worst-case" invites. A verified row
- * stops as soon as a candidate is proven — 1 and 4 queries on that run — while
- * a not-found row exhausts every query variant before giving up, which was 6.
- * So a list with a worse hit rate than the spike's costs MORE per row, and the
- * figure labelled a ceiling understates it exactly when the news is bad.
+ * ⚠️ **The number is deliberately not repeated here.** This comment said
+ * "is 4.7" and went stale the moment the constant was corrected to 6.7 —
+ * a third copy of a fact that already exists as the constant and in
+ * `test/run.spec.ts`. Read `COST.requestsPerItemDerivedIdentity`.
  *
- * ⚠️ A true ceiling is expressible — the query plan has a fixed length and the
- * probe budget is capped — but it is not this number, and pricing against a
- * ceiling would overstate every ordinary run. So the label is corrected rather
- * than the arithmetic.
+ * 🔴 **And the measurement this comment used to cite has DISSOLVED.** It
+ * read: a live 3-row run spent 16 requests against an estimate of 14, over
+ * by 14%. Against the corrected 6.7/row that same run is **below** an
+ * estimate of 20.1, and a later 10-row queue run measured 6.2/row, also
+ * below — both live runs to date came in under the corrected estimate.
+ *
+ * 🔑 **The claim survives because it rests on STRUCTURE rather than on that
+ * coincidence**, which is the correction `test/run.spec.ts` already made and
+ * this comment had not. A miss costs more than a hit: a verified row stops
+ * as soon as a candidate is proven, while a not-found row spends a
+ * search-engine lookup, every query variant and its whole probe budget —
+ * `1 + MAX_QUERY_ATTEMPTS + maxProbes`, far above the mean. So a list with a
+ * worse hit rate than the spike's costs MORE per row than this predicts,
+ * whatever the constant happens to be.
+ *
+ * ⚠️ A true ceiling is expressible — that sum is one — but it is not this
+ * number, and pricing against it would overstate every ordinary run. So the
+ * label is corrected rather than the arithmetic.
  */
 function announce(itemCount: number, adapter: RetailerAdapter): void {
   const { requests, usd } = estimateRun(itemCount, 0);

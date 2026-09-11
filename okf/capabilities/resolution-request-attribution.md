@@ -114,12 +114,29 @@ zero would tell it the run bought nothing, which is never true of a batch. The
 queue catalog pins the image by digest and a rollback is one `PUT` away, so the
 fallback has to stay reachable.
 
-⚠️ **The gateway must declare a field before this repo sends it.**
-`forbidNonWhitelisted` answers an undeclared property with a **400 on the whole
-batch** rather than stripping it, and the runtime treats a 4xx as
-non-retryable — so the batch is lost, not delayed. This board has been burned by
-exactly that once, when `alternatives` was added here first. The gateway's
-declaration landed before this.
+🔴 **CORRECTED 2026-09-12: this said the gateway must declare a field before
+this repo sends it, and that the penalty was a 400 on the whole batch. Neither
+is true of the findings route.**
+
+The gateway's `POST …/runs/:runId/events` binds its body as a raw object, so
+the global strict pipe is skipped entirely and the route validates by hand,
+permissively. An undeclared property is **ignored**, not refused. So a field
+this repo ships ahead of the gateway costs a field nobody reads yet — not a
+lost batch.
+
+⚠️ **Which means the `alternatives` incident did not happen the way this
+document recorded it.** The runners-up were carried through and silently
+discarded, and the screen was served an empty list. Same symptom, much smaller
+blast radius, and the DTO addition was still the right fix — an ignored field
+is a field nobody reads. Pinned gateway-side by
+`aeo-backend:/…/runtime-event-validation.spec.ts`, which imports the route's
+own options so there is no second copy to drift.
+
+⚠️ **`POST …/runs/:runId/captures` IS the strict case**, because it binds a
+concrete DTO. An undeclared field there is a real 400, and this repo treats a
+4xx as refused-forever — so that one is genuinely gateway-first, and a gateway
+ROLLBACK against a newer container loses one capture per item, silently. That
+asymmetry is the thing to remember when ordering a deploy.
 
 ## Why a meter rather than better arithmetic
 

@@ -284,8 +284,7 @@ export class GatewayClient {
    *
    * The resolutions go in **as they are** — the same objects written to the
    * journal, with no field renamed. See the module docblock.
-   */
-  /**
+   *
    * @param requestsSpent What the run has bought **so far** — a running total,
    * not this batch's share. The gateway takes a `GREATEST` of it, which is what
    * makes it survive a resend and an out-of-order callback. Omitted, the
