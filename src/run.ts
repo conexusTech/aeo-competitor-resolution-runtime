@@ -36,10 +36,48 @@ import {
  * call the result a maximum.
  */
 export const COST = {
-  /** With a part number in hand: one search, roughly one probe. */
+  /**
+   * With a part number in hand: one search, roughly one probe.
+   *
+   * ⚠️ **NOT measured, and deliberately left alone.** The 53-row run this
+   * module is derived from carries **no part numbers at all**, so every one of
+   * its rows took the derived-identity path. This figure comes from the
+   * handover's §8 as the baseline it compared inference against — reasoned,
+   * not observed.
+   *
+   * 🔴 **It was tempting to "also bump this one" when the sibling below was
+   * corrected, and that would have been the worse error**: laundering an
+   * unmeasured number into a measured-looking one, in a block whose whole claim
+   * is that its figures are traceable. It stays at 2 until a list WITH part
+   * numbers is run.
+   */
   requestsPerItemWithPartNumber: 2,
-  /** Without one: 2.70 probes plus a search-engine lookup plus a search. */
-  requestsPerItemDerivedIdentity: 4.7,
+  /**
+   * Without one: a search-engine lookup, the retailer searches, and the probes.
+   *
+   * 🔴 **This was 4.70 until 2026-09-11 and it was 42% low, because it
+   * assumed ONE retailer search per row.** The old note read "one Google
+   * resolve + one Newegg search + 2.70 product-page probes" — 1 + 1 + 2.70. But
+   * the same 53-row fixture records **2.98 queries per row**, not one: a row
+   * whose first query misses tries the next variant, up to
+   * `MAX_QUERY_ATTEMPTS`.
+   *
+   * 🔑 **Corrected arithmetic over the same committed data:**
+   * 1 lookup + 2.98 queries + 2.70 probes = **6.68**, rounded to 6.7.
+   *
+   * 🔑 **Three independent measurements agree and the old constant was the
+   * outlier:**
+   * - 6.68 — `test/fixtures/measured-run-53.json`, pinned by a check below
+   * - 6.4 — the handover spike's OWN run log over its first 50 rows
+   *   (322 requests, $0.32), in that repo at
+   *   `recon/captures/newegg-upc/full-run.log`
+   * - 6.2 — a live 10-row queue run on 2026-09-11
+   *
+   * ⚠️ **Rounded UP rather than down.** 6.7 slightly overstates 6.68, and for
+   * a figure shown to a client before they authorise spend that is the safer
+   * direction: a run that comes in under its estimate is a good surprise.
+   */
+  requestsPerItemDerivedIdentity: 6.7,
   usdPer1000Requests: 1,
 } as const;
 

@@ -8,6 +8,8 @@ import type {
   ParsedCandidate,
   RetailerAdapter,
 } from "../src/adapters/types.js";
+import { MAX_QUERY_ATTEMPTS } from "../src/query-plan.js";
+import { DEFAULT_OPTIONS } from "../src/resolve.js";
 import {
   FetchFailed,
   type Fetcher,
@@ -201,17 +203,32 @@ describe("estimateRun", () => {
     // which is exactly the thing an operator is asking about.
     const allWithPart = estimateRun(100, 100);
     const noneWithPart = estimateRun(100, 0);
-    expect(allWithPart.requests).toBe(200);
-    expect(noneWithPart.requests).toBe(470);
+    // 🔴 **These were the literals 200 and 470, and the 470 went stale the
+    // moment the derived-identity constant was corrected from 4.7 to 6.7.** A
+    // literal here is a second copy of the constant, which is the defect the
+    // constant exists to prevent — so the check now multiplies it.
+    expect(allWithPart.requests).toBe(100 * COST.requestsPerItemWithPartNumber);
+    expect(noneWithPart.requests).toBeCloseTo(
+      100 * COST.requestsPerItemDerivedIdentity,
+      5,
+    );
+    // The property that actually matters, and it holds at any rates: the path
+    // without a part number is dearer.
     expect(noneWithPart.usd).toBeGreaterThan(allWithPart.usd);
   });
 
   it("prices the measured 8,926-row list at the figure on record", () => {
-    // The roadmap quotes ~$42 for a full run with no part numbers. This is
-    // where that number comes from, so a change to the rates shows up here.
+    // 🔑 **This check did its job on 2026-09-11 and the figure on record
+    // MOVED.** It was written to catch a rate change, the per-row count was
+    // corrected from 4.7 to 6.7, and this went red — which is how the roadmap's
+    // long-quoted "~$42 for the full 8,926-row export" was found to be
+    // understated. It is **~$60**.
+    //
+    // ⚠️ Still not a price. `usdPer1000Requests` has never been checked
+    // against an invoice; what changed is the request COUNT, which is measured.
     const { usd } = estimateRun(8926, 0);
-    expect(usd).toBeGreaterThan(41);
-    expect(usd).toBeLessThan(43);
+    expect(usd).toBeGreaterThan(59);
+    expect(usd).toBeLessThan(61);
   });
 
   it("🔴 is a MEAN and can be exceeded — it is not a ceiling", () => {
@@ -226,9 +243,24 @@ describe("estimateRun", () => {
     // estimate is exceedable by construction rather than a bound.
     const perRow = COST.requestsPerItemDerivedIdentity;
     const { requests } = estimateRun(3, 0);
-    expect(requests).toBe(perRow * 3);
-    // The measured live run: 3 rows, 16 requests.
-    expect(16).toBeGreaterThan(requests);
+    expect(requests).toBeCloseTo(perRow * 3, 5);
+
+    // 🔴 **This check used to assert `16 > requests` — the live 3-row run
+    // against an estimate of 14 — and that evidence DISSOLVED when the constant
+    // was corrected.** Against 6.7/row the same run's 16 requests are BELOW an
+    // estimate of 20.1, and a later 10-row queue run measured 6.2/row, also
+    // below. So both live runs to date came in under the corrected estimate.
+    //
+    // 🔑 **The claim survives; the datapoint does not, and the fix is to pin
+    // the MECHANISM instead of a coincidence.** A mean is exceedable by
+    // definition, and here the structure says by how much: one row that misses
+    // spends a search-engine lookup, every query variant, and its probe budget
+    // — 1 + `MAX_QUERY_ATTEMPTS` + `maxProbes` — which is far above the mean.
+    // A list with a worse hit rate than the spike's 53 rows therefore costs
+    // more per row than this predicts, whatever the constant happens to be.
+    const worstOneRow = 1 + MAX_QUERY_ATTEMPTS + DEFAULT_OPTIONS.maxProbes;
+    expect(worstOneRow).toBeGreaterThan(perRow);
+
     // And the constant is fractional, which is what makes it a mean at all.
     expect(Number.isInteger(perRow)).toBe(false);
   });
