@@ -12,6 +12,7 @@ import {
   type ResolutionAlternative,
 } from "./alternatives.js";
 import { canQuery, type RetailerAdapter } from "./adapters/types.js";
+import { RequestMeter } from "./fetcher/meter.js";
 import { FetchFailed, type Fetcher } from "./fetcher/types.js";
 import { gtinMatches } from "./gtin.js";
 import { identityFromBarcode } from "./identity/from-barcode.js";
@@ -214,10 +215,21 @@ async function establishIdentity(
 export async function resolveItem(
   request: ResolveRequest,
   adapter: RetailerAdapter,
-  fetcher: Fetcher,
+  sharedFetcher: Fetcher,
   options: ResolveOptions = DEFAULT_OPTIONS,
 ): Promise<Resolution> {
-  const startedAt = fetcher.liveRequestCount;
+  // 🔴 **Every `requests` below used to be `liveRequestCount - startedAt` on
+  // the fetcher this was handed — and that is not an attribution.** `runList`
+  // runs three of these concurrently by default over ONE fetcher, so each
+  // item's delta absorbed its peers': measured 117 against a true 58 at
+  // concurrency 3, and 171 against 62 on a live queue run. A meter counts only
+  // its own calls, so two of them over one fetcher cannot see each other.
+  //
+  // ⚠️ Wrapped HERE rather than only in `runList`, because this function is
+  // called directly — by the 53-row exit-criterion spec among others — and a
+  // caller passing a shared fetcher must not have to know to wrap it.
+  // Double-wrapping is harmless: each level counts the calls made through it.
+  const fetcher = new RequestMeter(sharedFetcher);
   const base = {
     barcode: request.barcode,
     clientSku: request.clientSku,
@@ -250,7 +262,7 @@ export async function resolveItem(
       outcome: "not-found",
       identity,
       queriesTried: [],
-      requests: fetcher.liveRequestCount - startedAt,
+      requests: fetcher.liveRequestCount,
     };
   }
 
@@ -290,7 +302,7 @@ export async function resolveItem(
       identity,
       queriesTried: tried,
       candidatesSeen,
-      requests: fetcher.liveRequestCount - startedAt,
+      requests: fetcher.liveRequestCount,
     };
   }
 
@@ -338,7 +350,7 @@ export async function resolveItem(
         queriesTried: tried,
         candidatesSeen,
         probes,
-        requests: fetcher.liveRequestCount - startedAt,
+        requests: fetcher.liveRequestCount,
         match: evidence(entry.candidate, entry.score, product.barcode),
         alternatives: alternativesFor({
           ranked,
@@ -365,7 +377,7 @@ export async function resolveItem(
       queriesTried: tried,
       candidatesSeen,
       probes,
-      requests: fetcher.liveRequestCount - startedAt,
+      requests: fetcher.liveRequestCount,
     };
   }
 
@@ -388,7 +400,7 @@ export async function resolveItem(
       queriesTried: tried,
       candidatesSeen,
       probes,
-      requests: fetcher.liveRequestCount - startedAt,
+      requests: fetcher.liveRequestCount,
     };
   }
 
@@ -400,7 +412,7 @@ export async function resolveItem(
       queriesTried: tried,
       candidatesSeen,
       probes,
-      requests: fetcher.liveRequestCount - startedAt,
+      requests: fetcher.liveRequestCount,
       match: evidence(noBarcodeFound.candidate, noBarcodeFound.score, null),
       alternatives: alternativesFor({
         ranked,
@@ -418,7 +430,7 @@ export async function resolveItem(
     queriesTried: tried,
     candidatesSeen,
     probes,
-    requests: fetcher.liveRequestCount - startedAt,
+    requests: fetcher.liveRequestCount,
     match: evidence(best.candidate, best.score, null),
     alternatives: alternativesFor({
       ranked,

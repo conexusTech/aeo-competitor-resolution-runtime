@@ -10,6 +10,7 @@ import { appendFile, mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
 import type { RetailerAdapter } from "./adapters/types.js";
+import { RequestMeter } from "./fetcher/meter.js";
 import type { Fetcher } from "./fetcher/types.js";
 import {
   DEFAULT_OPTIONS,
@@ -171,8 +172,15 @@ export async function runList(
       if (item === undefined) return;
 
       let resolution: Resolution;
+      // 🔴 **Metered out here as well as inside `resolveItem`, because the
+      // catch branch below needs a number and `resolveItem`'s own meter is
+      // unreachable by the time it throws.** Without this the branch reported
+      // `requests: 0` for an item whose pipeline had already bought pages —
+      // the spend was real and vanished from the meter, which is the one
+      // direction a cost figure must never be wrong in.
+      const meter = new RequestMeter(fetcher);
       try {
-        resolution = await resolveItem(item, adapter, fetcher, options);
+        resolution = await resolveItem(item, adapter, meter, options);
       } catch (error) {
         // The pipeline could not complete. Recorded as a failure with its
         // reason — never as a clean miss, which would report "this retailer
@@ -187,7 +195,9 @@ export async function runList(
           queriesTried: [],
           candidatesSeen: 0,
           probes: 0,
-          requests: 0,
+          // What it had already bought when it threw — not zero. See the
+          // meter above.
+          requests: meter.liveRequestCount,
           match: null,
           failure: error instanceof Error ? error.message : String(error),
         };

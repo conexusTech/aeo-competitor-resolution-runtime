@@ -1,0 +1,211 @@
+import { mkdtemp, rm } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
+import type {
+  ParsedCandidate,
+  ParsedProduct,
+  RetailerAdapter,
+} from "../src/adapters/types.js";
+import { RequestMeter } from "../src/fetcher/meter.js";
+import type { Fetcher, FetchResult } from "../src/fetcher/types.js";
+import { DEFAULT_OPTIONS, resolveItem } from "../src/resolve.js";
+import { RUN_DEFAULTS, runList } from "../src/run.js";
+
+/**
+ * What a run says it spent, and on what.
+ *
+ * 🔴 **Every check here fails against the code as it shipped**, because the
+ * per-item figure was `liveRequestCount - startedAt` on a fetcher three
+ * concurrent workers share. Measured over the committed corpus before the fix:
+ * 117 attributed against a true 58 at concurrency 3, and a live queue run
+ * reported 171 against the container's own 62.
+ *
+ * 🔑 **The load-bearing check is the one that compares the two totals**, not
+ * one that asserts a magic number. `sum(per-item) === fetcher.liveRequestCount`
+ * is the invariant; an assertion on `117` would have passed before the fix and
+ * an assertion on `58` would go stale the moment the query plan changes.
+ */
+
+const SERP_BODY = `<h3>Kingwin CF-08LB Fan</h3><h3>Kingwin CF-08LB 80mm</h3><p>CF-08LB CF-08LB</p>`;
+
+/** A retailer whose every search yields one probeable candidate. */
+function adapter(): RetailerAdapter {
+  return {
+    slug: "fake",
+    querySupport: { maxNumericQueryDigits: 9, barcodeIsSearchable: false },
+    buildSearchUrl: (q) => `https://r.test/s?q=${encodeURIComponent(q)}`,
+    parseSearchResults: (html): ParsedCandidate[] =>
+      html.startsWith("SEARCH ")
+        ? [
+            {
+              itemId: "I1",
+              url: `https://r.test/p/${encodeURIComponent(html.slice(7))}`,
+              model: "CF-08LB",
+              title: "Kingwin CF-08LB 80mm Fan",
+              brand: "Kingwin",
+              priceCents: 899,
+              inStock: true,
+              isFirstParty: true,
+              sellerName: null,
+            },
+          ]
+        : [],
+    // No published barcode, so every item lands `unverifiable` after probing —
+    // the branch that spends the most and therefore has the most to attribute.
+    parseProductPage: (): ParsedProduct => ({
+      barcode: null,
+      priceCents: 899,
+      inStock: true,
+      title: "Kingwin CF-08LB 80mm Fan",
+    }),
+  };
+}
+
+const sleep = (ms: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Serves a body for any url and counts what it sold.
+ *
+ * ⚠️ **The `await` before the count is what makes this test able to fail.**
+ * Without a suspension point every worker runs to completion before the next
+ * one starts, the shared counter never interleaves, and a delta on it looks
+ * like an honest attribution. The defect only exists when work overlaps, so
+ * the check has to make it overlap.
+ */
+class CountingFetcher implements Fetcher {
+  liveRequestCount = 0;
+  constructor(private readonly failOn: RegExp | null = null) {}
+  async fetch(url: string): Promise<FetchResult> {
+    await sleep(1);
+    if (this.failOn?.test(url) === true) {
+      // Deliberately NOT `FetchFailed`: `tryFetch` swallows that one and the
+      // pipeline reports a clean miss. This reaches `runList`'s catch branch,
+      // which is the path whose spend used to be reported as zero.
+      throw new Error(`boom on ${url}`);
+    }
+    this.liveRequestCount++;
+    const body = url.includes("google.com/search")
+      ? SERP_BODY
+      : url.includes("/s?q=")
+        ? `SEARCH ${url}`
+        : `PRODUCT ${url}`;
+    return { url, body, cached: false };
+  }
+}
+
+const items = (n: number): { barcode: string; clientSku: string }[] =>
+  Array.from({ length: n }, (_, i) => ({
+    barcode: `81234801054${i}`,
+    clientSku: `SKU-${i}`,
+  }));
+
+describe("what a run says it spent", () => {
+  let runDir: string;
+
+  beforeEach(async () => {
+    runDir = await mkdtemp(path.join(os.tmpdir(), "attribution-"));
+  });
+  afterEach(async () => {
+    await rm(runDir, { recursive: true, force: true });
+  });
+
+  for (const concurrency of [1, 3]) {
+    it(`attributes every request to exactly one item at concurrency ${concurrency}`, async () => {
+      const fetcher = new CountingFetcher();
+      const results = await runList(items(9), adapter(), fetcher, {
+        ...RUN_DEFAULTS,
+        concurrency,
+        runDir,
+      });
+
+      const attributed = results.reduce((sum, r) => sum + r.requests, 0);
+
+      // Not vacuous: the run has to have bought something, and more than one
+      // page per item, or the arithmetic under test never gets exercised.
+      expect(results).toHaveLength(9);
+      expect(fetcher.liveRequestCount).toBeGreaterThan(9);
+      expect(attributed).toBe(fetcher.liveRequestCount);
+    });
+  }
+
+  it("charges a failed item what it had already bought, not zero", async () => {
+    // The SERP and the search succeed; the product probe throws. So the item
+    // has bought two pages by the time the pipeline gives up.
+    const fetcher = new CountingFetcher(/\/p\//);
+    const results = await runList(items(1), adapter(), fetcher, {
+      ...RUN_DEFAULTS,
+      concurrency: 1,
+      runDir,
+    });
+
+    expect(results).toHaveLength(1);
+    expect(results[0]?.failure).not.toBeNull();
+    expect(fetcher.liveRequestCount).toBeGreaterThan(0);
+    expect(results[0]?.requests).toBe(fetcher.liveRequestCount);
+  });
+});
+
+describe("resolveItem, called directly", () => {
+  /**
+   * 🔴 **This check exists because a mutation reported GREEN.** Restoring
+   * `liveRequestCount - startedAt` inside `resolveItem` left every check above
+   * passing — because `runList` wraps each item in its own meter first, so the
+   * delta it was taking was already honest. The suite was proving `runList`
+   * and calling it a property of `resolveItem`.
+   *
+   * 🔑 **Direct callers have no such protection**, and there are some: the
+   * 53-row exit-criterion spec and the outcome-branch spec both call
+   * `resolveItem` with a fetcher of their own. So the attribution has to hold
+   * at this seam too, and that is what this asserts.
+   */
+  it("charges each concurrent item only for its own requests", async () => {
+    const fetcher = new CountingFetcher();
+    const a = adapter();
+
+    const [first, second, third] = await Promise.all([
+      resolveItem(items(3)[0]!, a, fetcher, DEFAULT_OPTIONS),
+      resolveItem(items(3)[1]!, a, fetcher, DEFAULT_OPTIONS),
+      resolveItem(items(3)[2]!, a, fetcher, DEFAULT_OPTIONS),
+    ]);
+
+    const attributed = first.requests + second.requests + third.requests;
+    expect(fetcher.liveRequestCount).toBeGreaterThan(3);
+    expect(attributed).toBe(fetcher.liveRequestCount);
+  });
+});
+
+describe("RequestMeter", () => {
+  it("two meters over one fetcher cannot see each other's requests", async () => {
+    const shared = new CountingFetcher();
+    const a = new RequestMeter(shared);
+    const b = new RequestMeter(shared);
+
+    await Promise.all([
+      a.fetch("https://r.test/a"),
+      b.fetch("https://r.test/b"),
+      b.fetch("https://r.test/c"),
+    ]);
+
+    expect(a.liveRequestCount).toBe(1);
+    expect(b.liveRequestCount).toBe(2);
+    expect(shared.liveRequestCount).toBe(3);
+  });
+
+  it("does not charge this run for a page a previous one bought", async () => {
+    // A `LiveFetcher` disk hit and the whole replay corpus both come back
+    // `cached: true`. That page cost money once, on the run that bought it.
+    const cache: Fetcher = {
+      liveRequestCount: 0,
+      fetch: (url) => Promise.resolve({ url, body: "x", cached: true }),
+    };
+    const meter = new RequestMeter(cache);
+
+    await meter.fetch("https://r.test/already-had-it");
+
+    expect(meter.liveRequestCount).toBe(0);
+  });
+});
