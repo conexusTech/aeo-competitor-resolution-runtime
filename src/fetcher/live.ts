@@ -32,6 +32,15 @@ export interface LiveFetcherOptions {
    * clean miss.
    */
   readonly minBodyBytes: number;
+  /**
+   * How long to wait after a **silent throttle**, before doubling.
+   *
+   * 🔴 **Separate from the ordinary retry delay because the two are
+   * different failures.** A 4xx or a dropped connection is worth another try
+   * in a second; an empty 200 is the vendor saying *not now*, and a second is
+   * nowhere near long enough.
+   */
+  readonly throttleDelayMs: number;
 }
 
 export const LIVE_DEFAULTS = {
@@ -39,6 +48,22 @@ export const LIVE_DEFAULTS = {
   delayMinMs: 500,
   delayMaxMs: 1500,
   minBodyBytes: 2000,
+  /**
+   * 🔑 **5 s, then 10 s — 15 s of waiting across three attempts, and the
+   * figure is measured rather than chosen.** A barcode whose lookup returned
+   * a zero-byte body twice in a row returned 338,079 bytes after a 15-second
+   * wait; the old schedule waited 1 s then 2 s and gave up at 3.
+   *
+   * 🔴 **21% of a live 73-row run failed this way**, and those rows were never
+   * searched at all — the single largest cause of that run reaching 28 verified
+   * against the handover spike's 35 on identical rows.
+   *
+   * ⚠️ **The trade is run time.** A row that is throttled on every attempt now
+   * costs 15 s of waiting instead of 3. On a list where a fifth of lookups are
+   * throttled that is real, and it is the reason this is a constant rather
+   * than a hardcoded number.
+   */
+  throttleDelayMs: 5000,
 } as const;
 
 const sleep = (ms: number): Promise<void> =>
@@ -48,6 +73,14 @@ export class LiveFetcher implements Fetcher {
   liveRequestCount = 0;
   cacheHitCount = 0;
   failureCount = 0;
+  /**
+   * Requests the vendor answered with nothing.
+   *
+   * 🔑 Counted apart from `failureCount` because they are the actionable
+   * half: a run reporting `failures: 16` says something went wrong, and one
+   * reporting `16 throttled` says what to do about it.
+   */
+  throttleCount = 0;
 
   constructor(private readonly options: LiveFetcherOptions) {}
 
@@ -66,8 +99,19 @@ export class LiveFetcher implements Fetcher {
       // Not cached; fall through and pay for it.
     }
 
+    // 🔑 **Two backoffs, because there are two failures.** `throttled` is set
+    // when the vendor answered with a body too short to be a page — measured
+    // as a literal ZERO bytes on a 200 — and that needs a far longer wait than
+    // a dropped connection does.
+    let throttled = false;
     for (let attempt = 0; attempt < this.options.attempts; attempt++) {
-      if (attempt > 0) await sleep(500 * 2 ** attempt);
+      if (attempt > 0) {
+        await sleep(
+          throttled
+            ? this.options.throttleDelayMs * 2 ** (attempt - 1)
+            : 500 * 2 ** attempt,
+        );
+      }
       try {
         const response = await globalThis.fetch(
           "https://api.brightdata.com/request",
@@ -89,6 +133,13 @@ export class LiveFetcher implements Fetcher {
         // Both conditions. A 200 carrying a 300-byte block notice is a failure
         // that looks like a success, and caching it makes the failure permanent.
         if (response.status >= 400 || body.length < this.options.minBodyBytes) {
+          // 🔴 **A short body on a 2xx is a SILENT THROTTLE and the next attempt
+          // must wait much longer.** Measured: the vendor answers the identity
+          // lookup with `200` and **zero bytes** for about a fifth of requests
+          // under an ordinary run's load, and the same url returns 338 KB after
+          // a 15-second wait. Retrying it in one second simply spends again to
+          // be told nothing a second time.
+          throttled = response.status < 400;
           throw new Error(`status=${response.status} bytes=${body.length}`);
         }
 
@@ -100,6 +151,9 @@ export class LiveFetcher implements Fetcher {
       } catch (error) {
         if (attempt === this.options.attempts - 1) {
           this.failureCount++;
+          // 🔑 Counted apart, because a run that says `16 throttled` tells an
+          // operator what to change and one that says `16 failures` does not.
+          if (throttled) this.throttleCount++;
           throw new FetchFailed(url, error);
         }
       }

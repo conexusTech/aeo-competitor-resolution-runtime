@@ -180,3 +180,58 @@ retried identically.
 - AND a genuine EAN-13 published by the retailer is read as such
 
 **Checked by:** resolution-parses-real-pages, resolution-empty-results-page-is-not-an-error, resolution-reads-genuine-ean13
+
+## A silent throttle is waited out rather than given up on
+
+🔴 **21% of a live 73-row run failed to establish an identity, so those rows were
+never searched at all.** Reproduced on the host under the run's own shape, three
+at a time: **33%, 6 of 18.**
+
+🔑 **The signature is an HTTP 200 with a ZERO-BYTE body.** Not a 4xx, not a
+timeout, not a block page — nothing at all. The 2,000-byte floor correctly
+refuses it, and the old schedule then retried at 1 s and 2 s and gave up at 3.
+
+🔑 **It is a throttle, not a dead url**, and that was measured: a barcode whose
+lookup returned 0 bytes twice in a row returned **338,079 bytes after a
+15-second wait**, and a second recovered on an immediate retry.
+
+⚠️ **This was the largest single cause of a quality gap.** That run reached 28
+verified against the handover spike's 35 on identical rows, and 15 of the 33
+disagreements were items nobody looked up.
+
+#### Scenario: An empty answer is waited out, not retried into
+- GIVEN the vendor answers a fetch with a body too short to be a page
+- WHEN the fetcher retries
+- THEN it waits 5 seconds, then 10 — fifteen in total, which is what recovered the measured case
+
+**Checked by:** resolution-throttle-backs-off-longer
+
+#### Scenario: An ordinary failure keeps its short backoff
+- GIVEN the vendor answers with a 5xx
+- WHEN the fetcher retries
+- THEN it waits one second, then two, as before
+
+**Checked by:** resolution-ordinary-failure-keeps-short-backoff
+
+#### Scenario: A throttle that yields is charged once
+- GIVEN a fetch throttled once and answered on the next attempt
+- WHEN it succeeds
+- THEN one request is counted and no throttle is recorded
+
+**Checked by:** resolution-recovered-throttle-costs-one-request
+
+#### Scenario: A run says how many of its failures were throttles
+- GIVEN a run whose failures were the vendor answering with nothing
+- WHEN it reports
+- THEN throttles are counted apart from other failures
+
+**Checked by:** resolution-throttles-counted-apart
+
+⚠️ **The trade is run time, and it is real.** A row throttled on every attempt now
+costs 15 seconds of waiting instead of 3. On a list where a fifth of lookups are
+throttled that is minutes, which is why the delay is a named constant rather
+than a number in a loop.
+
+⚠️ **Distinguishing the two failures is the load-bearing part**, not the bigger
+number. A fix that simply made every retry slow would pass the first check and
+make every transient error cost fifteen seconds — which the second check refuses.

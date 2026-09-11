@@ -710,3 +710,73 @@ import product, and that if it did not, **1,081 of the client's 8,926 items
 (12%) would be unverifiable by construction**. Measured across all 255 captured
 product pages: **6 distinct genuine EAN-13s**, GS1 prefixes 502, 471, 426, 509
 and 695 — all non-US, which is exactly the import case in question.
+
+### Check: resolution-throttle-backs-off-longer
+
+**Requirement:** An empty answer is waited out, not retried into
+**Surface:** `LiveFetcher.fetch`
+**Automated:** test/throttle-backoff.spec.ts
+
+**Do**
+
+Answer every attempt with a 200 and an empty body; record the durations the
+fetcher sleeps for.
+
+**Expect**
+
+`[5000, 10000]` — fifteen seconds in total, which is what recovered the measured
+case. The old schedule was `[1000, 2000]`.
+
+⚠️ **The check measures the WAITS, not that a retry happened.** A check asserting
+only "it retried" passes against the code that shipped.
+
+### Check: resolution-ordinary-failure-keeps-short-backoff
+
+**Requirement:** An ordinary failure keeps its short backoff
+**Surface:** `LiveFetcher.fetch`
+**Automated:** test/throttle-backoff.spec.ts
+
+**Do**
+
+Answer every attempt with a 5xx and record the sleeps.
+
+**Expect**
+
+`[1000, 2000]`, under five seconds in total.
+
+🔑 **The control, and it is as load-bearing as the check above.** A fix that made
+every retry slow would satisfy the throttle check and make every transient error
+cost fifteen seconds.
+
+### Check: resolution-recovered-throttle-costs-one-request
+
+**Requirement:** A throttle that yields is charged once
+**Surface:** `LiveFetcher.fetch`
+**Automated:** test/throttle-backoff.spec.ts
+
+**Do**
+
+Answer the first attempt empty and the second with a real page.
+
+**Expect**
+
+The page is returned, `liveRequestCount` is 1, `throttleCount` is 0, and exactly
+one throttle backoff was waited.
+
+### Check: resolution-throttles-counted-apart
+
+**Requirement:** A run says how many of its failures were throttles
+**Surface:** `LiveFetcher`
+**Automated:** test/throttle-backoff.spec.ts
+
+**Do**
+
+Exhaust the attempts once against an empty 200 and once against a 503.
+
+**Expect**
+
+Both raise `FetchFailed` and both increment `failureCount`; only the empty one
+increments `throttleCount`.
+
+🔑 A run reporting `failures: 16` says something went wrong. One reporting
+`16 throttled` says what to change.

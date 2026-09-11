@@ -95,7 +95,22 @@ function announce(itemCount: number, adapter: RetailerAdapter): void {
   );
 }
 
-function tally(results: readonly Resolution[], liveRequests: number): void {
+/**
+ * How many of a fetcher's failures were the vendor answering with nothing.
+ *
+ * ⚠️ Read defensively: only the live fetcher counts throttles, and a replayed
+ * run has no vendor to be throttled by.
+ */
+function throttleCountOf(fetcher: unknown): number | null {
+  const n = (fetcher as { throttleCount?: unknown })?.throttleCount;
+  return typeof n === "number" ? n : null;
+}
+
+function tally(
+  results: readonly Resolution[],
+  liveRequests: number,
+  throttled: number | null = null,
+): void {
   const byOutcome = results.reduce<Record<string, number>>((acc, r) => {
     acc[r.outcome] = (acc[r.outcome] ?? 0) + 1;
     return acc;
@@ -108,6 +123,16 @@ function tally(results: readonly Resolution[], liveRequests: number): void {
     console.log(`  ${outcome.padEnd(14)} ${count}`);
   }
   console.log(`failures:  ${failures}`);
+  // 🔴 **Broken out because it is the actionable half.** A run reporting
+  // `failures: 16` says something went wrong; one reporting `16 of them
+  // throttled` says the vendor refused and the backoff is the lever. A live
+  // 73-row run had 16 failures and every one was this.
+  if (throttled !== null && throttled > 0) {
+    console.log(
+      `  of which throttled: ${throttled} — the vendor answered with an ` +
+        `empty body and would not yield within the backoff`,
+    );
+  }
   console.log(`requests:  ${liveRequests}`);
 }
 
@@ -156,7 +181,7 @@ async function runFromQueue(): Promise<void> {
     },
   });
 
-  tally(result.resolutions, result.liveRequests);
+  tally(result.resolutions, result.liveRequests, throttleCountOf(fetcher));
 }
 
 /** A local or manual run: no queue, no gateway, output to the console. */
@@ -184,7 +209,7 @@ async function runFromFile(): Promise<void> {
     },
   });
 
-  tally(results, fetcher.liveRequestCount);
+  tally(results, fetcher.liveRequestCount, throttleCountOf(fetcher));
 }
 
 async function main(): Promise<void> {
