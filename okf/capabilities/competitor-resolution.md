@@ -66,6 +66,61 @@ Module map and the traps: [service.md](/service.md).
 
 **Checked by:** resolution-no-evidence-is-not-found, resolution-floor-alone-is-insufficient
 
+#### Scenario: An item nobody searched for is not reported as assortment information
+
+- GIVEN an item for which no searchable identity can be derived, at a retailer that does not accept a barcode search
+- WHEN the item is resolved
+- THEN the resolution carries a `failure` saying no search was attempted
+- AND the gateway therefore records the item as `error` rather than `not_carried`
+
+**Checked by:** resolution-never-searched-is-a-failure
+
+#### Scenario: A source that could not be fetched is distinguished from an item with nothing to search for
+
+- GIVEN identity cannot be established because the source could not be fetched at all
+- WHEN the item is resolved
+- THEN the `failure` says the source could not be fetched
+- AND it does not read as an item whose list entry needs fixing
+
+**Checked by:** resolution-unfetchable-identity-says-so
+
+#### Scenario: An item that WAS searched and not found is still a clean miss
+
+- GIVEN an item with a derivable identity, searched at the retailer, with nothing matching
+- WHEN the item is resolved
+- THEN the outcome is `not-found` with no `failure`
+- AND the gateway records `not_carried`, which is real assortment information
+
+**Checked by:** resolution-a-searched-miss-stays-a-miss
+
+## An item nobody looked up is not a fact about the retailer
+
+🔴 **This was wrong until 2026-09-11, and the repo already stated the rule it
+broke.** When `establishIdentity` yields no brand, no part number and no phrase,
+`planQueries` returns `[]` and the pipeline returned a clean `not-found` with
+`failure: null`. The gateway maps that to item state `not_carried`, which its
+own constants define as *"the competitor **genuinely** does not stock the item,
+which is real assortment information"*.
+
+A live queue run filed **3 of 10 items** that way, each noted *"0 candidate(s)
+across 0 query attempt(s)"*. The run's own words admitted nobody looked while
+the state it filed said the retailer does not carry the item.
+
+🔑 **`runList` already refused exactly this on the throwing route**, with a
+comment saying so in as many words: *"never as a clean miss, which would report
+'this retailer does not carry it' for an item nobody managed to look up."* The
+defect was that rule holding on one of two routes.
+
+⚠️ **`tryFetch` swallowed `FetchFailed` into the same `null` as a page that
+parsed to nothing**, so a proxy outage during identity was indistinguishable
+from an item with nothing derivable — and reached the customer as assortment
+information. It now reports which of the two nothings it got, because one is
+ours to retry and one needs somebody to add a part number to the list.
+
+⚠️ **This changes what the customer is TOLD, not what gets bought.** The gateway
+re-attempts an item on `state <> 'approved'`, so `error` and `not_carried` are
+retried identically.
+
 #### Scenario: What the item is comes from the most authoritative source available
 
 - GIVEN a client whose own catalogue publishes a part number, and a barcode it can also be derived from

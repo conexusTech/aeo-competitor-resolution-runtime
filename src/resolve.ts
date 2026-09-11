@@ -124,13 +124,24 @@ export interface ResolveRequest {
   readonly clientSku: string;
 }
 
-/** Fetch a page, returning null when it could not be had. */
-async function tryFetch(fetcher: Fetcher, url: string): Promise<string | null> {
+/**
+ * Fetch a page.
+ *
+ * 🔴 **Returns WHICH of the two nothings it got**, because collapsing them is
+ * how a transient proxy failure reached a customer as assortment information. A
+ * page that could not be had and a page that parsed to nothing are the same
+ * `null` body, and the caller has to tell them apart: the first means nobody
+ * looked, the second means we looked and there was nothing there.
+ */
+async function tryFetch(
+  fetcher: Fetcher,
+  url: string,
+): Promise<{ body: string | null; fetchFailed: boolean }> {
   try {
     const result = await fetcher.fetch(url);
-    return result.body;
+    return { body: result.body, fetchFailed: false };
   } catch (error) {
-    if (error instanceof FetchFailed) return null;
+    if (error instanceof FetchFailed) return { body: null, fetchFailed: true };
     throw error; // a corpus gap is a defect, not a network problem
   }
 }
@@ -151,6 +162,14 @@ async function establishIdentity(
   identity: ProductIdentity | null;
   partNumbers: string[];
   phrase: string | null;
+  /**
+   * 🔴 True when a source this step consulted could not be FETCHED, as
+   * distinct from being fetched and yielding nothing useful. It decides whether
+   * an item with no searchable identity is reported as a failure or as a fact
+   * about the item — and before it existed, a proxy outage during identity was
+   * filed as “the retailer does not carry this”.
+   */
+  fetchFailed: boolean;
 }> {
   const found = new Map<
     IdentityProvenance,
@@ -158,6 +177,7 @@ async function establishIdentity(
   >();
   const partNumbers: string[] = [];
   let phrase: string | null = null;
+  let fetchFailed = false;
 
   // Free, no request.
   const fromBarcode = identityFromBarcode(request);
@@ -169,7 +189,9 @@ async function establishIdentity(
       "{sku}",
       encodeURIComponent(request.clientSku),
     );
-    const body = await tryFetch(fetcher, url);
+    const attempt = await tryFetch(fetcher, url);
+    if (attempt.fetchFailed) fetchFailed = true;
+    const body = attempt.body;
     if (body !== null) {
       const fromCatalogue = identityFromStructuredData({
         ...request,
@@ -191,7 +213,9 @@ async function establishIdentity(
       "{query}",
       encodeURIComponent(request.barcode),
     );
-    const body = await tryFetch(fetcher, url);
+    const attempt = await tryFetch(fetcher, url);
+    if (attempt.fetchFailed) fetchFailed = true;
+    const body = attempt.body;
     if (body !== null) {
       const inferred = identityFromSearchResults({
         ...request,
@@ -209,7 +233,7 @@ async function establishIdentity(
     }
   }
 
-  return { identity: mergeIdentities(found), partNumbers, phrase };
+  return { identity: mergeIdentities(found), partNumbers, phrase, fetchFailed };
 }
 
 export async function resolveItem(
@@ -240,11 +264,8 @@ export async function resolveItem(
     failure: null,
   };
 
-  const { identity, partNumbers, phrase } = await establishIdentity(
-    request,
-    fetcher,
-    options,
-  );
+  const { identity, partNumbers, phrase, fetchFailed } =
+    await establishIdentity(request, fetcher, options);
 
   const queries = planQueries(
     {
@@ -257,12 +278,41 @@ export async function resolveItem(
   );
 
   if (queries.length === 0) {
+    // 🔴 **This returned a clean `not-found` with no `failure`, and the
+    // gateway maps that to item state `not_carried` — which its own constants
+    // define as "the competitor GENUINELY does not stock the item, which is
+    // real assortment information".** Nothing had been searched. A live queue
+    // run on 2026-09-11 filed 3 of 10 items that way, each noted "0
+    // candidate(s) across 0 query attempt(s)": the run's own words admitted
+    // nobody looked while the state it filed said the retailer does not carry
+    // it.
+    //
+    // 🔑 **`runList` already guards the identical hazard on the throwing
+    // route**, and says so in as many words: "never as a clean miss, which
+    // would report 'this retailer does not carry it' for an item nobody
+    // managed to look up." This is that case on the route that does not throw.
+    //
+    // ⚠️ **Two different reasons land here and the note distinguishes them**,
+    // because one is ours and one is the item's. A fetch that failed is a
+    // transient proxy or network problem and the run should be retried; an
+    // item with nothing derivable will never resolve however often it is
+    // retried, and somebody has to add a part number to the list.
+    //
+    // ⚠️ This changes what the customer is TOLD, not what gets bought: the
+    // gateway re-attempts on `state <> 'approved'`, so `error` and
+    // `not_carried` are retried identically.
     return {
       ...base,
       outcome: "not-found",
       identity,
       queriesTried: [],
       requests: fetcher.liveRequestCount,
+      failure: fetchFailed
+        ? `could not establish what this item is: a source needed to identify ` +
+          `it could not be fetched, so no search was attempted`
+        : `no searchable identity could be derived for this item and the ` +
+          `retailer does not accept a barcode search, so no search was ` +
+          `attempted`,
     };
   }
 
@@ -278,7 +328,7 @@ export async function resolveItem(
   for (const query of queries) {
     if (!canQuery(adapter.querySupport, query)) continue;
     tried.push(query);
-    const body = await tryFetch(fetcher, adapter.buildSearchUrl(query));
+    const { body } = await tryFetch(fetcher, adapter.buildSearchUrl(query));
     if (body === null) continue;
 
     const candidates = adapter.parseSearchResults(body);
@@ -330,7 +380,7 @@ export async function resolveItem(
   const probeOutcomes = new Map<string, ProbeOutcome>();
 
   for (const entry of ranked.slice(0, options.maxProbes)) {
-    const body = await tryFetch(fetcher, entry.candidate.url);
+    const { body } = await tryFetch(fetcher, entry.candidate.url);
     probes++;
     if (body === null) continue;
 

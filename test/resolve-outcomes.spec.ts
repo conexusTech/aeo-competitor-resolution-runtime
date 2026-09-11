@@ -255,6 +255,101 @@ describe("resolveItem outcomes", () => {
   });
 });
 
+/**
+ * An item nobody managed to look up.
+ *
+ * 🔴 **Every check here fails against the code as it shipped.** When identity
+ * yields nothing searchable, `planQueries` returns `[]` and `resolveItem`
+ * returned a clean `not-found` with `failure: null` — which the gateway maps to
+ * item state `not_carried`, defined in its own constants as "the competitor
+ * GENUINELY does not stock the item, which is real assortment information".
+ *
+ * A live queue run on 2026-09-11 filed 3 of 10 items that way, each noted "0
+ * candidate(s) across 0 query attempt(s)". The run's own words admitted nobody
+ * looked while the state it filed told the customer the retailer does not carry
+ * the item.
+ *
+ * 🔑 `runList` already refused this on the THROWING route, with a comment
+ * saying so: "never as a clean miss, which would report 'this retailer does not
+ * carry it' for an item nobody managed to look up." These are that rule applied
+ * to the route that does not throw.
+ */
+describe("an item that was never searched", () => {
+  /** A retailer that cannot be asked for a barcode, so identity is required. */
+  const needsIdentity = (): RetailerAdapter => ({
+    ...fakeAdapter({}, {}),
+    querySupport: { maxNumericQueryDigits: 9, barcodeIsSearchable: false },
+  });
+
+  it("reports a failure rather than a clean miss when nothing is derivable", async () => {
+    // The search-engine lookup answers, and what it answers yields no part
+    // number, no brand and no phrase. So there is genuinely nothing to ask the
+    // retailer for — a fact about the ITEM, but still not a fact about the
+    // retailer's assortment.
+    const resolution = await resolveItem(
+      { barcode: "099999999999", clientSku: "NO-ID" },
+      needsIdentity(),
+      new MapFetcher({
+        ["https://www.google.com/search?q=%22099999999999%22"]:
+          "<p>nothing useful here at all</p>",
+      }),
+      DEFAULT_OPTIONS,
+    );
+
+    expect(resolution.queriesTried).toEqual([]);
+    // 🔑 The gateway writes `error` when a resolution carries a failure and
+    // `not_carried` when it does not. This field is the whole difference
+    // between "we could not look" and "they do not stock it".
+    expect(resolution.failure).not.toBeNull();
+    expect(resolution.failure).toContain("no search was attempted");
+    expect(resolution.failure).toContain("no searchable identity");
+  });
+
+  it("says so DIFFERENTLY when a source could not be fetched", async () => {
+    // 🔴 The more serious case: `tryFetch` swallows `FetchFailed`, so a proxy
+    // outage during identity looked exactly like an item with nothing
+    // derivable — and reached the customer as assortment information. The two
+    // need different words because one is ours to retry and one is not.
+    const resolution = await resolveItem(
+      { barcode: "099999999999", clientSku: "NO-ID" },
+      needsIdentity(),
+      // An empty map: every url is a `FetchFailed`.
+      new MapFetcher({}),
+      DEFAULT_OPTIONS,
+    );
+
+    expect(resolution.failure).not.toBeNull();
+    expect(resolution.failure).toContain("could not be fetched");
+    // Not the other reason. A retryable outage must not read as a list the
+    // customer has to go and fix.
+    expect(resolution.failure).not.toContain("no searchable identity");
+  });
+
+  it("still reports a searched-and-found-nothing item as a clean miss", async () => {
+    // ⚠️ The control, and the point of the change. `not_carried` is REAL
+    // assortment information and this must not stop producing it — a fix that
+    // turned every miss into an error would destroy the signal the product
+    // sells.
+    const adapter = fakeAdapter({ EMPTY: [] }, {});
+    const resolution = await resolveItem(
+      { barcode: "812348010548", clientSku: "531814" },
+      adapter,
+      new MapFetcher({
+        [SERP]: serpBody,
+        ["https://retailer.test/s?q=Kingwin%20CF-08LB"]: "EMPTY",
+        ["https://retailer.test/s?q=CF-08LB"]: "EMPTY",
+      }),
+      DEFAULT_OPTIONS,
+    );
+
+    expect(resolution.outcome).toBe("not-found");
+    expect(resolution.queriesTried.length).toBeGreaterThan(0);
+    // No failure: the run looked, and the retailer does not carry it. THIS is
+    // what `not_carried` is for.
+    expect(resolution.failure).toBeNull();
+  });
+});
+
 describe("ranking", () => {
   it("scores an exact part-number match above a text mention", () => {
     const base = {

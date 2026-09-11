@@ -218,6 +218,67 @@ downgraded to "probably this" because some later candidate disagreed.
 
 ---
 
+### Check: resolution-never-searched-is-a-failure
+
+**Requirement:** An item nobody searched for is not reported as assortment information
+**Surface:** `resolveItem`
+**Automated:** test/resolve-outcomes.spec.ts
+
+**Do**
+
+Resolve an item at a retailer that does not accept a barcode search, where the
+search-engine lookup answers with a page yielding no part number, brand or
+phrase.
+
+**Expect**
+
+`queriesTried` is empty and `failure` is set, naming that no search was
+attempted and that no searchable identity could be derived.
+
+🔑 **`failure` is the whole difference** between the gateway writing `error`
+and writing `not_carried`. The mutation that restores `failure: null` — exactly
+what shipped — turns this red.
+
+### Check: resolution-unfetchable-identity-says-so
+
+**Requirement:** A source that could not be fetched is distinguished from an item with nothing to search for
+**Surface:** `tryFetch`, `establishIdentity`
+**Automated:** test/resolve-outcomes.spec.ts
+
+**Do**
+
+Resolve the same item against a fetcher that fails every url.
+
+**Expect**
+
+`failure` names that a source could not be fetched, and does **not** say no
+searchable identity could be derived.
+
+⚠️ **A retryable outage must not read as a list the customer has to go and
+fix.** Two mutations turn this red: collapsing both cases into one reason, and
+`tryFetch` no longer reporting that it failed.
+
+### Check: resolution-a-searched-miss-stays-a-miss
+
+**Requirement:** An item that WAS searched and not found is still a clean miss
+**Surface:** `resolveItem`
+**Automated:** test/resolve-outcomes.spec.ts
+
+**Do**
+
+Resolve an item whose identity yields a part number, against a retailer whose
+searches all come back empty.
+
+**Expect**
+
+The outcome is `not-found`, `queriesTried` is non-empty, and `failure` is
+`null`.
+
+⚠️ **This is the control, and it is the point.** `not_carried` is real
+assortment information and the product sells it. A fix that turned every miss
+into an error would destroy that signal; the mutation widening the guard to
+every item turns six checks red.
+
 ### Check: resolution-no-evidence-is-not-found
 
 **Requirement:** A candidate with no part-number evidence is reported as nothing
