@@ -121,11 +121,24 @@ export interface CaptureRecord {
 /** Bytes in, artefact out. Pure, so the hash is testable without a network. */
 export function artifactFrom(args: {
   readonly sourceUrl: string;
-  readonly body: string;
+  /**
+   * The artefact. A `string` is decoded as UTF-8 — a page's markup; a
+   * `Uint8Array` is taken verbatim — a PNG.
+   *
+   * 🔴 **The distinction is load-bearing, not a convenience.** Reading image
+   * bytes through `Buffer.from(str, "utf8")` replaces every byte outside the
+   * ASCII range with U+FFFD, so the stored artefact would be a corrupt PNG
+   * whose sha256 the gateway verifies happily — evidence that proves nothing,
+   * with a valid-looking hash on it.
+   */
+  readonly body: string | Uint8Array;
   readonly format?: CaptureFormat;
   readonly now?: () => Date;
 }): CaptureArtifact {
-  const bytes = Buffer.from(args.body, "utf8");
+  const bytes =
+    typeof args.body === "string"
+      ? Buffer.from(args.body, "utf8")
+      : Buffer.from(args.body);
   return {
     format: args.format ?? "page_html",
     sourceUrl: args.sourceUrl,
@@ -172,17 +185,6 @@ export function parseCapturePolicy(raw: unknown, runId: string): CapturePolicy {
         `${JSON.stringify(format)}, which this runtime does not know`,
     );
   }
-  if (format === "png") {
-    // 🔴 Refused loudly rather than silently downgraded to html. A gateway
-    // asking for an image would otherwise receive HTML labelled as an image,
-    // and the reviewer screen would show a broken picture with no explanation.
-    throw new Error(
-      `run ${runId} asks for a 'png' capture and this runtime produces none — ` +
-        `it reads pages through a proxy and holds no browser. See the roadmap ` +
-        `row resolution-runtime-captures-images`,
-    );
-  }
-
   return { enabled, budget, format };
 }
 

@@ -25,6 +25,20 @@ export interface Fetcher {
    */
   fetch(url: string): Promise<FetchResult>;
 
+  /**
+   * A PNG of the page, rendered by the proxy.
+   *
+   * 🔑 **Optional, and that is the honest shape.** A live fetcher can ask the
+   * proxy to render; a REPLAY fetcher serves committed bytes and has no proxy
+   * to ask, so it has no picture to give. Declaring this required would force
+   * the replay path to invent one — and a fabricated screenshot is the exact
+   * failure the Screenshots screen already had, where a drawn mock sat beside
+   * real stored bytes looking like evidence.
+   *
+   * ⚠️ A caller that needs one must handle its absence rather than assume it.
+   */
+  fetchScreenshot?(url: string): Promise<Uint8Array>;
+
   /** Requests actually sent, for the cost meter. Never includes cache hits. */
   readonly liveRequestCount: number;
 }

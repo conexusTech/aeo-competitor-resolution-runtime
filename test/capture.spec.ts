@@ -249,14 +249,20 @@ describe("reading the capture policy off a job", () => {
   });
 
   /**
-   * 🔴 Refused loudly rather than silently downgraded. A gateway asking for an
-   * image would otherwise receive HTML labelled as an image, and the reviewer
-   * screen would show a broken picture with no explanation.
+   * 🔴 **This check asserted the OPPOSITE until 2026-09-13, and was right to
+   * go red.** It read "refuses a png request, because no code path produces
+   * one", pinning a refusal whose stated reason was that the runtime "holds no
+   * browser". It does not need one: the proxy renders the page on its own
+   * side for one extra field on the request already being made. Measured on a
+   * real Amazon page — 2,994,302 bytes, 1529 × 10,621.
+   *
+   * Kept as an ACCEPTANCE rather than deleted, so the reversal is visible to
+   * whoever reads this file next.
    */
-  it("refuses a png request, because no code path produces one", () => {
-    expect(() =>
+  it("accepts a png request, which the proxy renders", () => {
+    expect(
       parseCapturePolicy({ enabled: true, budget: 1, format: "png" }, "r"),
-    ).toThrow(/produces none/);
+    ).toMatchObject({ enabled: true, budget: 1, format: "png" });
   });
 
   it("refuses a format it does not know", () => {
@@ -591,6 +597,90 @@ describe("capturing a resolution's page", () => {
       skipped_unselected: 0,
     });
     expect(capturer.spent).toBe(1);
+  });
+  /**
+   * A `png` policy takes a picture instead of keeping the markup.
+   *
+   * 🔴 **This branch was a `throw` until 2026-09-13**, on the reasoning that the
+   * runtime holds no browser. It does not need one: the proxy renders the page
+   * on its own side for one extra field on the request already being made. The
+   * Screenshots screen had been drawing a MOCK of a page beside real stored
+   * bytes, which is worse than showing nothing.
+   */
+  describe("a png capture", () => {
+    const PNG_BYTES = Uint8Array.from([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 9, 9, 9, 9,
+    ]);
+
+    /** A fetcher that can also be asked for a picture. */
+    const shotFetcher = () => {
+      const shots: string[] = [];
+      const pages: string[] = [];
+      return {
+        shots,
+        pages,
+        // The builder's type expects a `calls` array. A png run makes no
+        // page reads, so it stays empty — which the CONTROL below asserts.
+        calls: pages,
+        liveRequestCount: 0,
+        fetch: (url: string) => {
+          pages.push(url);
+          return Promise.resolve({ url, body: PAGE, cached: true });
+        },
+        fetchScreenshot: (url: string) => {
+          shots.push(url);
+          return Promise.resolve(PNG_BYTES);
+        },
+      };
+    };
+
+    it("asks for a screenshot and never re-reads the markup", async () => {
+      const fetcher = shotFetcher();
+      const { capturer, upload } = await build({
+        policy: { ...ENABLED, format: "png" },
+        fetcher,
+      });
+      await capturer.offer(resolution());
+
+      expect(fetcher.shots).toHaveLength(1);
+      // 🔴 The page read would be a second paid request for bytes we discard.
+      expect(fetcher.pages).toHaveLength(0);
+      expect(upload.sent).toHaveLength(1);
+      expect(upload.sent[0]?.artifact.format).toBe("png");
+    });
+
+    /**
+     * 🔴 The check that matters most. Decoding image bytes as UTF-8 replaces
+     * every byte outside ASCII with U+FFFD, so the artefact would be a CORRUPT
+     * png carrying a sha256 the gateway verifies happily — evidence that proves
+     * nothing, with a valid-looking hash on it.
+     */
+    it("stores the bytes verbatim, not through a utf-8 decode", async () => {
+      const { capturer, upload } = await build({
+        policy: { ...ENABLED, format: "png" },
+        fetcher: shotFetcher(),
+      });
+      await capturer.offer(resolution());
+
+      const stored = Buffer.from(
+        upload.sent[0]!.artifact.contentBase64,
+        "base64",
+      );
+      expect(Array.from(stored)).toEqual(Array.from(PNG_BYTES));
+      expect(upload.sent[0]?.artifact.byteSize).toBe(PNG_BYTES.length);
+    });
+
+    it("still keeps the markup when the policy asks for html — the CONTROL", async () => {
+      // Without this, a capturer hard-wired to screenshots would pass both
+      // checks above while silently ending html capture for everyone.
+      const fetcher = shotFetcher();
+      const { capturer, upload } = await build({ policy: ENABLED, fetcher });
+      await capturer.offer(resolution());
+
+      expect(fetcher.shots).toHaveLength(0);
+      expect(fetcher.pages).toHaveLength(1);
+      expect(upload.sent[0]?.artifact.format).toBe("page_html");
+    });
   });
 });
 

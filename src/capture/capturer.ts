@@ -209,11 +209,28 @@ export class Capturer {
       });
     }
 
-    let body: string;
+    let body: string | Uint8Array;
     try {
       // A cache hit in every ordinary case — the page was fetched moments ago.
-      const fetched = await this.deps.fetcher.fetch(url);
-      body = fetched.body;
+      if (this.deps.policy.format === "png") {
+        // 🔑 **A picture, rendered by the proxy — not by us.** One extra field
+        // on the request this runtime already makes; no browser here and no
+        // second vendor. Measured on a real product page: 2,994,302 bytes.
+        //
+        // ⚠️ **The markup is NOT also fetched.** It would be a second paid
+        // request for bytes this branch discards.
+        const shot = await this.deps.fetcher.fetchScreenshot?.(url);
+        if (shot === undefined) {
+          throw new Error(
+            "the capture policy asks for a png and this fetcher cannot take " +
+              "one — a replayed run has no proxy to render it",
+          );
+        }
+        body = shot;
+      } else {
+        const fetched = await this.deps.fetcher.fetch(url);
+        body = fetched.body;
+      }
     } catch (error) {
       // The page cannot be re-read. The budget is handed back: nothing was
       // stored, so nothing should be charged.

@@ -66,6 +66,14 @@ export const LIVE_DEFAULTS = {
   throttleDelayMs: 5000,
 } as const;
 
+/** PNG signature. Four bytes, and the only honest test of an image body. */
+const isPng = (bytes: Uint8Array): boolean =>
+  bytes.length > 8 &&
+  bytes[0] === 0x89 &&
+  bytes[1] === 0x50 &&
+  bytes[2] === 0x4e &&
+  bytes[3] === 0x47;
+
 const sleep = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -83,6 +91,66 @@ export class LiveFetcher implements Fetcher {
   throttleCount = 0;
 
   constructor(private readonly options: LiveFetcherOptions) {}
+
+  /**
+   * A PNG of the page, rendered by the proxy.
+   *
+   * 🔴 **This exists because the refusal it replaces reasoned from a premise
+   * that does not hold.** `capture/types.ts` declined a `png` capture on the
+   * grounds that this runtime "holds no browser", and that a headless browser
+   * inside a k8s Job "makes exactly the request the proxy exists to avoid".
+   * The second half is true. The conclusion is not: the proxy renders it on
+   * ITS side, so there is no browser here and no second vendor — the same
+   * endpoint, the same zone, the same credential, one extra field.
+   *
+   * Measured 2026-09-13 on a real Amazon product page: 2,994,302 bytes,
+   * 1529 × 10,621, the whole page.
+   *
+   * ⚠️ **Not cached, unlike `fetch`.** The page cache exists so a re-read
+   * within a run is free; a screenshot is taken once per capture by a policy
+   * that already meters it, and caching megabytes of PNG on a Job's ephemeral
+   * disk buys nothing.
+   *
+   * 🔴 **The magic bytes are the check, not the length.** The vendor answers
+   * a throttle with a 200 and a short JSON error, which is why the page path
+   * tests body length — but a TRUNCATED png is long, so length would accept a
+   * corrupt image. Four bytes settle it.
+   */
+  async fetchScreenshot(url: string): Promise<Uint8Array> {
+    let lastError: unknown = null;
+    for (let attempt = 0; attempt < this.options.attempts; attempt++) {
+      if (attempt > 0) await sleep(this.options.throttleDelayMs * attempt);
+      try {
+        const response = await globalThis.fetch(
+          "https://api.brightdata.com/request",
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${this.options.apiKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              zone: this.options.zone,
+              url,
+              format: "raw",
+              data_format: "screenshot",
+            }),
+          },
+        );
+        const bytes = new Uint8Array(await response.arrayBuffer());
+        if (response.status >= 400 || !isPng(bytes)) {
+          this.failureCount++;
+          lastError = new FetchFailed(url);
+          continue;
+        }
+        this.liveRequestCount++;
+        return bytes;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+    throw lastError instanceof Error ? lastError : new FetchFailed(url);
+  }
 
   private cachePath(url: string): string {
     const key = createHash("sha256").update(url).digest("hex").slice(0, 32);
