@@ -523,3 +523,75 @@ describe("the retry pass does not recreate the throttle", () => {
     }
   });
 });
+
+/**
+ * A screenshot is a paid request, so the meter has to see it.
+ *
+ * 🔴 **Found in review, and it is the defect this module exists to prevent,
+ * reintroduced through the one path it did not cover.** `RequestMeter`
+ * implements `Fetcher`; `fetchScreenshot` was added to that interface as
+ * OPTIONAL, so the meter kept compiling without forwarding it. Two costs:
+ *
+ *  - `LiveFetcher.fetchScreenshot` increments the SHARED `liveRequestCount`
+ *    directly, so every screenshot is billed to the run and attributed to no
+ *    item — while `resolution-request-attribution` claims the per-item figures
+ *    sum to exactly what the fetcher bought.
+ *  - The capturer happens to be handed the raw fetcher today, so it works. The
+ *    natural next change — metering the screenshot, because it is a paid
+ *    request — would have SILENTLY DISABLED screenshots, because the capturer
+ *    refuses a fetcher that cannot take one.
+ */
+describe("the meter counts a screenshot", () => {
+  const PNG = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 1, 2, 3, 4, 5]);
+
+  const inner = (): Fetcher & { shots: string[] } => {
+    const shots: string[] = [];
+    return {
+      shots,
+      liveRequestCount: 0,
+      fetch: (url: string) =>
+        Promise.resolve({ url, body: "<html></html>", cached: false }),
+      fetchScreenshot: (url: string) => {
+        shots.push(url);
+        return Promise.resolve(PNG);
+      },
+    };
+  };
+
+  it("forwards the call, so a metered capturer can still take one", async () => {
+    const source = inner();
+    const meter = new RequestMeter(source);
+    const bytes = await meter.fetchScreenshot?.("https://x.test/p");
+    expect(source.shots).toEqual(["https://x.test/p"]);
+    expect(bytes).toEqual(PNG);
+  });
+
+  it("counts it against the item that asked for it", async () => {
+    const meter = new RequestMeter(inner());
+    await meter.fetchScreenshot?.("https://x.test/p");
+    expect(meter.liveRequestCount).toBe(1);
+  });
+
+  it("still counts an ordinary page read — the CONTROL", async () => {
+    // Without this, a meter that counted only screenshots would satisfy the
+    // check above while under-reporting every page.
+    const meter = new RequestMeter(inner());
+    await meter.fetch("https://x.test/page");
+    await meter.fetchScreenshot?.("https://x.test/p");
+    expect(meter.liveRequestCount).toBe(2);
+  });
+
+  it("has the capability when its inner fetcher does, and not otherwise", () => {
+    // 🔑 A replay fetcher has no proxy to ask. A meter over one must not
+    // ADVERTISE a screenshot it cannot take — the capturer branches on
+    // presence, and a method that always exists and always throws would turn a
+    // clean refusal into an item-by-item failure.
+    const replayish: Fetcher = {
+      liveRequestCount: 0,
+      fetch: (url: string) =>
+        Promise.resolve({ url, body: "<html></html>", cached: true }),
+    };
+    expect(new RequestMeter(replayish).fetchScreenshot).toBeUndefined();
+    expect(new RequestMeter(inner()).fetchScreenshot).toBeDefined();
+  });
+});

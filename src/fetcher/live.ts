@@ -139,7 +139,10 @@ export class LiveFetcher implements Fetcher {
         );
         const bytes = new Uint8Array(await response.arrayBuffer());
         if (response.status >= 400 || !isPng(bytes)) {
-          this.failureCount++;
+          // ⚠️ **Not counted here.** `fetch` counts one failure per URL, on
+          // the terminal attempt — counting each retry would report failures
+          // for a screenshot that ultimately succeeded, and the run's tally is
+          // read by a person deciding whether the vendor is throttling us.
           lastError = new FetchFailed(url);
           continue;
         }
@@ -149,6 +152,8 @@ export class LiveFetcher implements Fetcher {
         lastError = error;
       }
     }
+    // One failure per url, on the way out — the convention `fetch` set.
+    this.failureCount++;
     throw lastError instanceof Error ? lastError : new FetchFailed(url);
   }
 

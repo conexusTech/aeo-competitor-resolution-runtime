@@ -227,7 +227,59 @@ Each refused by name. ⚠️ Tolerant of absence and strict about presence: a
 malformed block is two builds disagreeing about a budget, and reading it as "no
 captures" would hide a real mismatch behind a plausible default.
 
-### Check: capture-refuses-an-image-request
+### Check: capture-takes-a-screenshot-when-the-policy-asks
+
+**Requirement:** A run asked for a picture gets one
+**Surface:** `Capturer.offer`
+**Automated:** `test/capture.spec.ts`
+
+**Do**
+
+Give the capturer a `png` policy and a fetcher that can render.
+
+**Expect**
+
+One screenshot taken, the markup NOT re-read, and the artefact's format `png`.
+🔴 This check asserted the OPPOSITE until 2026-09-13 — "Ask for `format: png`
+… Expect: both refused, the first naming the reason no image is produced." The
+named test was inverted by the change that shipped screenshots and this file was
+not, so the QA column would have reported green on a check specifying the
+opposite of shipped behaviour. Exactly the backwards-traceability failure the
+methodology names.
+
+### Check: capture-stores-image-bytes-verbatim
+
+**Requirement:** A run asked for a picture gets one
+**Surface:** `artifactFrom`
+**Automated:** `test/capture.spec.ts`
+
+**Do**
+
+Capture with a `png` policy and decode the stored base64.
+
+**Expect**
+
+Byte-identical to what the proxy returned. 🔴 Decoding image bytes as UTF-8
+replaces everything outside ASCII with U+FFFD, producing a corrupt png carrying
+a sha256 the gateway verifies happily — evidence that proves nothing, with a
+valid-looking hash on it.
+
+### Check: capture-refuses-a-200-that-is-not-a-png
+
+**Requirement:** A body that is not an image is refused rather than stored
+**Surface:** `LiveFetcher.fetchScreenshot`
+**Automated:** `test/screenshot-capture.spec.ts`
+
+**Do**
+
+Answer the screenshot request with a 200 carrying a short JSON error.
+
+**Expect**
+
+Refused. ⚠️ By magic number, not by length — a truncated png is long, so a
+length test would accept a corrupt image.
+
+### Check: capture-refuses-an-unknown-format
 
 **Requirement:** Captures are off unless the job asks for them
 **Surface:** `parseCapturePolicy`
@@ -235,11 +287,11 @@ captures" would hide a real mismatch behind a plausible default.
 
 **Do**
 
-Ask for `format: png`, and separately for an unknown format.
+Ask for an unknown format.
 
 **Expect**
 
-Both refused, the first naming the reason no image is produced.
+Refused by name.
 
 🔴 **Refused loudly rather than silently downgraded to HTML.** A gateway asking
 for an image would otherwise receive bytes labelled as one, and the reviewer

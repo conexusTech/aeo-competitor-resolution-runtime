@@ -11,29 +11,52 @@ the gateway, which stores it and answers with a key. The run keeps to a budget
 it was handed with the job, records what happened to every offer, and never
 lets a capture failure cost it a finding.
 
-## 🔴 The artefact is the page's bytes, not a picture of it
+## 🔴 The artefact is a picture, and it was the page's bytes until 2026-09-13
 
-This runtime has **no browser and cannot usefully have one**. The reason it
-reaches retailers through a proxy is that a plain request is refused — so a
-headless browser inside a Kubernetes Job would make exactly the request the
-proxy exists to avoid, and fail on precisely the sites this runtime is for.
-Routing a browser through a proxy is a different vendor product, with its own
-credential and its own price.
+This runtime still has **no browser**, and that is no longer the same as having
+no screenshot. The reason it reaches retailers through a proxy is that a plain
+request is refused — so a headless browser inside a Kubernetes Job would make
+exactly the request the proxy exists to avoid. That argument is sound and it
+was carried one step too far: **the proxy renders the page on its own side.**
+`api.brightdata.com/request` takes `data_format: "screenshot"` on the same
+endpoint, the same zone and the same credential this runtime already uses.
 
-So the two artefacts are different things rather than better and worse:
+Measured against a real Amazon product page: HTTP 200, **2,994,302 bytes**,
+magic `89 50 4E 47`, **1529 × 10,621** — the whole page, gallery, price and
+reviews. Nobody had asked the vendor.
+
+So the price of an image was half what this capability claimed:
 
 | | the page's bytes | an image |
 |---|---|---|
 | proves what the parse read | **exactly, byte for byte** | approximately |
 | settles "your matcher is wrong" | **yes** — it can be re-parsed | no |
 | shows a person a price they recognise | no | **yes** |
-| costs | **nothing, already fetched** | a second request and a new vendor |
+| costs | nothing, already fetched | **one request, no new vendor** |
 
-⚠️ **`png` is in the format vocabulary and no code path produces one.** A job
-asking for it is **refused loudly** rather than served HTML labelled as an
-image, because a reviewer screen showing a broken picture with no explanation is
-worse than a screen saying captures are unavailable. Delivering a real image is
-a spend decision, priced as its own change.
+⚠️ **One artefact is kept per item, so choosing the picture gives up the
+byte-for-byte record.** That is a real trade and it is stated rather than
+discovered: a png cannot be re-parsed to settle a matcher dispute. Capturing
+both is a different change with a different price — two requests and two quota
+slots per item.
+
+#### Scenario: A run asked for a picture gets one
+- GIVEN a capture policy whose format is `png`
+- WHEN the run captures a selected item's page
+- THEN the artefact is a PNG the proxy rendered
+- AND the markup is not also fetched, which would be a second paid request for
+  bytes this path discards
+
+**Checked by:** capture-takes-a-screenshot-when-the-policy-asks
+**Checked by:** capture-stores-image-bytes-verbatim
+
+#### Scenario: A body that is not an image is refused rather than stored
+- GIVEN the vendor answers with a 200 carrying a short JSON error
+- WHEN the run asks for a screenshot
+- THEN the bytes are refused by their magic number, not by their length
+- AND nothing is stored
+
+**Checked by:** capture-refuses-a-200-that-is-not-a-png
 
 ## The bytes are free, and that decides the shape
 
@@ -182,10 +205,16 @@ raise a budget that was never the reason.
 
 ## What this capability does NOT claim
 
-🔴 **It produces no image, so nothing here serves a thumbnail.** The gallery
-field for one exists in the portal's contract and will be empty for every
-capture this runtime makes. Named here so a reader of the reviewer screen knows
-why, rather than filing it as a bug.
+🔑 **It produces an image, and the sentence here said the opposite until
+2026-09-13.** This block read "It produces no image, so nothing here serves a
+thumbnail", and the portal's gallery field was empty for every capture as a
+result. The reasoning behind it — no browser — was true and the conclusion was
+not, because the proxy renders.
+
+⚠️ **It still produces no image under REPLAY.** A replayed run serves committed
+bytes and has no proxy to ask, so a `png` policy has nothing to take a picture
+with. The fetcher advertises the capability only when it has one, and the
+capturer refuses by name rather than storing markup labelled as an image.
 
 ⚠️ **The retailer registry's `screenshots` capability is `true` for the launch
 retailer and describes an intention nobody has delivered.** It is the gateway's

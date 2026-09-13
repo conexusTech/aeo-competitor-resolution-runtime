@@ -33,13 +33,47 @@ import type { Fetcher, FetchResult } from "./types.js";
 export class RequestMeter implements Fetcher {
   private spent = 0;
 
-  constructor(private readonly inner: Fetcher) {}
+  constructor(private readonly inner: Fetcher) {
+    // Assigned in the constructor rather than as a field initialiser: the
+    // property has to be ABSENT, not undefined-valued, when the inner fetcher
+    // cannot take a screenshot — the capturer branches on presence.
+    const take = inner.fetchScreenshot?.bind(inner);
+    if (take !== undefined) {
+      this.fetchScreenshot = async (url: string): Promise<Uint8Array> => {
+        const bytes = await take(url);
+        this.spent++;
+        return bytes;
+      };
+    }
+  }
 
   async fetch(url: string): Promise<FetchResult> {
     const result = await this.inner.fetch(url);
     if (!result.cached) this.spent++;
     return result;
   }
+
+  /**
+   * A screenshot, counted.
+   *
+   * 🔴 **This was missing, and its absence was the defect this class exists
+   * to prevent, through the one path it did not cover.** `fetchScreenshot` is
+   * OPTIONAL on `Fetcher`, so the meter kept compiling without forwarding it,
+   * and `LiveFetcher.fetchScreenshot` increments the SHARED counter directly —
+   * every screenshot billed to the run and attributed to no item, while this
+   * module's own docblock claims the per-item figures sum to what the fetcher
+   * bought.
+   *
+   * 🔑 **Defined CONDITIONALLY, and that is deliberate.** A replay fetcher has
+   * no proxy to ask; a meter over one must not ADVERTISE a screenshot it
+   * cannot take, because the capturer branches on presence and a method that
+   * always exists and always throws turns a clean refusal into an
+   * item-by-item failure.
+   *
+   * ⚠️ **No cache clause, unlike `fetch`.** Screenshots are not cached — see
+   * `LiveFetcher.fetchScreenshot` — so every call is a purchase.
+   */
+  readonly fetchScreenshot?: (url: string) => Promise<Uint8Array>;
 
   /**
    * What was bought through this meter.
