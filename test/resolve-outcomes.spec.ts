@@ -40,6 +40,7 @@ const candidate = (over: Partial<ParsedCandidate> = {}): ParsedCandidate => ({
   inStock: true,
   isFirstParty: true,
   sellerName: null,
+  imageUrl: null,
   ...over,
 });
 
@@ -470,6 +471,7 @@ describe("ranking", () => {
       itemId: "OWN",
       isFirstParty: true,
       sellerName: null,
+      imageUrl: null,
     });
     const market = candidate({
       itemId: "MKT",

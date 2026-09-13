@@ -18,9 +18,7 @@
       "retailerBrand": "CyberPower",
       "retailerBarcode": "649532609635",
       "retailerSeller": null,
-      "queriesTried": [
-        "CyberPower CP1350PFCLCD"
-      ],
+      "queriesTried": ["CyberPower CP1350PFCLCD"],
       "candidatesSeen": 1,
       "probes": 1,
       "note": null
@@ -33,10 +31,7 @@
       "retailerBrand": "Thrustmaster",
       "retailerBarcode": "663296413697",
       "retailerSeller": null,
-      "queriesTried": [
-        "Control 41369",
-        "Thrustmaster T-Flight HOTAS"
-      ],
+      "queriesTried": ["Control 41369", "Thrustmaster T-Flight HOTAS"],
       "candidatesSeen": 16,
       "probes": 1,
       "note": null
@@ -102,10 +97,7 @@
       "retailerBrand": "Case Logic",
       "retailerBarcode": "085854213196",
       "retailerSeller": "NothingButSavings",
-      "queriesTried": [
-        "Case DCB-306",
-        "DCB-306"
-      ],
+      "queriesTried": ["Case DCB-306", "DCB-306"],
       "candidatesSeen": 1,
       "probes": 1,
       "note": null
@@ -118,11 +110,7 @@
       "retailerBrand": "ALLSOP",
       "retailerBarcode": "035286302050",
       "retailerSeller": "NothingButSavings",
-      "queriesTried": [
-        "Allsop 120240127-M",
-        "120240127-M",
-        "Allsop 30205"
-      ],
+      "queriesTried": ["Allsop 120240127-M", "120240127-M", "Allsop 30205"],
       "candidatesSeen": 2,
       "probes": 1,
       "note": null
@@ -172,9 +160,7 @@
       "retailerBrand": "TRENDnet",
       "retailerBarcode": "710931505184",
       "retailerSeller": "NothingButSavings",
-      "queriesTried": [
-        "TPE-TG44G"
-      ],
+      "queriesTried": ["TPE-TG44G"],
       "candidatesSeen": 9,
       "probes": 1,
       "note": null
@@ -187,9 +173,7 @@
       "retailerBrand": "Cooler Master",
       "retailerBarcode": null,
       "retailerSeller": "Computer Headquarters",
-      "queriesTried": [
-        "Cooler N200"
-      ],
+      "queriesTried": ["Cooler N200"],
       "candidatesSeen": 16,
       "probes": 8,
       "note": "no UPCCode match in 8 probed candidates — unconfirmed"
@@ -202,10 +186,7 @@
       "retailerBrand": null,
       "retailerBarcode": null,
       "retailerSeller": null,
-      "queriesTried": [
-        "Dot 04472",
-        "Dot Line SmartPhone Tripod Mount"
-      ],
+      "queriesTried": ["Dot 04472", "Dot Line SmartPhone Tripod Mount"],
       "candidatesSeen": 1,
       "probes": 1,
       "note": "no candidate with model-level evidence — treat as not carried / unresolved"
@@ -254,10 +235,7 @@
       "retailerBrand": "SanDisk",
       "retailerBarcode": null,
       "retailerSeller": "3C Expert",
-      "queriesTried": [
-        "SanDisk 64GB",
-        "64GB"
-      ],
+      "queriesTried": ["SanDisk 64GB", "64GB"],
       "candidatesSeen": 72,
       "probes": 8,
       "note": "no UPCCode match in 8 probed candidates — unconfirmed"
@@ -319,9 +297,7 @@
       "retailerBrand": "Buffalo Technology",
       "retailerBarcode": "747464127859",
       "retailerSeller": "BeachAudio",
-      "queriesTried": [
-        "Buffalo 1-BAY"
-      ],
+      "queriesTried": ["Buffalo 1-BAY"],
       "candidatesSeen": 36,
       "probes": 1,
       "note": null
@@ -334,9 +310,7 @@
       "retailerBrand": "Buffalo Technology",
       "retailerBarcode": "747464127873",
       "retailerSeller": null,
-      "queriesTried": [
-        "Buffalo LS210D0401"
-      ],
+      "queriesTried": ["Buffalo LS210D0401"],
       "candidatesSeen": 2,
       "probes": 1,
       "note": null
@@ -349,9 +323,7 @@
       "retailerBrand": "Buffalo Technology",
       "retailerBarcode": "747464128634",
       "retailerSeller": null,
-      "queriesTried": [
-        "Buffalo LS220D0402"
-      ],
+      "queriesTried": ["Buffalo LS220D0402"],
       "candidatesSeen": 2,
       "probes": 1,
       "note": null
@@ -377,9 +349,7 @@
       "retailerBrand": "Buffalo Technology",
       "retailerBarcode": "747464128658",
       "retailerSeller": null,
-      "queriesTried": [
-        "Buffalo LS220D0802"
-      ],
+      "queriesTried": ["Buffalo LS220D0802"],
       "candidatesSeen": 2,
       "probes": 1,
       "note": null
@@ -392,10 +362,7 @@
       "retailerBrand": "Koss",
       "retailerBarcode": "021299187203",
       "retailerSeller": "BeachAudio",
-      "queriesTried": [
-        "On-ear KEB6IK",
-        "KEB6IK"
-      ],
+      "queriesTried": ["On-ear KEB6IK", "KEB6IK"],
       "candidatesSeen": 1,
       "probes": 1,
       "note": null
@@ -408,9 +375,7 @@
       "retailerBrand": "Netgear Inc.",
       "retailerBarcode": "606449070156",
       "retailerSeller": null,
-      "queriesTried": [
-        "NETGEAR 8-PORT"
-      ],
+      "queriesTried": ["NETGEAR 8-PORT"],
       "candidatesSeen": 36,
       "probes": 1,
       "note": null
@@ -579,9 +544,7 @@
       "retailerBrand": "Netgear Inc.",
       "retailerBarcode": "606449106657",
       "retailerSeller": null,
-      "queriesTried": [
-        "NETGEAR AC1900"
-      ],
+      "queriesTried": ["NETGEAR AC1900"],
       "candidatesSeen": 26,
       "probes": 1,
       "note": null
@@ -625,10 +588,7 @@
       "retailerBrand": "SanDisk",
       "retailerBarcode": null,
       "retailerSeller": "BioStar",
-      "queriesTried": [
-        "Sandisk 128GB",
-        "128GB"
-      ],
+      "queriesTried": ["Sandisk 128GB", "128GB"],
       "candidatesSeen": 72,
       "probes": 8,
       "note": "no UPCCode match in 8 probed candidates — unconfirmed"
@@ -721,9 +681,7 @@
       "retailerBrand": "SanDisk",
       "retailerBarcode": "0619659075538",
       "retailerSeller": "Technology Galaxy",
-      "queriesTried": [
-        "Sandisk 64GB"
-      ],
+      "queriesTried": ["Sandisk 64GB"],
       "candidatesSeen": 36,
       "probes": 1,
       "note": null
@@ -736,9 +694,7 @@
       "retailerBrand": "G.SKILL",
       "retailerBarcode": "848354017011",
       "retailerSeller": null,
-      "queriesTried": [
-        "32GB"
-      ],
+      "queriesTried": ["32GB"],
       "candidatesSeen": 44,
       "probes": 1,
       "note": null
@@ -751,10 +707,7 @@
       "retailerBrand": "SanDisk",
       "retailerBarcode": null,
       "retailerSeller": "OEMPCWORLD",
-      "queriesTried": [
-        "Sandisk 128GB",
-        "128GB"
-      ],
+      "queriesTried": ["Sandisk 128GB", "128GB"],
       "candidatesSeen": 72,
       "probes": 8,
       "note": "no UPCCode match in 8 probed candidates — unconfirmed"
@@ -823,11 +776,7 @@
       "retailerBrand": "Weiler",
       "retailerBarcode": null,
       "retailerSeller": "Zoro",
-      "queriesTried": [
-        "Powered KW525-3U3CR",
-        "KW525-3U3CR",
-        "Powered 01299"
-      ],
+      "queriesTried": ["Powered KW525-3U3CR", "KW525-3U3CR", "Powered 01299"],
       "candidatesSeen": 9,
       "probes": 5,
       "note": "no UPCCode match in 5 probed candidates — unconfirmed"
@@ -860,9 +809,7 @@
       "retailerBrand": "APC",
       "retailerBarcode": "731304329374",
       "retailerSeller": null,
-      "queriesTried": [
-        "APC BN450M"
-      ],
+      "queriesTried": ["APC BN450M"],
       "candidatesSeen": 2,
       "probes": 1,
       "note": null

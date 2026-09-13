@@ -36,6 +36,7 @@ const candidate: ParsedCandidate = {
   inStock: true,
   isFirstParty: true,
   sellerName: null,
+  imageUrl: null,
 };
 
 const adapter: RetailerAdapter = {

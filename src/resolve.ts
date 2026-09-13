@@ -69,6 +69,8 @@ export interface ResolutionEvidence {
   readonly inStock: boolean;
   readonly isFirstParty: boolean | null;
   readonly sellerName: string | null;
+  /** The retailer's own product photo, absolute http(s) URL, or `null`. */
+  readonly imageUrl: string | null;
   /** The barcode the retailer published, verbatim. `null` if it published none. */
   readonly retailerBarcode: string | null;
   /** Evidence score at the moment it was chosen. */
@@ -616,6 +618,7 @@ function evidence(
     inStock: candidate.inStock,
     isFirstParty: candidate.isFirstParty,
     sellerName: candidate.sellerName,
+    imageUrl: candidate.imageUrl,
     retailerBarcode,
     score,
   };

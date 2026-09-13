@@ -19,6 +19,19 @@
  * criterion from a paid manual run into a deterministic test.
  */
 
+/**
+ * An image URL an adapter may publish, or `null`.
+ *
+ * 🔑 One implementation rather than one per adapter: two spellings of "is this
+ * URL safe to render" is how one of them comes to allow `data:`.
+ */
+export function safeImageUrl(raw: string | null | undefined): string | null {
+  if (raw === null || raw === undefined) return null;
+  const value = raw.trim();
+  if (!/^https?:\/\//i.test(value)) return null;
+  return value.length > 1000 ? null : value;
+}
+
 /** One listing a retailer's search returned, in retailer-neutral shape. */
 export interface ParsedCandidate {
   /** The retailer's own public identifier for this listing. */
@@ -43,6 +56,25 @@ export interface ParsedCandidate {
    */
   readonly isFirstParty: boolean | null;
   readonly sellerName: string | null;
+  /**
+   * The retailer's own product photo, absolute http(s) URL, or `null`.
+   *
+   * 🔴 **Required, not optional, for the same reason `additionalBarcodes` is.**
+   * `insights_listings.image_url` has existed since the table did and the
+   * review screen has always rendered it; nothing ever wrote it, because this
+   * interface had no field and so no adapter could. A required field makes the
+   * next adapter state an answer rather than inherit a silent `undefined`.
+   *
+   * ⚠️ **Not a screenshot.** A picture OF the page needs a browser this
+   * runtime deliberately does not have — see `capture/types.ts`. This is an
+   * attribute in HTML the run has already bought.
+   *
+   * 🔴 **Only http(s).** The value is persisted by the gateway and rendered
+   * into an `<img src>` by the portal, and it comes from a page a competitor
+   * controls. An adapter returns `null` rather than passing on a
+   * `javascript:`, a `data:` or a relative path.
+   */
+  readonly imageUrl: string | null;
 }
 
 /** What a product page yields. */

@@ -24,6 +24,7 @@ import type { ParsedCandidate } from "../src/adapters/types.js";
 const candidate = (over: Partial<ParsedCandidate> = {}): ParsedCandidate => ({
   itemId: "N82E00000001",
   url: "https://retailer.test/p/1",
+  imageUrl: null,
   title: "ACME Widget K72337US 12-pack",
   brand: "ACME",
   model: "K72337US",

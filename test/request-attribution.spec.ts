@@ -53,6 +53,7 @@ function adapter(): RetailerAdapter {
               inStock: true,
               isFirstParty: true,
               sellerName: null,
+              imageUrl: null,
             },
           ]
         : [],

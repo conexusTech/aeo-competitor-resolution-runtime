@@ -179,3 +179,36 @@ describe("the adapter's own configuration", () => {
     expect(neweggAdapter.querySupport.barcodeIsSearchable).toBe(false);
   });
 });
+
+/**
+ * The listing's product photo.
+ *
+ * 🔴 **Newegg publishes a FILENAME, not a URL** — `"ImageName":
+ * "26-197-401-10.jpg"` — so the CDN prefix is the adapter's to supply. The
+ * column this feeds had never been written by anything: 0 of 50 stored Newegg
+ * listings carried an image before this.
+ */
+describe("a candidate carries the retailer's product image", () => {
+  const results = parseSearchResults(raw("search-many-results"));
+
+  it("builds the CDN url from the published filename", () => {
+    const withImage = results.filter((c) => c.imageUrl !== null);
+    expect(withImage.length).toBeGreaterThan(0);
+    for (const c of withImage) {
+      expect(c.imageUrl).toMatch(
+        /^https:\/\/c1\.neweggimages\.com\/productimage\/nb300\/[^/]+$/,
+      );
+    }
+  });
+
+  it("covers most of the page — the CONTROL", () => {
+    // Without this, a pattern that found one image on a page of many would
+    // satisfy the check above.
+    expect(results.length).toBeGreaterThan(5);
+    const withImage = results.filter(
+      (c) =>
+        typeof c.imageUrl === "string" && c.imageUrl.startsWith("https://"),
+    );
+    expect(withImage.length / results.length).toBeGreaterThan(0.8);
+  });
+});

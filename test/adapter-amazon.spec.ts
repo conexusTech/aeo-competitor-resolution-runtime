@@ -265,3 +265,90 @@ describe("the adapter itself", () => {
     expect(amazonAdapter.querySupport.maxNumericQueryDigits).toBeNull();
   });
 });
+
+/**
+ * The listing's own product photo.
+ *
+ * 🔴 **The column existed, the screen rendered it, and nothing had ever
+ * written it** — 0 of 63 stored listings across both retailers. `ParsedCandidate`
+ * had no image field, so no adapter could supply one. Asked for by a reader
+ * looking at a review queue and wondering whether the pairing was even the
+ * same object.
+ *
+ * ⚠️ **The image URL is not a screenshot.** A picture OF the page needs a
+ * browser this runtime deliberately does not have; this is an attribute in
+ * HTML the run has already bought and parsed. The two are separate rows and
+ * separate costs.
+ */
+describe("a candidate carries the retailer's product image", () => {
+  it("reads Amazon's search-result thumbnail", () => {
+    const first = parseSearchResults(SEARCH)[0];
+    expect(first?.imageUrl).toBe(
+      "https://m.media-amazon.com/images/I/61gD0yqG+AL._AC_UY218_.jpg",
+    );
+  });
+
+  it("finds one for every result on the page — the CONTROL", () => {
+    // Without this, a pattern that matched exactly one cell by luck would
+    // satisfy the check above.
+    const all = parseSearchResults(SEARCH);
+    expect(all).toHaveLength(16);
+    // ⚠️ Asserted as a STRING, not as “not null”. The first version of this
+    // line read `!== null` and passed before the field existed at all, because
+    // `undefined !== null`. A control that passes against unimplemented code
+    // is not a control.
+    expect(
+      all.every(
+        (c) =>
+          typeof c.imageUrl === "string" && c.imageUrl.startsWith("https://"),
+      ),
+    ).toBe(true);
+  });
+
+  /**
+   * 🔴 Amazon's own chrome carries dozens of images — nav sprites, badges,
+   * a Prime logo — and several sit inside a result cell. Only the one marked
+   * `s-image` is the product.
+   */
+  it("takes the product image, not the first image in the cell", () => {
+    const cell =
+      '<div data-asin="B0TESTIMG" data-component-type="s-search-result">' +
+      '<img class="a-icon-logo" src="https://example.test/sprite.png">' +
+      '<h2 aria-label="Widget">Widget</h2>' +
+      '<img class="s-image" src="https://m.media-amazon.com/images/I/real.jpg">' +
+      "</div>";
+    expect(parseSearchResults(cell)[0]?.imageUrl).toBe(
+      "https://m.media-amazon.com/images/I/real.jpg",
+    );
+  });
+
+  it("reports null rather than guessing when the cell has no product image", () => {
+    const cell =
+      '<div data-asin="B0NOIMAGE" data-component-type="s-search-result">' +
+      '<h2 aria-label="Widget">Widget</h2>' +
+      '<span class="a-price"><span class="a-offscreen">$1.00</span></span>' +
+      "</div>";
+    expect(parseSearchResults(cell)[0]?.imageUrl).toBeNull();
+  });
+
+  /**
+   * ⚠️ The value is rendered as an `<img src>` by the portal and persisted by
+   * the gateway, so a scraped `javascript:` or `data:` URL must never reach
+   * either. Refused here as well as at the gateway's DTO: the runtime is
+   * where the untrusted bytes are first read.
+   */
+  it("refuses a scheme that is not http or https", () => {
+    for (const bad of [
+      "javascript:alert(1)",
+      "data:image/svg+xml;base64,PHN2Zz4=",
+      "/relative/path.jpg",
+    ]) {
+      const cell =
+        '<div data-asin="B0BADIMG" data-component-type="s-search-result">' +
+        '<h2 aria-label="Widget">Widget</h2>' +
+        `<img class="s-image" src="${bad}">` +
+        "</div>";
+      expect(parseSearchResults(cell)[0]?.imageUrl).toBeNull();
+    }
+  });
+});

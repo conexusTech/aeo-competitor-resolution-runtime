@@ -4,6 +4,7 @@ import type {
   QuerySupport,
   RetailerAdapter,
 } from "./types.js";
+import { safeImageUrl } from "./types.js";
 
 /**
  * The Amazon adapter.
@@ -52,6 +53,20 @@ const TITLE = /<h2[^>]*\saria-label="([^"]*)"/;
  * as the competitor's price — an overstatement of exactly the number this
  * product exists to report.
  */
+/**
+ * The product thumbnail.
+ *
+ * 🔴 **Anchored on `s-image`, because a result cell holds other images.**
+ * Amazon's own chrome — sprites, badges, a Prime logo — sits in the same
+ * markup, and the first `<img>` in a cell is routinely not the product.
+ *
+ * ⚠️ `[^>]*` before `src` rather than a bounded run: the tag carries a
+ * `srcset` listing four resolutions, so it is comfortably longer than any
+ * cap worth writing. That length is also what made a first reading of this
+ * page report no images at all.
+ */
+const IMAGE = /<img[^>]*\sclass="[^"]*\bs-image\b[^"]*"[^>]*\ssrc="([^"]+)"/;
+
 const PRICE =
   /<span class="a-price"[^>]*>\s*<span class="a-offscreen">([^<]*)</;
 
@@ -191,6 +206,7 @@ export function parseSearchResults(html: string): ParsedCandidate[] {
       // which is the whole reason ranking cares.
       isFirstParty: null,
       sellerName: null,
+      imageUrl: safeImageUrl(IMAGE.exec(cell)?.[1] ?? null),
     });
   }
 

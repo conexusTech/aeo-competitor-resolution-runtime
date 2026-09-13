@@ -17,6 +17,7 @@ import type {
   QuerySupport,
   RetailerAdapter,
 } from "./types.js";
+import { safeImageUrl } from "./types.js";
 
 const INITIAL_STATE_ANCHOR = "window.__initialState__ =";
 
@@ -122,8 +123,30 @@ export function parseSearchResults(html: string): ParsedCandidate[] {
     const sellerName = seller === null ? null : str(seller["SellerName"]);
     const manufactory = asRecord(cell["ItemManufactory"]);
 
+    /**
+     * The product thumbnail.
+     *
+     * 🔑 **Newegg publishes a FILENAME, not a URL** — `"ImageName":
+     * "26-197-401-10.jpg"` — so the CDN prefix is ours to supply. `nb300`
+     * is the 300px box; the same file exists at other sizes under sibling
+     * prefixes, and a list row wants the small one.
+     *
+     * ⚠️ Built rather than trusted: the filename is scraped, so it goes
+     * through the same guard as a scraped absolute URL, and a name carrying a
+     * slash or a scheme cannot smuggle a different host past the prefix.
+     */
+    const newImage = asRecord(cell["NewImage"]);
+    const imageName = newImage === null ? null : str(newImage["ImageName"]);
+    const imageUrl =
+      imageName === null || /[\\/:?#]/.test(imageName)
+        ? null
+        : safeImageUrl(
+            `https://c1.neweggimages.com/productimage/nb300/${imageName}`,
+          );
+
     out.push({
       itemId,
+      imageUrl,
       url:
         urlKeywords === null
           ? `https://www.newegg.com/p/${itemId}`
