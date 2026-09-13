@@ -60,6 +60,7 @@ function adapter(): RetailerAdapter {
     // the branch that spends the most and therefore has the most to attribute.
     parseProductPage: (): ParsedProduct => ({
       barcode: null,
+      additionalBarcodes: [],
       priceCents: 899,
       inStock: true,
       title: "Kingwin CF-08LB 80mm Fan",

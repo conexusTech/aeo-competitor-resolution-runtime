@@ -179,6 +179,7 @@ export function parseProductPage(html: string): ParsedProduct {
     // Verbatim — the retailer zero-pads inconsistently and normalising here
     // would discard the evidence of what it actually said.
     barcode: raw === null || raw.trim() === "" ? null : raw.trim(),
+    additionalBarcodes: [],
     priceCents: null,
     inStock: null,
     title: null,

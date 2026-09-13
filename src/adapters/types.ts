@@ -60,6 +60,26 @@ export interface ParsedProduct {
    * second makes it a mismatch.
    */
   readonly barcode: string | null;
+  /**
+   * Further barcodes the SAME field published, when it holds more than one.
+   *
+   * 🔴 **A measured case, not a hypothetical.** One real product page returns
+   * two space-separated barcodes in a single field
+   * (`812348010548 191120055664`), and the client's value was one of them.
+   * Returning the raw field would be worse than useless here: `gtinCore`
+   * refuses a digit run outside 8-14 digits, so the two concatenate to 24 and
+   * core to nothing — which reads to `resolve` as **a barcode that disagrees**
+   * rather than as no barcode at all. That is the false mismatch `gtin.ts`
+   * calls the worst output this product can produce.
+   *
+   * ⚠️ The adapter cannot choose between them: `parseProductPage` is pure and
+   * never sees the client's barcode. So it publishes all of them and lets the
+   * comparison decide, which is the only place that can.
+   *
+   * Empty where the field held a single value, which is every page measured
+   * at the launch retailer.
+   */
+  readonly additionalBarcodes: readonly string[];
   readonly priceCents: number | null;
   readonly inStock: boolean | null;
   readonly title: string | null;

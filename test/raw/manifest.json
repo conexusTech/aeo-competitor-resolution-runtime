@@ -1,5 +1,5 @@
 {
-  "note": "Real captured pages from the launch retailer, gzipped. Public retailer pages, not customer data. Chosen one per parser case; the facts below were produced by the committed parsers at selection time and are re-asserted by the spec.",
+  "note": "Real captured pages from the launch retailer, gzipped. Public retailer pages, not customer data. Chosen one per parser case; the facts below were produced by the committed parsers at selection time and are re-asserted by the spec. Amazon fixtures added 2026-09-13 from the PO's second handover package, unmodified.",
   "capturedBy": "handover recon spike",
   "selectedOn": "2026-09-10",
   "fixtures": [
@@ -62,6 +62,28 @@
         "barcode": "00097855114693"
       },
       "gzBytes": 58615
+    },
+    {
+      "name": "amazon-search-results",
+      "why": "the second retailer's search page — no embedded JSON state, every field parsed from real markup",
+      "facts": {
+        "candidates": 16,
+        "firstParty": 0,
+        "marketplace": 0,
+        "note": "Amazon exposes no seller at the search stage, so isFirstParty is null for all 16 rather than false"
+      },
+      "gzBytes": 213859
+    },
+    {
+      "name": "amazon-pdp-gtin-labelled",
+      "why": "the barcode is published under \"Global Trade Identification Number\", NOT \"UPC\" — the handover's own findings claim every page uses \"UPC\", and this page is the counter-example. Kept at full size because its 16 incidental \"UPC\" strings are what the noise control asserts against",
+      "facts": {
+        "barcode": "04713294232687",
+        "barcodeLabel": "Global Trade Identification Number",
+        "detailRows": 26,
+        "incidentalUpcStrings": 16
+      },
+      "gzBytes": 402269
     }
   ]
 }

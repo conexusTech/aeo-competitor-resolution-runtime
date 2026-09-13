@@ -45,6 +45,7 @@ const adapter: RetailerAdapter = {
   parseSearchResults: (html) => (html === "SEARCH" ? [candidate] : []),
   parseProductPage: (html) => ({
     barcode: html === "PDP" ? "812348010548" : null,
+    additionalBarcodes: [],
     priceCents: null,
     inStock: null,
     title: null,

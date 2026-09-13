@@ -52,6 +52,7 @@ function fakeAdapter(
     parseProductPage: (html) =>
       products[html] ?? {
         barcode: null,
+        additionalBarcodes: [],
         priceCents: null,
         inStock: null,
         title: null,
@@ -84,6 +85,7 @@ describe("resolveItem outcomes", () => {
       {
         PDP: {
           barcode: "00812348010548",
+          additionalBarcodes: [],
           priceCents: 899,
           inStock: true,
           title: null,
@@ -104,13 +106,92 @@ describe("resolveItem outcomes", () => {
     expect(resolution.match?.retailerBarcode).toBe("00812348010548");
   });
 
+  /**
+   * 🔴 A field holding MORE THAN ONE barcode, which is a measured case rather
+   * than a defensive one: a real product page publishes
+   * `812348010548 191120055664` in a single cell and the client's value was
+   * the first of the two. Nothing here covered the second.
+   *
+   * ⚠️ Getting this wrong is not merely a lost pairing. The raw field cores to
+   * nothing (24 digits, outside every GTIN width), so it arrives as a barcode
+   * that DISAGREES — an `unconfirmed`, reported to a reviewer as a
+   * contradiction the retailer never stated.
+   */
+  it("verified — the agreeing barcode is the SECOND value in the field", async () => {
+    const adapter = fakeAdapter(
+      { SEARCH: [candidate()] },
+      {
+        PDP: {
+          barcode: "191120055664",
+          additionalBarcodes: ["812348010548"],
+          priceCents: 899,
+          inStock: true,
+          title: null,
+        },
+      },
+    );
+    const resolution = await resolveItem(
+      { barcode: "812348010548", clientSku: "531814" },
+      adapter,
+      new MapFetcher({
+        [SERP]: serpBody,
+        [SEARCH]: "SEARCH",
+        "https://retailer.test/p/ITEM-1": "PDP",
+      }),
+      DEFAULT_OPTIONS,
+    );
+    expect(resolution.outcome).toBe("verified");
+    // 🔑 The evidence names the value that AGREED, not the field's first
+    // token — otherwise a reviewer reads a barcode that did not match.
+    expect(resolution.match?.retailerBarcode).toBe("812348010548");
+  });
+
+  /**
+   * The CONTROL for the check above: the same shape, with a value that agrees
+   * with nothing. Without it, a resolver that simply verified whenever any
+   * barcode was present would satisfy the test above perfectly.
+   */
+  it("not verified — several barcodes published and none of them agrees", async () => {
+    const adapter = fakeAdapter(
+      { SEARCH: [candidate()] },
+      {
+        PDP: {
+          barcode: "191120055664",
+          additionalBarcodes: ["099999999999"],
+          priceCents: 899,
+          inStock: true,
+          title: null,
+        },
+      },
+    );
+    const resolution = await resolveItem(
+      { barcode: "812348010548", clientSku: "531814" },
+      adapter,
+      new MapFetcher({
+        [SERP]: serpBody,
+        [SEARCH]: "SEARCH",
+        "https://retailer.test/p/ITEM-1": "PDP",
+      }),
+      DEFAULT_OPTIONS,
+    );
+    expect(resolution.outcome).not.toBe("verified");
+  });
+
   it("🔴 unverifiable — a listing found, no barcode published", async () => {
     // The outcome the handover had no name for. 91 of 255 real product pages
     // land here, and calling it "probable" claims a match that was never
     // proven either way.
     const adapter = fakeAdapter(
       { SEARCH: [candidate()] },
-      { PDP: { barcode: null, priceCents: 899, inStock: true, title: null } },
+      {
+        PDP: {
+          barcode: null,
+          additionalBarcodes: [],
+          priceCents: 899,
+          inStock: true,
+          title: null,
+        },
+      },
     );
     const resolution = await resolveItem(
       { barcode: "812348010548", clientSku: "531814" },
@@ -133,6 +214,7 @@ describe("resolveItem outcomes", () => {
       {
         PDP: {
           barcode: "099999999999",
+          additionalBarcodes: [],
           priceCents: 899,
           inStock: true,
           title: null,
@@ -164,9 +246,16 @@ describe("resolveItem outcomes", () => {
         ],
       },
       {
-        A: { barcode: null, priceCents: 1, inStock: true, title: null },
+        A: {
+          barcode: null,
+          additionalBarcodes: [],
+          priceCents: 1,
+          inStock: true,
+          title: null,
+        },
         B: {
           barcode: "099999999999",
+          additionalBarcodes: [],
           priceCents: 1,
           inStock: true,
           title: null,
@@ -239,6 +328,7 @@ describe("resolveItem outcomes", () => {
       {
         MISS: {
           barcode: "099999999999",
+          additionalBarcodes: [],
           priceCents: null,
           inStock: null,
           title: null,

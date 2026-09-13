@@ -20,6 +20,7 @@
  * container — see that file's docblock for why that split exists.
  */
 
+import { amazonAdapter } from "./adapters/amazon.js";
 import { neweggAdapter } from "./adapters/newegg.js";
 import type { RetailerAdapter } from "./adapters/types.js";
 import { buildVersion, fetcherFromEnv } from "./fetcher/select.js";
@@ -39,6 +40,7 @@ import type { Resolution } from "./resolve.js";
  */
 const ADAPTERS: Record<string, RetailerAdapter> = {
   [neweggAdapter.slug]: neweggAdapter,
+  [amazonAdapter.slug]: amazonAdapter,
 };
 
 /**

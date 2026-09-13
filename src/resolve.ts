@@ -389,10 +389,19 @@ export async function resolveItem(
       retailerBarcode: product.barcode,
     });
 
-    if (
-      product.barcode !== null &&
-      gtinMatches(request.barcode, product.barcode)
-    ) {
+    // 🔑 Every barcode the field published, not only the first. One real
+    // product page returns two space-separated values in one field and the
+    // client's was one of them — see `additionalBarcodes`. Checking only the
+    // primary would lose a verified pairing and, worse, report the reason as
+    // a disagreement rather than as nothing to compare.
+    const published = [
+      ...(product.barcode === null ? [] : [product.barcode]),
+      ...product.additionalBarcodes,
+    ];
+    const agreeing =
+      published.find((value) => gtinMatches(request.barcode, value)) ?? null;
+
+    if (agreeing !== null) {
       return {
         ...base,
         outcome: "verified",
@@ -401,7 +410,9 @@ export async function resolveItem(
         candidatesSeen,
         probes,
         requests: fetcher.liveRequestCount,
-        match: evidence(entry.candidate, entry.score, product.barcode),
+        // The value that AGREED, not the field's first token — otherwise the
+        // evidence a reviewer reads names a barcode that did not match.
+        match: evidence(entry.candidate, entry.score, agreeing),
         alternatives: alternativesFor({
           ranked,
           chosen: entry.candidate,
@@ -413,7 +424,7 @@ export async function resolveItem(
 
     // 🔴 No barcode at all is NOT a mismatch. Remember the best such listing:
     // if nothing verifies, this is an `unverifiable`, not an `unconfirmed`.
-    if (product.barcode === null && noBarcodeFound === null) {
+    if (published.length === 0 && noBarcodeFound === null) {
       noBarcodeFound = entry;
     }
   }
