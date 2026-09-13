@@ -7,7 +7,11 @@ import type {
 } from "../src/adapters/types.js";
 import type { Fetcher, FetchResult } from "../src/fetcher/types.js";
 import { FetchFailed } from "../src/fetcher/types.js";
-import { DEFAULT_OPTIONS, resolveItem } from "../src/resolve.js";
+import {
+  DEFAULT_OPTIONS,
+  createProbeMemory,
+  resolveItem,
+} from "../src/resolve.js";
 import {
   MIN_EVIDENCE_TO_REPORT,
   probeOrder,
@@ -538,5 +542,256 @@ describe("ranking", () => {
         queryTokens: [],
       }),
     ).toBe(false);
+  });
+});
+
+/**
+ * What one probe teaches the rest of the run.
+ *
+ * ── 🔴 The run this exists because of ──────────────────────────────────
+ *
+ * A live Amazon run on 2026-09-13 filed item `744334` (client barcode
+ * `097855066237`) as a proposal against a listing that publishes no barcode.
+ * The listing that would have PROVEN it — publishing exactly `097855066237` —
+ * was fetched **in the same run**, as a runner-up on a different item, and its
+ * barcode was read and thrown away.
+ *
+ * 🔴 **The mechanism is a tiebreak that is a no-op on this retailer.** Amazon
+ * states no model and no first-party flag at search stage, so every
+ * model-based weight is unreachable and `probeOrder`'s only tiebreak
+ * (`isFirstParty === true` first) never fires. 80 candidates collapse onto a
+ * handful of identical scores, the probe budget is 8, and a stable sort leaves
+ * the order Amazon happened to return. Every alternative on that item says so
+ * in as many words: *"lost a tie on discovery order"*.
+ *
+ * 🔑 **The fix is not a better guess at the order.** It is that a barcode this
+ * run has already read is EVIDENCE, and evidence outranks a budget. A listing
+ * only ever wins here by publishing a barcode that agrees with the client's,
+ * which is the same thing a probe would have proved — so the memory can
+ * promote an agreement and can never invent one.
+ *
+ * ⚠️ Deliberately NOT a title heuristic. The PO's own recon records that
+ * guessing a model from a trailing `(MODEL)` in an Amazon title produced their
+ * two worst false positives — a DaySpring calendar and a Ridgid pipe cutter,
+ * each winning on a numeric coincidence. This adapter states `model: null` for
+ * that reason and this change does not reverse it.
+ */
+describe("a barcode read once is known for the rest of the run", () => {
+  /** A pool where the top-ranked listing publishes nothing. */
+  const twoCandidates = () => {
+    const chosen = candidate({
+      itemId: "NO-BARCODE",
+      url: "https://retailer.test/p/NO-BARCODE",
+      title: "Kingwin CF-08LB 80mm Fan",
+    });
+    const verifier = candidate({
+      itemId: "PUBLISHES-IT",
+      url: "https://retailer.test/p/PUBLISHES-IT",
+      title: "Kingwin CF-08LB 80mm Fan",
+    });
+    const adapter = fakeAdapter(
+      { [serpBody]: [], "search-body": [chosen, verifier] },
+      {
+        "no-barcode-body": {
+          barcode: null,
+          additionalBarcodes: [],
+          priceCents: 899,
+          inStock: true,
+          title: "Kingwin CF-08LB 80mm Fan",
+        },
+      },
+    );
+    const fetcher = new MapFetcher({
+      [SERP]: serpBody,
+      [SEARCH]: "search-body",
+      "https://retailer.test/p/NO-BARCODE": "no-barcode-body",
+    });
+    return { adapter, fetcher };
+  };
+
+  it("verifies from a barcode an earlier item's probe read, spending nothing", async () => {
+    const { adapter, fetcher } = twoCandidates();
+    const memory = createProbeMemory();
+    memory.remember("PUBLISHES-IT", ["812348010548"]);
+
+    const result = await resolveItem(
+      { barcode: "812348010548", clientSku: "SKU-1" },
+      adapter,
+      fetcher,
+      DEFAULT_OPTIONS,
+      memory,
+    );
+
+    expect(result.outcome).toBe("verified");
+    expect(result.match?.itemId).toBe("PUBLISHES-IT");
+    expect(result.match?.retailerBarcode).toBe("812348010548");
+    // 🔑 The point of the change: no page was fetched to learn this.
+    expect(result.probes).toBe(0);
+  });
+
+  it("without the memory the same pool cannot verify — the CONTROL", async () => {
+    // Without this, the check above would pass just as happily if the pool
+    // had always verified and the memory did nothing at all.
+    const { adapter, fetcher } = twoCandidates();
+    const result = await resolveItem(
+      { barcode: "812348010548", clientSku: "SKU-1" },
+      adapter,
+      fetcher,
+      DEFAULT_OPTIONS,
+    );
+    expect(result.outcome).not.toBe("verified");
+  });
+
+  it("a remembered barcode that DISAGREES verifies nothing", async () => {
+    // 🔴 The memory may only ever promote an agreement. A listing remembered
+    // as publishing someone else's barcode is not this item's product, and
+    // treating a remembered value as a match would turn one item's evidence
+    // into another item's false pairing — the worst output this makes.
+    const { adapter, fetcher } = twoCandidates();
+    const memory = createProbeMemory();
+    memory.remember("PUBLISHES-IT", ["999999999999"]);
+    const result = await resolveItem(
+      { barcode: "812348010548", clientSku: "SKU-1" },
+      adapter,
+      fetcher,
+      DEFAULT_OPTIONS,
+      memory,
+    );
+    expect(result.outcome).not.toBe("verified");
+  });
+
+  it("does not reach for a listing this item never found", async () => {
+    // ⚠️ Bounds the change: the memory is consulted for candidates in THIS
+    // item's own pool, never used to conjure one from another item's search.
+    const { adapter, fetcher } = twoCandidates();
+    const memory = createProbeMemory();
+    memory.remember("SOME-OTHER-LISTING", ["812348010548"]);
+    const result = await resolveItem(
+      { barcode: "812348010548", clientSku: "SKU-1" },
+      adapter,
+      fetcher,
+      DEFAULT_OPTIONS,
+      memory,
+    );
+    expect(result.match?.itemId).not.toBe("SOME-OTHER-LISTING");
+    expect(result.outcome).not.toBe("verified");
+  });
+
+  /**
+   * 🔴 **The check that actually earns the pre-scan's scope, and the first
+   * version of this file did not have it.** A mutation limiting the pre-scan
+   * to `maxProbes` — which is precisely the defect being fixed — left the
+   * suite GREEN, because the pool above holds two candidates against a budget
+   * of eight and a slice of it changes nothing. The check read as though it
+   * covered the budget and could not see it.
+   *
+   * Here the verifying listing is the TENTH of ten, against a budget of three,
+   * which is the shape of the real case: 80 candidates, 8 probes, and the one
+   * that publishes the client's barcode outside the window.
+   */
+  it("reaches a remembered listing ranked far below the probe budget", async () => {
+    const pool = Array.from({ length: 10 }, (_, i) =>
+      candidate({
+        itemId: `ITEM-${i}`,
+        url: `https://retailer.test/p/ITEM-${i}`,
+        title: "Kingwin CF-08LB 80mm Fan",
+      }),
+    );
+    const adapter = fakeAdapter({ [serpBody]: [], "search-body": pool }, {});
+    // Nothing is fetchable, so a probe can learn nothing: the ONLY route to
+    // a verified outcome here is the memory.
+    const fetcher = new MapFetcher({
+      [SERP]: serpBody,
+      [SEARCH]: "search-body",
+    });
+    const memory = createProbeMemory();
+    memory.remember("ITEM-9", ["812348010548"]);
+
+    const result = await resolveItem(
+      { barcode: "812348010548", clientSku: "SKU-1" },
+      adapter,
+      fetcher,
+      { ...DEFAULT_OPTIONS, maxProbes: 3 },
+      memory,
+    );
+
+    expect(result.outcome).toBe("verified");
+    expect(result.match?.itemId).toBe("ITEM-9");
+  });
+
+  it("still finds one INSIDE the budget — the CONTROL", async () => {
+    // Without this, a pre-scan that searched only the tail would pass above.
+    const pool = Array.from({ length: 10 }, (_, i) =>
+      candidate({
+        itemId: `ITEM-${i}`,
+        url: `https://retailer.test/p/ITEM-${i}`,
+        title: "Kingwin CF-08LB 80mm Fan",
+      }),
+    );
+    const adapter = fakeAdapter({ [serpBody]: [], "search-body": pool }, {});
+    const fetcher = new MapFetcher({
+      [SERP]: serpBody,
+      [SEARCH]: "search-body",
+    });
+    const memory = createProbeMemory();
+    memory.remember("ITEM-0", ["812348010548"]);
+
+    const result = await resolveItem(
+      { barcode: "812348010548", clientSku: "SKU-1" },
+      adapter,
+      fetcher,
+      { ...DEFAULT_OPTIONS, maxProbes: 3 },
+      memory,
+    );
+    expect(result.match?.itemId).toBe("ITEM-0");
+  });
+
+  it("fills itself from its own probes, so the SECOND item is the one that gains", async () => {
+    // 🔑 The observed case end to end: item one probes the listing and reads
+    // its barcode; item two shares the pool and verifies for free.
+    const shared = candidate({
+      itemId: "SHARED",
+      url: "https://retailer.test/p/SHARED",
+      title: "Kingwin CF-08LB 80mm Fan",
+    });
+    const adapter = fakeAdapter(
+      { [serpBody]: [], "search-body": [shared] },
+      {
+        "shared-body": {
+          barcode: "812348010548",
+          additionalBarcodes: [],
+          priceCents: 899,
+          inStock: true,
+          title: "Kingwin CF-08LB 80mm Fan",
+        },
+      },
+    );
+    const fetcher = new MapFetcher({
+      [SERP]: serpBody,
+      [SEARCH]: "search-body",
+      "https://retailer.test/p/SHARED": "shared-body",
+    });
+    const memory = createProbeMemory();
+
+    const first = await resolveItem(
+      { barcode: "812348010548", clientSku: "SKU-1" },
+      adapter,
+      fetcher,
+      DEFAULT_OPTIONS,
+      memory,
+    );
+    expect(first.outcome).toBe("verified");
+    expect(first.probes).toBe(1);
+
+    const second = await resolveItem(
+      { barcode: "812348010548", clientSku: "SKU-2" },
+      adapter,
+      fetcher,
+      DEFAULT_OPTIONS,
+      memory,
+    );
+    expect(second.outcome).toBe("verified");
+    // The probe was paid for once and answered twice.
+    expect(second.probes).toBe(0);
   });
 });

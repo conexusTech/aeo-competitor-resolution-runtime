@@ -14,6 +14,7 @@ import { RequestMeter } from "./fetcher/meter.js";
 import type { Fetcher } from "./fetcher/types.js";
 import {
   DEFAULT_OPTIONS,
+  createProbeMemory,
   resolveItem,
   type Resolution,
   type ResolveOptions,
@@ -198,6 +199,18 @@ export async function runList(
   };
   for (const resolution of done.values()) outcomes[resolution.outcome]++;
 
+  /**
+   * 🔑 **One memory for the whole run, and that is the entire point.** A probe
+   * made for item 3 answers item 17 for free, which is the case this was built
+   * for: a live Amazon run read the verifying listing for one item and filed a
+   * different item as an unproven proposal against a listing publishing
+   * nothing.
+   *
+   * ⚠️ Created here rather than passed in, so it cannot outlive the run. A
+   * retailer's published barcode is a fact about a page fetched minutes ago.
+   */
+  const memory = createProbeMemory();
+
   let cursor = 0;
   /** What a deferred item spent on its first attempt, by barcode. */
   const carried = new Map<string, number>();
@@ -250,7 +263,7 @@ export async function runList(
       // direction a cost figure must never be wrong in.
       const meter = new RequestMeter(fetcher);
       try {
-        resolution = await resolveItem(item, adapter, meter, options);
+        resolution = await resolveItem(item, adapter, meter, options, memory);
       } catch (error) {
         // The pipeline could not complete. Recorded as a failure with its
         // reason — never as a clean miss, which would report "this retailer

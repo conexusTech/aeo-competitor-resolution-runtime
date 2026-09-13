@@ -92,6 +92,59 @@ describe("runList", () => {
     expect(journal.trim().split("\n")).toHaveLength(1);
   });
 
+  /**
+   * 🔴 **This check exists because its absence was measured.** Removing the
+   * shared memory from this function's own call to `resolveItem` — the single
+   * line that makes the fix do anything in a real run — left the entire suite
+   * GREEN at 408 tests. Every check proved that `resolveItem` USES a memory
+   * when handed one, and not one proved that a run ever HANDS it one.
+   *
+   * That is the same hole, in the same week, as a frontend change whose unit
+   * tests asserted a call between two mocks: a wiring nobody covers is a
+   * wiring that can be deleted silently.
+   */
+  it("🔑 shares one memory across the run, so a page is bought once", async () => {
+    const dir = runDir();
+    const fetcher = new CountingFetcher(bodies("812348010548"));
+
+    const results = await runList(
+      [
+        { barcode: "812348010548", clientSku: "531814" },
+        { barcode: "812348010548", clientSku: "531815" },
+      ],
+      adapter,
+      fetcher,
+      { ...RUN_DEFAULTS, runDir: dir, concurrency: 1 },
+    );
+
+    expect(results.map((r) => r.outcome)).toEqual(["verified", "verified"]);
+
+    // 🔑 The whole assertion. This fetcher has no cache, so a second probe
+    // would show up here as a second fetch of the same product page.
+    const pdpFetches = fetcher.asked.filter(
+      (url) => url === "https://retailer.test/p/ITEM-1",
+    );
+    expect(pdpFetches).toHaveLength(1);
+    expect(results[1]?.probes).toBe(0);
+  });
+
+  it("buys the page for the FIRST item — the CONTROL", async () => {
+    // Without this, a run that probed nothing at all would satisfy the
+    // "bought once" assertion above by buying it zero times.
+    const dir = runDir();
+    const fetcher = new CountingFetcher(bodies("812348010548"));
+    const results = await runList(
+      [{ barcode: "812348010548", clientSku: "531814" }],
+      adapter,
+      fetcher,
+      { ...RUN_DEFAULTS, runDir: dir, concurrency: 1 },
+    );
+    expect(results[0]?.probes).toBe(1);
+    expect(
+      fetcher.asked.filter((u) => u === "https://retailer.test/p/ITEM-1"),
+    ).toHaveLength(1);
+  });
+
   it("🔑 resumes from the journal and re-buys nothing", async () => {
     // The property that matters most on a paid multi-hour run. A run killed at
     // hour three must not restart at hour zero.

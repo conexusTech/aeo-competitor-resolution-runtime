@@ -101,6 +101,61 @@ export interface Resolution {
   readonly failure: string | null;
 }
 
+/**
+ * What this run has already read off a listing's page, keyed by the retailer's
+ * own id for it.
+ *
+ * ── 🔴 Why a run needs a memory at all ─────────────────────────────────
+ *
+ * A live Amazon run filed an item as a PROPOSAL against a listing publishing
+ * no barcode, while the listing that would have PROVEN it — publishing exactly
+ * that item's barcode — was fetched minutes earlier in the same run, as a
+ * runner-up on a different item. Its barcode was read and thrown away.
+ *
+ * The immediate cause is a probe budget meeting a tiebreak that cannot break
+ * anything: Amazon states no model and no first-party flag at search stage, so
+ * every model-based weight is unreachable and `probeOrder` falls through to a
+ * stable sort — which is to say, to the order Amazon returned results in. 80
+ * candidates collapse onto a handful of identical scores and 8 of them get
+ * probed. Every alternative on that item records the reason in as many words:
+ * *"lost a tie on discovery order"*.
+ *
+ * 🔑 **The remedy is not a better guess at the order.** A barcode this run has
+ * already read is EVIDENCE, and evidence outranks a budget. A listing can only
+ * ever win through this memory by publishing a barcode that AGREES with the
+ * client's — the same fact a probe would have established — so it can promote
+ * an agreement and cannot invent one.
+ *
+ * ⚠️ **Deliberately not a title heuristic.** The handover's own recon records
+ * that guessing a model from a trailing `(MODEL)` in an Amazon title produced
+ * its two worst false positives: a perpetual calendar winning on `(10174)` and
+ * a pipe cutter on `(63005)`, both pure numeric coincidences. The adapter
+ * states `model: null` for that reason, and this does not reverse it.
+ *
+ * ⚠️ **Scoped to one run, and never persisted.** A retailer's published
+ * barcode is a fact about a page fetched minutes ago; carrying it between runs
+ * would be a cache with no expiry policy, which is a different change with a
+ * different risk.
+ */
+export interface ProbeMemory {
+  /** Every barcode a probe found on this listing, or `undefined` if unprobed. */
+  get(retailerItemId: string): readonly string[] | undefined;
+  remember(retailerItemId: string, barcodes: readonly string[]): void;
+}
+
+export function createProbeMemory(): ProbeMemory {
+  const seen = new Map<string, readonly string[]>();
+  return {
+    get: (id) => seen.get(id),
+    // 🔑 First reading wins. A page re-fetched later in the same run is the
+    // same page; letting a later read overwrite an earlier one would make the
+    // outcome depend on item order, which is the defect this fixes.
+    remember: (id, barcodes) => {
+      if (!seen.has(id)) seen.set(id, [...barcodes]);
+    },
+  };
+}
+
 export interface ResolveOptions {
   /** Ceiling on product-page probes per item, across every query attempt. */
   readonly maxProbes: number;
@@ -241,6 +296,8 @@ export async function resolveItem(
   adapter: RetailerAdapter,
   sharedFetcher: Fetcher,
   options: ResolveOptions = DEFAULT_OPTIONS,
+  /** What earlier items in this run already read. Absent = a lone item. */
+  memory?: ProbeMemory,
 ): Promise<Resolution> {
   // 🔴 **Every `requests` below used to be `liveRequestCount - startedAt` on
   // the fetcher this was handed — and that is not an attribution.** `runList`
@@ -379,6 +436,46 @@ export async function resolveItem(
    */
   const probeOutcomes = new Map<string, ProbeOutcome>();
 
+  /**
+   * 🔑 **Before spending anything: has this run already read a barcode off one
+   * of these listings?** A probe made for an earlier item answers this one for
+   * free, and it answers it with the retailer's own published value rather
+   * than with a guess about ranking.
+   *
+   * ⚠️ **The whole pool, not the probe budget.** The budget is exactly what
+   * went wrong — the verifying listing sat outside it — so consulting only the
+   * first `maxProbes` entries would reproduce the defect in the fix.
+   *
+   * 🔴 Only an AGREEING value returns. A remembered barcode that disagrees is
+   * left to the probe loop, which will re-read the page and report it as the
+   * disagreement it is; promoting it here would turn one item's evidence into
+   * another item's false pairing.
+   */
+  for (const entry of ranked) {
+    const remembered = memory?.get(entry.candidate.itemId);
+    if (remembered === undefined) continue;
+    const known =
+      remembered.find((value) => gtinMatches(request.barcode, value)) ?? null;
+    if (known === null) continue;
+    return {
+      ...base,
+      outcome: "verified",
+      identity,
+      queriesTried: tried,
+      candidatesSeen,
+      // No page was fetched to learn this, and the count must not claim one.
+      probes: 0,
+      requests: fetcher.liveRequestCount,
+      match: evidence(entry.candidate, entry.score, known),
+      alternatives: alternativesFor({
+        ranked,
+        chosen: entry.candidate,
+        probed: new Map([[entry.candidate.url, { retailerBarcode: known }]]),
+        scoreInput: rankInput,
+      }),
+    };
+  }
+
   for (const entry of ranked.slice(0, options.maxProbes)) {
     const { body } = await tryFetch(fetcher, entry.candidate.url);
     probes++;
@@ -398,6 +495,8 @@ export async function resolveItem(
       ...(product.barcode === null ? [] : [product.barcode]),
       ...product.additionalBarcodes,
     ];
+    // Learned once, available to every later item in this run.
+    memory?.remember(entry.candidate.itemId, published);
     const agreeing =
       published.find((value) => gtinMatches(request.barcode, value)) ?? null;
 
