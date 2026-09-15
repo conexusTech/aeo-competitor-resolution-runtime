@@ -20,7 +20,7 @@ import type { Fetcher } from "./fetcher/types.js";
 import type { GatewayClient, ResolutionJob } from "./gateway/client.js";
 import type { DispatchPayload } from "./queue/task-record.js";
 import type { GatewayReporter } from "./reporting/reporter.js";
-import type { Resolution } from "./resolve.js";
+import type { Resolution, ResolveRequest } from "./resolve.js";
 import type { RunOptions, RunProgress } from "./run.js";
 
 /** Progress ticks and log lines are emitted on this boundary. */
@@ -33,8 +33,16 @@ export interface QueueRunDeps {
   /** Resolved from the job's retailer slug — never from the dispatch. */
   readonly adapterFor: (retailerSlug: string) => RetailerAdapter;
   readonly fetcher: Fetcher;
+  /**
+   * ⚠️ **Typed as `ResolveRequest` rather than an inline pair.** It was
+   * `{ barcode, clientSku }`, and that is how the client's product name got
+   * silently dropped here: the mapping below satisfied a narrower structural
+   * type, so adding a field to the wire shape and to the plan changed nothing
+   * and no check could see it. The request type is the one thing both ends
+   * already agree on.
+   */
   readonly runList: (
-    items: readonly { barcode: string; clientSku: string }[],
+    items: readonly ResolveRequest[],
     adapter: RetailerAdapter,
     fetcher: Fetcher,
     options: RunOptions,
@@ -122,6 +130,7 @@ export async function runDispatchedJob(
       job.items.map((item) => ({
         barcode: item.barcode,
         clientSku: item.clientSku,
+        productName: item.productName,
       })),
       adapter,
       deps.fetcher,

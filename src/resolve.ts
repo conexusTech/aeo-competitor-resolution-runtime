@@ -179,6 +179,15 @@ export const DEFAULT_OPTIONS: ResolveOptions = {
 export interface ResolveRequest {
   readonly barcode: string;
   readonly clientSku: string;
+  /**
+   * What the client calls this product, when their list said.
+   *
+   * ⚠️ **Optional, and it has to stay optional.** A job file written by a
+   * gateway that predates this field must still parse — the runtime and the
+   * gateway deploy separately, and a required field here would fail every
+   * in-flight run at intake rather than resolve it without a name.
+   */
+  readonly productName?: string | null;
 }
 
 /**
@@ -332,6 +341,7 @@ export async function resolveItem(
       brand: identity?.brand ?? null,
       partNumbers,
       phrase,
+      productName: request.productName ?? null,
     },
     adapter.querySupport,
   );

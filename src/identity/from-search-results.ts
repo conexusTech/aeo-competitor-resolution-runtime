@@ -87,9 +87,31 @@ const NOT_A_PART_NUMBER = new Set([
 const BOILERPLATE_SHAPE =
   /^\d+-(DAY|YEAR|MONTH|WEEK|HOUR|PACK|PC|PCS|PK|CT|IN)S?(-\d+)?$/;
 
-/** Part-number-shaped: has a letter AND a digit, 4-20 chars, hyphens allowed. */
-const PART_NUMBER_SHAPE =
-  /\b(?=[A-Za-z0-9][A-Za-z0-9-]{3,19}\b)(?=[^\s]*[A-Za-z])(?=[^\s]*\d)[A-Za-z0-9][A-Za-z0-9-]{3,19}\b/g;
+/**
+ * Part-number-shaped: 4-20 chars, hyphens allowed.
+ *
+ * 🔴 **The letter-and-digit test is applied to the TOKEN, and it used to be
+ * applied to the whole run of non-space characters.** The shape was one regex
+ * whose lookaheads read `(?=[^\s]*[A-Za-z])(?=[^\s]*\d)` — and `[^\s]*` runs
+ * to the next space, not to the end of the token being consumed. So inside
+ * `https://m.media-amazon.com/images/I/61ABC123.jpg` the digits in the
+ * filename satisfied the lookahead while the consumed token was `https`, and
+ * a page full of image URLs produced `HTTPS`, `MEDIA-AMAZON`, `IMAGES` and
+ * `NEWEGG` as part-number candidates.
+ *
+ * ⚠️ **`HTTPS` then passed the recurrence filter by construction.** Every
+ * search page carries more than one URL, so it appeared at least twice, which
+ * is exactly the test meant to separate a real part number from a seller's
+ * private id. Measured on a real review case (X870 TAICHI CREATOR,
+ * 2026-09-15): `ASRock HTTPS` and `HTTPS` were searched, two of the seven
+ * requests that item spent, and neither could ever have matched anything.
+ */
+const TOKEN_SHAPE = /\b[A-Za-z0-9][A-Za-z0-9-]{3,19}\b/g;
+
+/** The test the lookaheads were meant to make, on the token itself. */
+function hasLetterAndDigit(token: string): boolean {
+  return /[A-Za-z]/.test(token) && /\d/.test(token);
+}
 
 export function resultTitles(html: string): string[] {
   return [...html.matchAll(/<h3[^>]*>([\s\S]*?)<\/h3>/g)]
@@ -123,8 +145,9 @@ export function candidatePartNumbers(html: string, barcode: string): string[] {
   const core = gtinCore(barcode);
   const freq = new Map<string, number>();
 
-  for (const match of text.matchAll(PART_NUMBER_SHAPE)) {
+  for (const match of text.matchAll(TOKEN_SHAPE)) {
     const token = match[0].toUpperCase();
+    if (!hasLetterAndDigit(token)) continue;
     if (NOT_A_PART_NUMBER.has(token)) continue;
     if (BOILERPLATE_SHAPE.test(token)) continue;
     if (/^\d+$/.test(token)) continue; // bare numbers are prices and quantities

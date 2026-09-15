@@ -11,6 +11,7 @@ import {
   gatewayFromEnv,
   parseJob,
 } from "../src/gateway/client.js";
+import type { JobItem } from "../src/gateway/client.js";
 import type { Resolution } from "../src/resolve.js";
 
 /**
@@ -217,6 +218,85 @@ describe("the job's shape is checked, not assumed", () => {
     expect(() =>
       parseJob({ retailerSlug: "newegg", items: [] }, "run-1"),
     ).toThrow(/refuses to dispatch an empty list/);
+  });
+});
+
+/**
+ * 🔴 The client's own description, which never crossed the wire.
+ *
+ * The gateway has always held it — `insights_watchlist_items.product_name`,
+ * mapped from the customer's "description" column on upload — and the job
+ * envelope did not carry it, so the plan had nothing to fall back on. On the
+ * first real customer list that is most of the list: 454 of 494 items carry no
+ * part number, and all 494 carry a name.
+ *
+ * ⚠️ **Absence and malformation are read differently on purpose.** A list with
+ * no description column is ordinary and must resolve as it always did; a name
+ * that arrives as a number is two builds disagreeing, and reading that as "no
+ * name" would hide it behind a run that merely resolved slightly worse.
+ */
+describe("parseJob and the client's product name", () => {
+  const withItems = (items: unknown[]): unknown => ({
+    retailerSlug: "newegg",
+    items,
+  });
+
+  /**
+   * The one parsed item, or a failure saying so.
+   *
+   * ⚠️ A guard rather than `items[0]!`. `noUncheckedIndexedAccess` is on in
+   * this repo, and the assertion operator would silence the one check capable
+   * of reporting a parser that returned an empty list — which would otherwise
+   * read as "the name is undefined", a different defect entirely.
+   */
+  const onlyItem = (body: unknown): JobItem => {
+    const [item] = parseJob(body, "run-1").items;
+    if (item === undefined) throw new Error("parseJob returned no items");
+    return item;
+  };
+
+  it("carries the name through to the item", () => {
+    const item = onlyItem(
+      withItems([
+        {
+          barcode: "4711581492066",
+          clientSku: "SKU-001",
+          productName: "X870 TAICHI CREATOR",
+        },
+      ]),
+    );
+
+    expect(item.productName).toBe("X870 TAICHI CREATOR");
+  });
+
+  it("reads an ABSENT name as no name, so an older gateway still runs", () => {
+    const item = onlyItem(
+      withItems([{ barcode: "4711581492066", clientSku: "SKU-001" }]),
+    );
+
+    expect(item.productName).toBeNull();
+  });
+
+  it("reads an explicit null the same way", () => {
+    const item = onlyItem(
+      withItems([
+        { barcode: "4711581492066", clientSku: "SKU-001", productName: null },
+      ]),
+    );
+
+    expect(item.productName).toBeNull();
+  });
+
+  it("refuses a name that is not a string", () => {
+    // The control on the tolerance above: absent is fine, wrong is not.
+    expect(() =>
+      parseJob(
+        withItems([
+          { barcode: "4711581492066", clientSku: "SKU-001", productName: 870 },
+        ]),
+        "run-1",
+      ),
+    ).toThrow(/non-string 'productName'/);
   });
 });
 

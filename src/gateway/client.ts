@@ -63,6 +63,18 @@ export interface JobItem {
   readonly barcode: string;
   readonly clientSku: string;
   /**
+   * What the client calls this product, from their own list.
+   *
+   * 🔑 The query of last resort. On the first real customer list 454 of 494
+   * items carried no part number at all, so for most of a list this is the
+   * only key the plan has beyond a barcode derivation.
+   *
+   * ⚠️ **Absent means "no name", not an error.** The gateway deploys
+   * separately from this container: a job served by a build that predates the
+   * field must still run, resolving exactly as it did before.
+   */
+  readonly productName: string | null;
+  /**
    * Whether this item's page is worth keeping.
    *
    * 🔴 **Per item, because a budget alone cannot express "which".** A run with
@@ -577,6 +589,20 @@ export function parseJob(body: unknown, runId: string): ResolutionJob {
         `item ${index} of run ${runId} is missing barcode or clientSku`,
       );
     }
+    // ⚠️ Tolerant of absence, strict about type — the same rule as `capture`
+    // below, and for the same reason: a null or missing name is a list without
+    // a description column, while a name that arrives as a number is two
+    // builds disagreeing and must not be read as "no name".
+    const productName = item["productName"];
+    if (
+      productName !== undefined &&
+      productName !== null &&
+      typeof productName !== "string"
+    ) {
+      throw new Error(
+        `item ${index} of run ${runId} has a non-string 'productName'`,
+      );
+    }
     const capture = item["capture"];
     if (capture !== undefined && typeof capture !== "boolean") {
       // Strict about presence, tolerant of absence — the same rule the capture
@@ -586,7 +612,12 @@ export function parseJob(body: unknown, runId: string): ResolutionJob {
         `item ${index} of run ${runId} has a non-boolean 'capture' flag`,
       );
     }
-    parsed.push({ barcode, clientSku, capture: capture === true });
+    parsed.push({
+      barcode,
+      clientSku,
+      productName: productName ?? null,
+      capture: capture === true,
+    });
   }
 
   if (parsed.length === 0) {

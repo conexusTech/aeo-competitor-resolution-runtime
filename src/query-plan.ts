@@ -22,6 +22,16 @@ export interface QueryPlanInput {
   readonly partNumbers: readonly string[];
   /** A phrase to fall back on when no part number is known. */
   readonly phrase: string | null;
+  /**
+   * What the CLIENT calls the product, from their own list.
+   *
+   * 🔑 **Tried unbranded and as written**, because that is what the retailer's
+   * own search box is good at: "X870 TAICHI CREATOR" returns the item on the
+   * first page where "ASRock X870" returns nothing. The brand is deliberately
+   * NOT prefixed — a client name often carries it already, and doubling it
+   * ("ASRock ASRock X870 Taichi") is a query no catalogue answers.
+   */
+  readonly productName: string | null;
 }
 
 /** How many attempts are worth making before a query is just noise. */
@@ -71,6 +81,28 @@ export function planQueries(
 
   // Also covers the case of fewer than two published candidates.
   if (itemRef !== null && brand !== null) push(`${brand} ${itemRef}`);
+
+  /**
+   * 🔴 **The client's own description, which was never tried.**
+   *
+   * Measured on a real review case (X870 TAICHI CREATOR, 2026-09-15): the six
+   * attempts were `ASRock X870`, `X870`, `ASRock A0UAYZ`, `A0UAYZ`,
+   * `ASRock HTTPS` and `HTTPS` — every one a no-result, while the retailer's
+   * own search returns the product for its name on the first page. The item
+   * had no part number supplied, so the plan had nothing but a derivation and
+   * junk to work with.
+   *
+   * ⚠️ **It goes AFTER the published candidates and the derivation, not
+   * before.** A part number is an exact key; a name is a phrase that a
+   * retailer's search will answer with a page of near-misses, and the ranker
+   * then has to tell a sibling size or a regional variant apart from the real
+   * thing. It is a fallback, which is exactly what it was asked to be.
+   *
+   * 🔑 It sits before the INFERRED phrase deliberately: this is what the
+   * customer says the product is, and that is worth more than a phrase we
+   * assembled from somebody else's result titles.
+   */
+  push(input.productName);
   push(input.phrase);
 
   return attempts.slice(0, MAX_QUERY_ATTEMPTS);

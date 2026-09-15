@@ -206,3 +206,65 @@ describe("identityFromSearchResults", () => {
     ).toBeNull();
   });
 });
+
+/**
+ * 🔴 URL fragments are not part numbers.
+ *
+ * Found on a real review case on 2026-09-15: the queries tried for
+ * `X870 TAICHI CREATOR` included `ASRock HTTPS` and `HTTPS` — two of the
+ * seven requests that item spent, on a token that cannot match anything.
+ *
+ * The cause was the shape's lookaheads: `(?=[^\s]*\d)` scans to the next
+ * SPACE, not to the end of the token, so the digits in an image filename
+ * qualified `https` as part-number-shaped. Every result page carries several
+ * URLs, so the junk token also cleared the "recurs at least twice" filter that
+ * exists to separate a real part number from a seller's private id.
+ *
+ * ⚠️ **The URLs below are VISIBLE TEXT, not `href` attributes, and the first
+ * draft of these checks got that wrong.** Tag stripping removes attributes
+ * wholesale, so a URL inside an `href` never reaches the tokeniser and a test
+ * built that way passes with the bug still in place. A search engine prints
+ * the result's URL under its title, which is where the real `HTTPS` came
+ * from.
+ */
+describe("candidatePartNumbers and URLs", () => {
+  const serpWithVisibleUrls = (extra = "") =>
+    serp(
+      ["Acme CF-08LB Fan", "Acme CF-08LB 80mm", "Acme CF-08LB case fan"],
+      `https://m.media-amazon.com/images/I/61ABC123.jpg
+       https://www.newegg.com/p/N82E16813145614
+       https://m.media-amazon.com/images/I/71ZZZ999.jpg ${extra}`,
+    );
+
+  it("never offers a URL scheme or a host as a part number", () => {
+    const parts = candidatePartNumbers(serpWithVisibleUrls(), "812348010548");
+
+    expect(parts).not.toContain("HTTPS");
+    expect(parts).not.toContain("HTTP");
+    expect(parts).not.toContain("MEDIA-AMAZON");
+    expect(parts).not.toContain("IMAGES");
+    expect(parts).not.toContain("NEWEGG");
+  });
+
+  it("still finds the real part number on the same page — the CONTROL", () => {
+    // Without this, an extractor that returned nothing at all would pass the
+    // check above.
+    expect(
+      candidatePartNumbers(serpWithVisibleUrls(), "812348010548"),
+    ).toContain("CF-08LB");
+  });
+
+  it("keeps a retailer item id printed in the results, which IS searchable", () => {
+    // ⚠️ Not everything in a URL is junk: a Newegg item id is a real token,
+    // so the fix must reject tokens with no digit rather than anything that
+    // appeared near a link.
+    const html = serp(
+      ["Acme thing", "Acme thing again"],
+      `https://www.newegg.com/p/N82E16813145614
+       https://www.newegg.com/p/N82E16813145614`,
+    );
+    expect(candidatePartNumbers(html, "812348010548")).toContain(
+      "N82E16813145614",
+    );
+  });
+});

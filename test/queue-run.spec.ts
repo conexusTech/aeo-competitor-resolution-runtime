@@ -45,8 +45,18 @@ const JOB: ResolutionJob = {
   retailerSlug: "newegg",
   itemsTotal: 2,
   items: [
-    { barcode: "649532609635", clientSku: "SKU-001", capture: true },
-    { barcode: "884102021862", clientSku: "SKU-011", capture: true },
+    {
+      barcode: "649532609635",
+      clientSku: "SKU-001",
+      productName: null,
+      capture: true,
+    },
+    {
+      barcode: "884102021862",
+      clientSku: "SKU-011",
+      productName: null,
+      capture: true,
+    },
   ],
   capture: CAPTURE_DISABLED,
 };
@@ -161,6 +171,59 @@ describe("a queue-dispatched run", () => {
       log: () => {},
     });
     expect(seen.map((i) => i.clientSku)).toEqual(["SKU-001", "SKU-011"]);
+  });
+
+  /**
+   * 🔴 The hop that silently dropped the client's description.
+   *
+   * The gateway sends it and the plan tries it, and between those two this
+   * mapping rebuilt each item as `{ barcode, clientSku }`. Nothing failed:
+   * the literal satisfied the narrower structural type this dependency was
+   * declared with, so the field arrived at the container and stopped here,
+   * and the plan saw `productName: undefined` on every item of every run.
+   *
+   * ⚠️ **A test of the parser cannot see this and neither can a test of the
+   * plan** — both were green while the feature was inert. This is the only
+   * place the two ends meet.
+   */
+  it("hands the client's product name to the run, not just the identifiers", async () => {
+    let seen: readonly { clientSku: string; productName?: string | null }[] =
+      [];
+    const { reporter } = fakeReporter();
+    await runDispatchedJob({
+      dispatch: DISPATCH,
+      client: fakeClient({
+        ...JOB,
+        items: [
+          {
+            barcode: "4711581492066",
+            clientSku: "SKU-001",
+            productName: "X870 TAICHI CREATOR",
+            capture: false,
+          },
+          {
+            barcode: "884102021862",
+            clientSku: "SKU-011",
+            productName: null,
+            capture: false,
+          },
+        ],
+      }) as never,
+      reporter: reporter as never,
+      adapterFor,
+      fetcher: fetcher(),
+      runList: (items) => {
+        seen = items;
+        return Promise.resolve([]);
+      },
+      baseOptions: RUN_DEFAULTS,
+      log: () => {},
+    });
+
+    expect(seen.map((i) => i.productName)).toEqual([
+      "X870 TAICHI CREATOR",
+      null,
+    ]);
   });
 
   it("notes a dispatch/job count mismatch without failing on it", async () => {
@@ -526,9 +589,24 @@ describe("a dispatched run's evidence", () => {
     // block — and this fixture originally omitted SKU-002, which made the
     // budget check trip the selection branch instead.
     items: [
-      { barcode: "649532609635", clientSku: "SKU-001", capture: true },
-      { barcode: "884102021862", clientSku: "SKU-002", capture: true },
-      { barcode: "884102021862", clientSku: "SKU-011", capture: true },
+      {
+        barcode: "649532609635",
+        clientSku: "SKU-001",
+        productName: null,
+        capture: true,
+      },
+      {
+        barcode: "884102021862",
+        clientSku: "SKU-002",
+        productName: null,
+        capture: true,
+      },
+      {
+        barcode: "884102021862",
+        clientSku: "SKU-011",
+        productName: null,
+        capture: true,
+      },
     ],
     capture: { enabled: true, budget, format: "page_html" },
   });
@@ -764,8 +842,18 @@ describe("a dispatched run's selection", () => {
         ...fakeClient({
           ...JOB,
           items: [
-            { barcode: "649532609635", clientSku: "SKU-001", capture: false },
-            { barcode: "884102021862", clientSku: "SKU-011", capture: true },
+            {
+              barcode: "649532609635",
+              clientSku: "SKU-001",
+              productName: null,
+              capture: false,
+            },
+            {
+              barcode: "884102021862",
+              clientSku: "SKU-011",
+              productName: null,
+              capture: true,
+            },
           ],
           capture: { enabled: true, budget: 10, format: "page_html" },
         }),
@@ -810,7 +898,12 @@ describe("a dispatched run's selection", () => {
         ...fakeClient({
           ...JOB,
           items: [
-            { barcode: "649532609635", clientSku: "SKU-001", capture: false },
+            {
+              barcode: "649532609635",
+              clientSku: "SKU-001",
+              productName: null,
+              capture: false,
+            },
           ],
           capture: { enabled: true, budget: 10, format: "page_html" },
         }),
