@@ -797,3 +797,66 @@ describe("a barcode read once is known for the rest of the run", () => {
     expect(second.probes).toBe(0);
   });
 });
+
+/**
+ * 🔴 The third hop, and the one with no check.
+ *
+ * The commit that added the client-description fallback has three hops: the
+ * gateway sends `productName` (checked in `gateway-client.spec.ts`), the queue
+ * run passes it to `runList` (checked in `queue-run.spec.ts`), and the plan
+ * tries it (checked in `query-plan.spec.ts`). Between the second and the third
+ * sits `resolveItem`'s own hand-off — `productName: request.productName ?? null`
+ * — and nothing reached it.
+ *
+ * ⚠️ **That is exactly the defect the commit was about.** Its own lesson was
+ * that a hop between two tested ends made the whole feature inert while every
+ * suite stayed green. Review measured it: hardcoding that line to `null` leaves
+ * all 442 tests passing and the PO's fix dead.
+ *
+ * So this asserts what the FETCHER was asked for, which is the only place the
+ * plan's decision becomes observable outside the plan.
+ */
+describe("resolveItem hands the client's description to the plan", () => {
+  /** A page with no part number on it, so the name is the only key left. */
+  const NAMELESS_SERP = "https://www.google.com/search?q=%224711581492066%22";
+  const BY_NAME = `https://retailer.test/s?q=${encodeURIComponent(
+    "X870 TAICHI CREATOR",
+  )}`;
+
+  const askedFor = async (productName: string | null): Promise<string[]> => {
+    const asked: string[] = [];
+    const adapter = fakeAdapter({}, {});
+    // Records every URL and then fails it, so the run exhausts its plan and
+    // the full list of attempts is observable.
+    const recording: Fetcher = {
+      liveRequestCount: 0,
+      fetch: (url: string) => {
+        asked.push(url);
+        return Promise.reject(new FetchFailed(url));
+      },
+    };
+
+    await resolveItem(
+      { barcode: "4711581492066", clientSku: "SKU-X870", productName },
+      adapter,
+      recording,
+      DEFAULT_OPTIONS,
+    );
+    return asked;
+  };
+
+  it("searches the description when there is no part number to use", async () => {
+    expect(await askedFor("X870 TAICHI CREATOR")).toContain(BY_NAME);
+  });
+
+  it("asks for nothing of the kind when the list carried no name", async () => {
+    // 🔑 The control. Without it, a runtime that searched the CLIENT SKU, or a
+    // constant, or every query it could think of, would satisfy the check
+    // above — and this is also what goes red if the hand-off is hardcoded.
+    const asked = await askedFor(null);
+
+    expect(asked).not.toContain(BY_NAME);
+    // It still did its ordinary work: the barcode lookup was attempted.
+    expect(asked).toContain(NAMELESS_SERP);
+  });
+});
