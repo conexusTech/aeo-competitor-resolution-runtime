@@ -12,7 +12,7 @@ already knows the listing, so it dispatches a **listing read run** — one
 retailer, the listings to read on it — and files each reading into every list
 that watches the listing. The filing, the slot times and the switch are the
 gateway's, recorded in `aeo-backend`'s `insights-shared-listing-readings`
-capability when that half lands.
+capability.
 
 **Same image, same catalog entry.** The dispatch payload picks the mode.
 
