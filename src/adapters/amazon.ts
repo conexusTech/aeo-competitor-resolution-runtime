@@ -38,6 +38,36 @@ import { safeImageUrl } from "./types.js";
  */
 const RESULT_MARKER = 'data-component-type="s-search-result"';
 
+/**
+ * The container Amazon wraps a search's results in — present whether the
+ * search matched sixteen listings or none.
+ *
+ * 🔴 **Necessary, not sufficient.** Measured on two real no-results pages
+ * captured through the proxy on 2026-10-22: each carries this container
+ * exactly once and no result cell at all, as does the committed page of
+ * sixteen results. A robot check or an error page carries neither — and before
+ * this existed both read as "no results", so a blocked search reached the
+ * customer as "Amazon does not carry this". But the container arrives early in
+ * the body, so a TRUNCATED page carries it too; see `NO_RESULTS_WIDGET` for
+ * what an empty answer additionally needs.
+ *
+ * ⚠️ The closing quote matters: without it this would also match every
+ * `s-search-result` cell, and a lone cell is not a results page.
+ */
+const RESULTS_CONTAINER = 'data-component-type="s-search-results"';
+
+/**
+ * Amazon's own "No results for …" message, by its widget id.
+ *
+ * 🔴 **An empty page is an answer only when Amazon says it is.** A page with
+ * the container and no result cells is either Amazon saying nothing matched or
+ * a body cut short before the first cell arrived — and the two must not be
+ * confused, because the first is filed as "not carried". Measured on the
+ * committed no-results capture: this widget id appears once, inside the
+ * results container. It is absent from the page of sixteen results.
+ */
+const NO_RESULTS_WIDGET = "widgetId=messaging-messages-no-results";
+
 const ASIN = /^<div[^>]*\sdata-asin="([^"]*)"/;
 const TITLE = /<h2[^>]*\saria-label="([^"]*)"/;
 
@@ -168,11 +198,21 @@ export function splitResultCells(html: string): string[] {
   );
 }
 
-export function parseSearchResults(html: string): ParsedCandidate[] {
+/**
+ * Candidates from a search page: `[]` for a results page that holds none, and
+ * `null` for a page that is not a results page — see the seam's contract.
+ */
+export function parseSearchResults(html: string): ParsedCandidate[] | null {
+  if (!html.includes(RESULTS_CONTAINER)) return null;
+
+  const cells = splitResultCells(html);
+  // No cells: an answer only if Amazon said "no results" in so many words.
+  if (cells.length === 0) return html.includes(NO_RESULTS_WIDGET) ? [] : null;
+
   const out: ParsedCandidate[] = [];
   const seen = new Set<string>();
 
-  for (const cell of splitResultCells(html)) {
+  for (const cell of cells) {
     const itemId = ASIN.exec(cell)?.[1]?.trim();
     if (itemId === undefined || itemId === "") continue;
     if (seen.has(itemId)) continue;
@@ -210,7 +250,10 @@ export function parseSearchResults(html: string): ParsedCandidate[] {
     });
   }
 
-  return out;
+  // 🔴 Cells and not one readable: the markup has moved under us. That is not
+  // Amazon saying nothing matched, and reading it as `[]` would file every
+  // item on the list as not carried the day Amazon renames an attribute.
+  return out.length === 0 ? null : out;
 }
 
 export function parseProductPage(html: string): ParsedProduct {

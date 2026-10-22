@@ -125,11 +125,23 @@ accessory. A minimum evidence score exists for exactly that, and reporting nothi
 beats reporting something wrong.
 
 ⚠️ **`unverifiable` is a first-class outcome from the first commit, not a later
-refinement.** 12% of the launch client's list are genuine EAN-13s, and **nobody has
-yet measured whether the retailer's barcode field carries EAN-13 for an import
-product.** If it does not, those items are unverifiable rather than mismatched —
-a different answer, and a coverage limit no document states. Collapsing it into
-`not-found` would report "not carried" for items the retailer sells.
+refinement.** 12% of the launch client's list are genuine EAN-13s. **Whether the
+launch retailer's barcode field carries EAN-13 for an import product was answered
+on 2026-09-10: it does.** Across all 255 captured product pages it published 6
+distinct genuine EAN-13s, all with non-US GS1 prefixes — check
+`resolution-reads-genuine-ean13`. Amazon publishes them too, under labels other
+than `UPC`. `unverifiable` stays for the listings that publish no barcode at all
+(91 of those 255 pages); collapsing it into `not-found` would report "not carried"
+for items the retailer sells.
+
+🔴 **"Not carried" needs an answer to every search.** An item is `not-found`
+without a failure only when every search it attempted came back as a real results
+page. One search that could not be fetched, or that came back as a robot check, an
+error page or a page cut short, makes the item a failure with its reason, which the
+gateway records as `error`. Every resolution carries the two counts, and a run
+prints their totals in its summary. Until 2026-10-22 the search step dropped those
+searches silently, and a run whose every fetch failed filed every item as not
+carried.
 
 ## Things that will bite you
 
@@ -158,7 +170,7 @@ src/gtin.ts          the comparison key — pure
 src/identity/        search results -> candidate identities — pure
 src/ranking.ts       candidate scoring — pure
 src/resolve.ts       the three-step pipeline, adapter-agnostic
-src/adapters/        the seam; every retailer specific lives behind it
+src/adapters/        the seam; every retailer specific lives behind it (newegg, amazon)
 src/fetcher/         the live fetcher, and the offline replay behind one interface
 src/run.ts           journal, resume, concurrency, cost meter
 src/queue/           the task record — the queue's by-reference handover

@@ -89,10 +89,17 @@ function asRecord(value: unknown): Record<string, unknown> | null {
  * **majority case**: 156 of 271 captured search pages carry the embedded state
  * and no `Products` array at all. Treating that as a parse failure would turn
  * the retailer's ordinary "nothing matched" into an error on 58% of searches.
+ *
+ * 🔴 **`null` only when the page carries no embedded state at all** — a block
+ * page, an error page, a truncated body. Every one of the 211 search pages in
+ * the committed 53-row corpus carries the state, so this changes no measured
+ * outcome; what it changes is that a page that is not a results page can no
+ * longer be read as "the retailer does not carry this".
  */
-export function parseSearchResults(html: string): ParsedCandidate[] {
+export function parseSearchResults(html: string): ParsedCandidate[] | null {
   const state = extractInitialState(html);
-  const products = state?.Products;
+  if (state === null) return null;
+  const products = state.Products;
   if (!Array.isArray(products)) return [];
 
   const out: ParsedCandidate[] = [];

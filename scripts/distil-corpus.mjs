@@ -287,7 +287,8 @@ for (const row of readRecord(record)) {
 for (const [key, file] of byKey) {
   if (!key.startsWith("search:")) continue;
   const html = fs.readFileSync(path.join(CACHE, file), "utf8");
-  for (const c of parseSearchResults(html)) urls.add(c.url);
+  // `null` is a page that is not a results page: it names no product urls.
+  for (const c of parseSearchResults(html) ?? []) urls.add(c.url);
 }
 
 console.log(`captures: ${byKey.size}   candidate urls: ${urls.size}`);

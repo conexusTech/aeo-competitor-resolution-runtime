@@ -93,6 +93,18 @@ Module map and the traps: [service.md](/service.md).
 
 **Checked by:** resolution-a-searched-miss-stays-a-miss
 
+#### Scenario: A search the retailer never answered is a failure, not a miss
+
+- GIVEN an item with an identity, whose searches turn up nothing that can be reported
+- WHEN any search it attempted could not be fetched or came back as something other than a results page
+- THEN the outcome carries a failure counting the searches of each kind
+- AND the gateway records `error`, never `not_carried`
+- AND an item is a clean miss only when every search it attempted was answered by a real results page
+- AND a page cut short, or one whose result cells cannot be read, is not a results page
+- AND every resolution carries both counts, and the run totals them in its summary
+
+**Checked by:** resolution-unfetched-searches-are-a-failure, resolution-non-results-pages-are-a-failure, resolution-throttled-specific-search-is-a-failure, resolution-adapters-refuse-a-non-results-page, resolution-amazon-refuses-a-truncated-or-unreadable-page, resolution-real-no-results-page-is-a-miss, resolution-every-search-answered-is-a-clean-miss, resolution-unanswered-searches-are-counted, resolution-unanswered-item-retried-after-the-run
+
 ## An item nobody looked up is not a fact about the retailer
 
 🔴 **This was wrong until 2026-09-11, and the repo already stated the rule it
@@ -120,6 +132,44 @@ ours to retry and one needs somebody to add a part number to the list.
 ⚠️ **This changes what the customer is TOLD, not what gets bought.** The gateway
 re-attempts an item on `state <> 'approved'`, so `error` and `not_carried` are
 retried identically.
+
+🔴 **The same rule was broken one step later, and production showed it on
+2026-10-22.** An expired proxy credential made a run over a 227-item list fetch
+nothing. Identity was settled, the search plan was non-empty, and every search
+fetch failed — but the search step dropped each failure without a trace, the
+empty pool returned a clean `not-found`, and the gateway filed every item
+`not_carried`. The run reported success. The rule above held for identity and
+not for search.
+
+🔑 **A page that is not a results page is no more an answer than a failed
+fetch.** Each adapter now says which of two empty answers it got: a results
+page with nothing on it, or a body that is not a results page at all — a robot
+check, an error page, a truncated body. It recognises its own results page by
+structure the retailer always emits for one, calibrated on a real no-results
+page, never by the absence of results. For Amazon that is the results
+container, and then either a readable result cell or Amazon's own no-results
+message; a page with neither, or with cells none of which can be read, is not
+an answer.
+
+🔴 **A miss needs every attempted search answered.** The plan asks its most
+specific query first — the exact part number — and its vaguest last. If the
+specific search is throttled and a vague one comes back empty, nobody asked the
+retailer the question that would have found the item, so the item is a failure,
+not a miss. That holds whether the answered searches came back empty or held
+only candidates too weak to report. The failure counts the searches that could
+not be fetched and the ones that came back as something else, so a run's record
+says whether to fix a credential or wait out a block. Every resolution carries
+both counts, a retried item keeps both attempts', and the run prints their
+totals beside its outcome split.
+
+🔑 **The gateway half is the gateway's check.** That a resolution carrying a
+failure is recorded as `error` and never `not_carried` is
+[insights-run-failure-is-not-a-miss](aeo-backend:/qa/insights-run-orchestration.md),
+in `aeo-backend`.
+
+⚠️ **Newegg's measured split did not move.** Every one of the 211 search pages
+in the committed 53-row corpus carries the retailer's embedded state, so none of
+them changes answer; the replay reproduces every row exactly.
 
 #### Scenario: What the item is comes from the most authoritative source available
 
@@ -282,3 +332,48 @@ available.
 client SKU the gateway has already acknowledged, so a sweep that ran after
 reporting would be silently dropped — and would appear to work on a short list,
 because nothing is flushed until a hundred findings have piled up.
+
+## The second retailer: Amazon
+
+**Added 2026-10-22**, recording what `insights-amazon-retailer` built on
+2026-09-13 and never wrote down. The adapter sits behind the same seam as the
+launch retailer and nothing above it names either. Amazon states less than
+Newegg does at the search stage — no model, no seller — so what it does not
+state stays unknown, and the barcode is the only thing that decides a pairing.
+
+#### Scenario: Amazon's barcode is read under whichever label it publishes it
+
+- GIVEN a real Amazon product page with a valid EAN-13 under "Global Trade Identification Number"
+- WHEN it is parsed
+- THEN that barcode is read
+- AND the incidental "UPC" strings elsewhere on the page yield nothing
+- AND a details table with no barcode row yields none, so the item is `unverifiable`, not mismatched
+
+**Checked by:** resolution-amazon-reads-the-gtin-label, resolution-amazon-ignores-incidental-upc, resolution-amazon-no-barcode-row-is-none, resolution-empty-barcode-is-unverifiable
+
+#### Scenario: A field holding two barcodes verifies on either
+
+- GIVEN one field publishing two barcodes, one equal to the client's
+- WHEN compared
+- THEN the pairing is verified
+- AND the evidence names the barcode that agreed
+
+**Checked by:** resolution-amazon-splits-a-two-barcode-field, resolution-verifies-on-a-second-barcode
+
+#### Scenario: The offered price is reported, never the struck-through list price
+
+- GIVEN an Amazon result carrying both an offered price and a struck-through list price
+- WHEN it is parsed
+- THEN the offered price is reported
+- AND that holds whichever order Amazon emits the two in
+
+**Checked by:** resolution-amazon-offered-price-on-a-real-page, resolution-amazon-price-by-markup-not-order
+
+#### Scenario: What Amazon does not state is not invented
+
+- GIVEN Amazon search results, which state no model and no seller
+- WHEN they are parsed and ranked
+- THEN model and first-party stay unknown
+- AND a brand guessed from the title never decides a pairing
+
+**Checked by:** resolution-amazon-claims-no-model-or-seller, resolution-floor-alone-is-insufficient

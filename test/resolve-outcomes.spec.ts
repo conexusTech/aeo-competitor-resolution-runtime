@@ -81,6 +81,35 @@ const SERP = "https://www.google.com/search?q=%22812348010548%22";
 const serpBody = `<h3>Kingwin CF-08LB Fan</h3><h3>Kingwin CF-08LB 80mm</h3><p>CF-08LB CF-08LB</p>`;
 const SEARCH = "https://retailer.test/s?q=Kingwin%20CF-08LB";
 
+const isSearch = (url: string): boolean =>
+  url.startsWith("https://retailer.test/s?");
+
+/**
+ * Answers identity, and each SEARCH url (in the order asked) with whatever
+ * `answer` says for its position — a body, or `undefined` for a fetch that
+ * fails. Counting by position rather than listing urls keeps these checks
+ * true however many queries the plan makes. Any other url is served from
+ * `others`, or fails.
+ */
+class SearchFetcher implements Fetcher {
+  liveRequestCount = 0;
+  private searches = 0;
+  constructor(
+    private readonly answer: (n: number) => string | undefined,
+    private readonly others: Record<string, string> = {},
+  ) {}
+  fetch(url: string): Promise<FetchResult> {
+    const body = isSearch(url)
+      ? this.answer(this.searches++)
+      : url === SERP
+        ? serpBody
+        : this.others[url];
+    if (body === undefined) return Promise.reject(new FetchFailed(url));
+    this.liveRequestCount++;
+    return Promise.resolve({ url, body, cached: false });
+  }
+}
+
 describe("resolveItem outcomes", () => {
   it("verified — the retailer's barcode agrees, even zero-padded", async () => {
     const adapter = fakeAdapter(
@@ -425,23 +454,203 @@ describe("an item that was never searched", () => {
     // assortment information and this must not stop producing it — a fix that
     // turned every miss into an error would destroy the signal the product
     // sells.
+    //
+    // 🔑 EVERY planned search is answered with a real, empty results page.
+    // That is the only shape a clean miss has: one unanswered search and the
+    // item is a failure (see "a search the retailer never answered").
     const adapter = fakeAdapter({ EMPTY: [] }, {});
     const resolution = await resolveItem(
       { barcode: "812348010548", clientSku: "531814" },
       adapter,
-      new MapFetcher({
-        [SERP]: serpBody,
-        ["https://retailer.test/s?q=Kingwin%20CF-08LB"]: "EMPTY",
-        ["https://retailer.test/s?q=CF-08LB"]: "EMPTY",
-      }),
+      new SearchFetcher(() => "EMPTY"),
       DEFAULT_OPTIONS,
     );
 
     expect(resolution.outcome).toBe("not-found");
-    expect(resolution.queriesTried.length).toBeGreaterThan(0);
+    expect(resolution.queriesTried.length).toBeGreaterThan(1);
+    expect(resolution.searchesUnfetched).toBe(0);
+    expect(resolution.searchesNotResultsPage).toBe(0);
     // No failure: the run looked, and the retailer does not carry it. THIS is
     // what `not_carried` is for.
     expect(resolution.failure).toBeNull();
+  });
+});
+
+/**
+ * An item whose searches the retailer never answered.
+ *
+ * 🔴 **Seen live on 2026-10-22.** An expired proxy credential made a
+ * production run over a 227-item list fetch nothing. Identity came back from
+ * the run's own memory of the list, the search plan was non-empty, every
+ * search fetch failed — and `tryFetch`'s `null` body was dropped with a bare
+ * `continue`. The empty pool then returned a clean `not-found` with no
+ * `failure`, and the gateway filed every item `not_carried`: the customer was
+ * told the retailer stocks none of 227 products, on the strength of zero pages.
+ *
+ * 🔑 The rule is the one `establishIdentity` already keeps: a miss is a fact
+ * about the retailer only when the retailer ANSWERED. A page that is not a
+ * results page — a block page, a robot check — is no more an answer than a
+ * failed fetch, so the seam's `parseSearchResults` says `null` for it and this
+ * treats the two alike.
+ */
+describe("a search the retailer never answered", () => {
+  /**
+   * A retailer whose `BLOCKED` body is not a results page at all, and whose
+   * `WEAK` body holds only a candidate below the evidence floor.
+   */
+  const blockingAdapter = (): RetailerAdapter => ({
+    ...fakeAdapter({}, {}),
+    parseSearchResults: (html) =>
+      html === "BLOCKED"
+        ? null
+        : html === "WEAK"
+          ? [
+              candidate({
+                itemId: "WEAK-1",
+                url: "https://retailer.test/p/WEAK-1",
+                model: null,
+                brand: null,
+                title: "Unrelated Server Chassis",
+                isFirstParty: false,
+                sellerName: "SomeSeller",
+                inStock: false,
+              }),
+            ]
+          : html === "SEARCH"
+            ? [candidate()]
+            : [],
+  });
+
+  const item = { barcode: "812348010548", clientSku: "531814" };
+
+  it("🔴 is a failure, not a miss, when no search could be fetched", async () => {
+    // Identity answers; every search url is a `FetchFailed`.
+    const resolution = await resolveItem(
+      item,
+      fakeAdapter({}, {}),
+      new SearchFetcher(() => undefined),
+      DEFAULT_OPTIONS,
+    );
+    const n = resolution.queriesTried.length;
+
+    // It DID plan and attempt searches — this is not the never-searched case.
+    expect(n).toBeGreaterThan(1);
+    expect(resolution.outcome).toBe("not-found");
+    // 🔑 `failure` is what makes the gateway write `error` and not
+    // `not_carried`.
+    expect(resolution.failure).not.toBeNull();
+    expect(resolution.failure).toContain(
+      `${n} of ${n} searches went unanswered`,
+    );
+    expect(resolution.failure).toContain(`${n} could not be fetched`);
+    expect(resolution.failure).toContain("0 came back as not a results page");
+    expect(resolution.searchesUnfetched).toBe(n);
+    expect(resolution.searchesNotResultsPage).toBe(0);
+  });
+
+  it("🔴 is a failure when every search came back as something other than a results page", async () => {
+    const resolution = await resolveItem(
+      item,
+      blockingAdapter(),
+      new SearchFetcher(() => "BLOCKED"),
+      DEFAULT_OPTIONS,
+    );
+    const n = resolution.queriesTried.length;
+
+    expect(n).toBeGreaterThan(1);
+    expect(resolution.failure).not.toBeNull();
+    expect(resolution.failure).toContain("0 could not be fetched");
+    expect(resolution.failure).toContain(
+      `${n} came back as not a results page`,
+    );
+    expect(resolution.searchesUnfetched).toBe(0);
+    expect(resolution.searchesNotResultsPage).toBe(n);
+  });
+
+  it("counts both kinds when the two happen together", async () => {
+    // The first search is blocked, every later one never arrives.
+    const resolution = await resolveItem(
+      item,
+      blockingAdapter(),
+      new SearchFetcher((i) => (i === 0 ? "BLOCKED" : undefined)),
+      DEFAULT_OPTIONS,
+    );
+    const n = resolution.queriesTried.length;
+
+    expect(resolution.failure).toContain(`${n - 1} could not be fetched`);
+    expect(resolution.failure).toContain("1 came back as not a results page");
+    expect(resolution.searchesUnfetched).toBe(n - 1);
+    expect(resolution.searchesNotResultsPage).toBe(1);
+  });
+
+  /**
+   * 🔴 **The rule is EVERY search, not any.** The plan asks its most specific
+   * query first — the exact part number — and its vaguest last. If the
+   * specific one is throttled and a vague sibling comes back empty, nobody
+   * asked the retailer the question that would have found the item; filing it
+   * `not_carried` would rest "Amazon does not stock this" on the one search
+   * least able to say so.
+   */
+  it("🔴 is a failure when a throttled specific search sits beside a vaguer sibling that answered empty", async () => {
+    const resolution = await resolveItem(
+      item,
+      blockingAdapter(),
+      new SearchFetcher((i) => (i === 0 ? undefined : "EMPTY")),
+      DEFAULT_OPTIONS,
+    );
+    const n = resolution.queriesTried.length;
+
+    expect(n).toBeGreaterThan(1);
+    expect(resolution.outcome).toBe("not-found");
+    expect(resolution.failure).not.toBeNull();
+    expect(resolution.failure).toContain(`1 of ${n} searches went unanswered`);
+    expect(resolution.searchesUnfetched).toBe(1);
+  });
+
+  it("🔴 is a failure when the answered siblings held only candidates below the evidence floor", async () => {
+    // The floor branch: a weak candidate is in the pool, so this is not the
+    // empty-pool return — and it must keep the same rule.
+    const resolution = await resolveItem(
+      item,
+      blockingAdapter(),
+      new SearchFetcher((i) => (i === 0 ? undefined : "WEAK")),
+      DEFAULT_OPTIONS,
+    );
+
+    expect(resolution.outcome).toBe("not-found");
+    expect(resolution.candidatesSeen).toBeGreaterThan(0);
+    expect(resolution.failure).not.toBeNull();
+    expect(resolution.failure).toContain("went unanswered");
+  });
+
+  it("is a clean miss below the floor when every search answered — the CONTROL", async () => {
+    const resolution = await resolveItem(
+      item,
+      blockingAdapter(),
+      new SearchFetcher(() => "WEAK"),
+      DEFAULT_OPTIONS,
+    );
+
+    expect(resolution.outcome).toBe("not-found");
+    expect(resolution.candidatesSeen).toBeGreaterThan(0);
+    expect(resolution.failure).toBeNull();
+  });
+
+  it("carries the counts on a finding too, so a run can report them", async () => {
+    // §11's check reports how many searches a page that was not a results page
+    // answered — across the run, not only on the misses.
+    const resolution = await resolveItem(
+      item,
+      blockingAdapter(),
+      new SearchFetcher((i) => (i === 0 ? "BLOCKED" : "SEARCH"), {
+        "https://retailer.test/p/ITEM-1": "PDP",
+      }),
+      DEFAULT_OPTIONS,
+    );
+
+    expect(resolution.outcome).not.toBe("not-found");
+    expect(resolution.searchesNotResultsPage).toBe(1);
+    expect(resolution.searchesUnfetched).toBe(0);
   });
 });
 

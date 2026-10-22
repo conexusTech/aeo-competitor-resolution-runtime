@@ -279,6 +279,208 @@ assortment information and the product sells it. A fix that turned every miss
 into an error would destroy that signal; the mutation widening the guard to
 every item turns six checks red.
 
+### Check: resolution-unfetched-searches-are-a-failure
+
+**Requirement:** A search the retailer never answered is a failure, not a miss
+**Surface:** `resolveItem`'s search loop
+**Automated:** `test/resolve-outcomes.spec.ts` — "is a failure, not a miss, when no search could be fetched"
+
+**Do**
+
+```bash
+npx vitest run test/resolve-outcomes.spec.ts -t "no search could be fetched"
+```
+
+Identity answers; every search url the plan asks for is a fetch failure.
+
+**Expect**
+
+`queriesTried` holds more than one search, the outcome is `not-found`, and
+`failure` says all of them went unanswered, every one counted as could not be
+fetched and none as a non-results page. `searchesUnfetched` equals the number
+attempted. The gateway half — a resolution with a failure is recorded as
+`error`, never `not_carried` — is [insights-run-failure-is-not-a-miss](aeo-backend:/qa/insights-run-orchestration.md) in `aeo-backend`.
+
+🔴 **This is 2026-10-22's production defect.** An expired proxy credential made a
+227-item run fetch nothing, and every item was filed `not_carried`. Two
+mutations turn this red: returning `failure: null` from the empty pool (as
+shipped) and the silent `continue` that counts nothing.
+
+### Check: resolution-non-results-pages-are-a-failure
+
+**Requirement:** A search the retailer never answered is a failure, not a miss
+**Surface:** `resolveItem`'s search loop
+**Automated:** `test/resolve-outcomes.spec.ts` — "is a failure when every search came back as something other than a results page", "counts both kinds when the two happen together"
+
+**Do**
+
+```bash
+npx vitest run test/resolve-outcomes.spec.ts -t "a search the retailer never answered"
+```
+
+**Expect**
+
+When the adapter answers `null` for every search body, `failure` counts every
+search as not a results page. When the first is blocked and the rest fail to
+fetch, both counts appear, in the failure and in `searchesUnfetched` /
+`searchesNotResultsPage`. Not counting a non-results page turns both red. The
+gateway half is [insights-run-failure-is-not-a-miss](aeo-backend:/qa/insights-run-orchestration.md).
+
+### Check: resolution-throttled-specific-search-is-a-failure
+
+**Requirement:** A search the retailer never answered is a failure, not a miss
+**Surface:** `resolveItem`'s empty-pool and below-the-floor returns
+**Automated:** `test/resolve-outcomes.spec.ts` — "is a failure when a throttled specific search sits beside a vaguer sibling that answered empty", "is a failure when the answered siblings held only candidates below the evidence floor"
+
+**Do**
+
+```bash
+npx vitest run test/resolve-outcomes.spec.ts -t "throttled specific search|below the evidence floor"
+```
+
+The first, most specific search fails to fetch; every later one answers, first
+with an empty results page and then with only a candidate below the evidence
+floor.
+
+**Expect**
+
+Both are `not-found` with a failure saying one search went unanswered, never a
+clean miss. 🔴 **This is the rule: every attempted search answered, not any.**
+Restoring "one answered is enough" turns both red, and dropping the failure
+from the below-the-floor return turns the second red. The gateway half is
+[insights-run-failure-is-not-a-miss](aeo-backend:/qa/insights-run-orchestration.md).
+
+### Check: resolution-adapters-refuse-a-non-results-page
+
+**Requirement:** A search the retailer never answered is a failure, not a miss
+**Surface:** each adapter's `parseSearchResults`
+**Automated:** `test/adapter-amazon.spec.ts` — "returns null for a page that is not a results page", "returns null for a robot check, however Amazon-shaped it looks"; `test/adapter-newegg.spec.ts` — "returns null for markup carrying no state at all — not a results page"
+
+**Do**
+
+```bash
+npx vitest run test/adapter-amazon.spec.ts test/adapter-newegg.spec.ts -t "null"
+```
+
+**Expect**
+
+`null`, never `[]`, for a body that is not a results page: Amazon for anything
+without its results container (including a robot check in full Amazon chrome),
+Newegg for anything without its embedded state. ⚠️ The robot check is
+hand-built: none has been captured, because the proxy unblocks before it
+answers. Removing either adapter's recognition turns its checks red.
+
+### Check: resolution-amazon-refuses-a-truncated-or-unreadable-page
+
+**Requirement:** A search the retailer never answered is a failure, not a miss
+**Surface:** the Amazon adapter's `parseSearchResults`
+**Automated:** `test/adapter-amazon.spec.ts` — "returns null for the real results page cut short after its container", "returns null when there are result cells and none of them parses", "returns null for a lone valid result cell with no results container"
+
+**Do**
+
+```bash
+npx vitest run test/adapter-amazon.spec.ts -t "cut short|none of them parses|lone valid result cell"
+```
+
+**Expect**
+
+`null` for the real results page cut 2,000 bytes after its container, which
+carries the container and neither a readable cell nor Amazon's no-results
+message; `null` for a page of result cells none of which can be read; and
+`null` for one valid cell with no container, while the same cell inside the
+container is read. Each of three mutations turns exactly one red: not requiring
+the no-results message, returning the empty list when no cell parsed, and
+dropping the container marker's closing quote.
+
+### Check: resolution-real-no-results-page-is-a-miss
+
+**Requirement:** A search the retailer never answered is a failure, not a miss
+**Surface:** each adapter's `parseSearchResults`
+**Automated:** `test/adapter-amazon.spec.ts` — "returns [] for Amazon's real no-results page", "returns candidates for Amazon's real results page — the CONTROL"; `test/adapter-newegg.spec.ts` — "keeps [] and null apart on the same real page — the CONTROL"
+
+**Do**
+
+```bash
+npx vitest run test/adapter-amazon.spec.ts -t "real no-results page"
+npx vitest run test/adapter-newegg.spec.ts -t "keeps \[\] and null apart"
+```
+
+**Expect**
+
+`[]` for Amazon's real no-results page — captured 2026-10-22 through the live
+proxy, `test/raw/amazon-search-no-results.html.gz`, carrying the results
+container and Amazon's no-results widget — and for Newegg's committed
+no-results page; 16 and 44 candidates on the real results pages. 🔑 **This is
+the calibration.** A recogniser keyed on anything the no-results page lacks
+returns `null` here and turns every genuine miss into an error; changing
+Amazon's marker to the result-cell attribute turns this check red.
+
+### Check: resolution-every-search-answered-is-a-clean-miss
+
+**Requirement:** A search the retailer never answered is a failure, not a miss
+**Surface:** `resolveItem`
+**Automated:** `test/resolve-outcomes.spec.ts` — "still reports a searched-and-found-nothing item as a clean miss", "is a clean miss below the floor when every search answered — the CONTROL"; `test/exit-criterion-53-rows.spec.ts`
+
+**Do**
+
+```bash
+npx vitest run test/resolve-outcomes.spec.ts -t "searched-and-found-nothing|every search answered"
+npx vitest run test/exit-criterion-53-rows.spec.ts
+```
+
+**Expect**
+
+Every planned search answered with an empty results page gives `not-found`
+with `failure` null and both counts 0; every search answered with only a
+candidate below the floor gives the same. The 53-row replay keeps Newegg's
+measured split row for row. ⚠️ **This is the control and stays green under
+every mutation above.** `not_carried` is the signal the product sells, and a
+fix that turned an answered miss into an error would destroy it.
+
+### Check: resolution-unanswered-searches-are-counted
+
+**Requirement:** A search the retailer never answered is a failure, not a miss
+**Surface:** `Resolution`, `runList`'s journal, `tallySearches` and the run's summary line
+**Automated:** `test/resolve-outcomes.spec.ts` — "carries the counts on a finding too, so a run can report them"; `test/run.spec.ts` — "retries after the run an item whose every search went unanswered", "totals the run's unanswered searches for its summary line"
+
+**Do**
+
+```bash
+npx vitest run test/resolve-outcomes.spec.ts -t "carries the counts"
+npx vitest run test/run.spec.ts -t "unanswered"
+```
+
+**Expect**
+
+A finding whose first search was blocked carries `searchesNotResultsPage` 1.
+A retried item keeps its first attempt's `searchesUnfetched`, and the journal
+line carries both fields. The run's tally equals the searches the fetcher
+refused, and the summary line reads `searches unanswered: N could not be
+fetched, M came back as not a results page, across K item(s)`. 🔑 **M is the
+figure the production verification reports**: searches answered by a page that
+was not a results page. Not counting either kind turns these red.
+
+### Check: resolution-unanswered-item-retried-after-the-run
+
+**Requirement:** A search the retailer never answered is a failure, not a miss
+**Surface:** `runList`
+**Automated:** `test/run.spec.ts` — "retries after the run an item whose every search went unanswered"
+
+**Do**
+
+```bash
+npx vitest run test/run.spec.ts -t "every search went unanswered"
+```
+
+Every search url fails on its first fetch and answers on its second.
+
+**Expect**
+
+The item settles `verified` with no failure: it was held back as a failure and
+asked again after the run. Returning `failure: null` from the empty pool turns
+this red, because the item then settles `not-found` on the first pass and is
+never retried.
+
 ### Check: resolution-no-evidence-is-not-found
 
 **Requirement:** A candidate with no part-number evidence is reported as nothing
@@ -865,3 +1067,154 @@ Resolve items against a fetcher that never answers the product probe.
 **Expect**
 
 Each settles with a failure, and the total charged equals what the fetcher sold.
+
+## Amazon
+
+Added 2026-10-22. Every check below runs against the committed Amazon pages in
+`test/raw/` or a fake retailer, so none needs a key, a network or a card.
+
+### Check: resolution-amazon-reads-the-gtin-label
+
+**Requirement:** Amazon's barcode is read under whichever label it publishes it
+**Surface:** the Amazon adapter's `parseProductPage`
+**Automated:** `test/adapter-amazon.spec.ts` — "extracts the barcode published under a spelled-out GTIN label"
+
+**Do**
+
+```bash
+npx vitest run test/adapter-amazon.spec.ts -t "spelled-out GTIN label"
+```
+
+**Expect**
+
+`04713294232687`, read from the real product page's "Global Trade
+Identification Number" row. Dropping that label from the accepted set turns it
+red.
+
+### Check: resolution-amazon-ignores-incidental-upc
+
+**Requirement:** Amazon's barcode is read under whichever label it publishes it
+**Surface:** the Amazon adapter's `parseProductPage`
+**Automated:** `test/adapter-amazon.spec.ts` — "returns nothing from the sixteen incidental UPC strings on that page"
+
+**Do**
+
+```bash
+npx vitest run test/adapter-amazon.spec.ts -t "incidental UPC"
+```
+
+**Expect**
+
+The page carries at least sixteen `upc` strings, and the barcode read is not one
+of them. A mutation taking the first `upc`-bearing string on the page turns it
+red. ⚠️ It also turns red when the GTIN label is dropped, because it then reads
+no barcode at all, so it is not isolated from the check above.
+
+### Check: resolution-amazon-no-barcode-row-is-none
+
+**Requirement:** Amazon's barcode is read under whichever label it publishes it
+**Surface:** the Amazon adapter's `parseProductPage`
+**Automated:** `test/adapter-amazon.spec.ts` — "reports no barcode for a details table that publishes none"
+
+**Do**
+
+```bash
+npx vitest run test/adapter-amazon.spec.ts -t "publishes none"
+```
+
+**Expect**
+
+`barcode` is `null` and `additionalBarcodes` is empty, which is what makes the
+item `unverifiable` rather than mismatched (`resolution-empty-barcode-is-unverifiable`).
+Reporting an empty string instead turns it red.
+
+### Check: resolution-amazon-splits-a-two-barcode-field
+
+**Requirement:** A field holding two barcodes verifies on either
+**Surface:** the Amazon adapter's `parseProductPage`
+**Automated:** `test/adapter-amazon.spec.ts` — "splits a field holding more than one barcode"
+
+**Do**
+
+```bash
+npx vitest run test/adapter-amazon.spec.ts -t "more than one barcode"
+```
+
+**Expect**
+
+`812348010548` as the barcode and `["191120055664"]` as the additional ones. Not
+splitting on whitespace turns it red.
+
+### Check: resolution-verifies-on-a-second-barcode
+
+**Requirement:** A field holding two barcodes verifies on either
+**Surface:** `resolveItem`'s probe loop
+**Automated:** `test/resolve-outcomes.spec.ts` — "verified — the agreeing barcode is the SECOND value in the field"
+
+**Do**
+
+```bash
+npx vitest run test/resolve-outcomes.spec.ts -t "SECOND value"
+```
+
+**Expect**
+
+`verified`, with the evidence naming `812348010548`, the value that agreed, not
+the field's first token. Two mutations turn it red: comparing only the primary
+barcode, and naming the first token as the evidence.
+
+### Check: resolution-amazon-offered-price-on-a-real-page
+
+**Requirement:** The offered price is reported, never the struck-through list price
+**Surface:** the Amazon adapter's `parseSearchResults`
+**Automated:** `test/adapter-amazon.spec.ts` — "takes the offered price, not the struck-through list price", "prices every listing on this page — the CONTROL for the price checks"
+
+**Do**
+
+```bash
+npx vitest run test/adapter-amazon.spec.ts -t "price"
+```
+
+**Expect**
+
+`11999` for the discounted real listing, never `12999`, and every listing on the
+page priced. Reading the struck-through span turns both red.
+
+### Check: resolution-amazon-price-by-markup-not-order
+
+**Requirement:** The offered price is reported, never the struck-through list price
+**Surface:** the Amazon adapter's `parseSearchResults`
+**Automated:** `test/adapter-amazon.spec.ts` — "chooses by markup, not by order — list price first still yields the offered one"
+
+**Do**
+
+```bash
+npx vitest run test/adapter-amazon.spec.ts -t "by markup, not by order"
+```
+
+**Expect**
+
+`11999` when the struck-through `$129.99` comes first in the cell. 🔑 **This is
+the check that earns the tight pattern.** On the real page the offered price
+happens to come first, so loosening the pattern to any `a-price` span leaves the
+real-page check green and turns only this one red.
+
+### Check: resolution-amazon-claims-no-model-or-seller
+
+**Requirement:** What Amazon does not state is not invented
+**Surface:** the Amazon adapter's `parseSearchResults`
+**Automated:** `test/adapter-amazon.spec.ts` — "claims no model and no first-party status, because Amazon states neither"
+
+**Do**
+
+```bash
+npx vitest run test/adapter-amazon.spec.ts -t "claims no model"
+```
+
+**Expect**
+
+`model`, `isFirstParty` and `sellerName` are `null` for all 16 real results.
+Assuming first-party turns it red. That a guessed brand never decides a pairing
+is `resolution-floor-alone-is-insufficient`: brand, first-party and stock
+together reach the reporting floor and are still refused without part-number
+evidence.

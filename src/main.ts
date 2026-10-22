@@ -29,7 +29,13 @@ import { GatewayClient, RunGone, gatewayFromEnv } from "./gateway/client.js";
 import { bootstrapFromQueue, inQueueMode } from "./queue/task-record.js";
 import { runDispatchedJob } from "./queue-run.js";
 import { GatewayReporter } from "./reporting/reporter.js";
-import { estimateRun, runList, RUN_DEFAULTS } from "./run.js";
+import {
+  describeSearchTally,
+  estimateRun,
+  runList,
+  RUN_DEFAULTS,
+  tallySearches,
+} from "./run.js";
 import type { Resolution } from "./resolve.js";
 
 /**
@@ -145,6 +151,10 @@ function tally(
         `empty body and would not yield within the backoff`,
     );
   }
+  // 🔑 §11 asks for the second figure: searches a page that was not a results
+  // page answered. Printed on every run, zeros included, so its absence is
+  // never mistaken for "none".
+  console.log(describeSearchTally(tallySearches(results)));
   console.log(`requests:  ${liveRequests}`);
 }
 

@@ -1,5 +1,5 @@
 {
-  "note": "Real captured pages from the launch retailer, gzipped. Public retailer pages, not customer data. Chosen one per parser case; the facts below were produced by the committed parsers at selection time and are re-asserted by the spec. Amazon fixtures added 2026-09-13 from the PO's second handover package, unmodified.",
+  "note": "Real captured pages from the launch retailer, gzipped. Public retailer pages, not customer data. Chosen one per parser case; the facts below were produced by the committed parsers at selection time and are re-asserted by the spec. Amazon fixtures added 2026-09-13 from the PO's second handover package; the search page's session values were redacted on 2026-10-22, the product page is unmodified.",
   "capturedBy": "handover recon spike",
   "selectedOn": "2026-09-10",
   "fixtures": [
@@ -70,9 +70,23 @@
         "candidates": 16,
         "firstParty": 0,
         "marketplace": 0,
-        "note": "Amazon exposes no seller at the search stage, so isFirstParty is null for all 16 rather than false"
+        "note": "Amazon exposes no seller at the search stage, so isFirstParty is null for all 16 rather than false",
+        "redacted": "Redacted 2026-10-22 in place (the handover's capture had carried them since 2026-09-13; earlier versions remain in git history): the proxy's anonymous Amazon session id in every encoding it appears in, every anti-CSRF and validation token, a hashed session id, the encrypted slate token and the ad pixel's a2= visitor id, replaced with zeros or REDACTED. The parse was proven identical before and after, and the page carries no api key, zone name, cookie or signed-in customer."
       },
-      "gzBytes": 213859
+      "gzBytes": 212530
+    },
+    {
+      "name": "amazon-search-no-results",
+      "why": "the second retailer's answer to a search nothing matches — the results container (data-component-type=\"s-search-results\"), no result cells, and Amazon's own no-results widget (widgetId=messaging-messages-no-results). Calibrates the line between a results page with nothing on it ([]) and a page that is not a results page at all, or one cut short (null)",
+      "facts": {
+        "candidates": 0,
+        "resultCells": 0,
+        "query": "qzxvbnmwplkj7731zq",
+        "capturedOn": "2026-10-22",
+        "capturedThrough": "the live proxy, one request",
+        "redacted": "Redacted 2026-10-22 before commit: the proxy's anonymous Amazon session id in every encoding it appears in, every anti-CSRF and validation token, a hashed session id, the encrypted slate token and the ad pixel's a2= visitor id, replaced with zeros or REDACTED. The parse was proven identical before and after, and the page carries no api key, zone name, cookie or signed-in customer."
+      },
+      "gzBytes": 120195
     },
     {
       "name": "amazon-pdp-gtin-labelled",

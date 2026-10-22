@@ -101,6 +101,18 @@ export interface Resolution {
   readonly alternatives: readonly ResolutionAlternative[];
   /** Set only when the pipeline could not complete — never for a clean miss. */
   readonly failure: string | null;
+  /**
+   * Searches this item asked the retailer that could not be fetched at all.
+   *
+   * 🔑 **Carried on every resolution, not only on a failure**, because a run
+   * reports how many of its searches went unanswered and why — a credential
+   * gone bad reads as fetch failures, a block as pages that are not results
+   * pages, and the two are fixed differently. A retried item carries both of
+   * its attempts' counts, as it carries both attempts' requests.
+   */
+  readonly searchesUnfetched: number;
+  /** Searches answered by a page that was not a results page — a block, a robot check, a truncated body. */
+  readonly searchesNotResultsPage: number;
 }
 
 /**
@@ -330,6 +342,8 @@ export async function resolveItem(
     match: null,
     alternatives: [],
     failure: null,
+    searchesUnfetched: 0,
+    searchesNotResultsPage: 0,
   };
 
   const { identity, partNumbers, phrase, fetchFailed } =
@@ -393,14 +407,35 @@ export async function resolveItem(
   const pool = new Map<string, ParsedCandidate>();
   const tried: string[] = [];
   let candidatesSeen = 0;
+  /**
+   * 🔴 **How many searches the retailer did NOT answer, and why.** A miss is a
+   * fact about the retailer only when the retailer answered every search the
+   * item asked. On 2026-10-22 an expired proxy credential made a production
+   * run fetch nothing: every search here was dropped with a bare `continue`,
+   * the empty pool returned a clean `not-found`, and the gateway filed all 227
+   * items `not_carried` — "the retailer does not stock this", on the strength
+   * of zero pages. `establishIdentity` already kept this rule; the search step
+   * did not.
+   */
+  let unfetched = 0;
+  let notAResultsPage = 0;
 
   for (const query of queries) {
     if (!canQuery(adapter.querySupport, query)) continue;
     tried.push(query);
     const { body } = await tryFetch(fetcher, adapter.buildSearchUrl(query));
-    if (body === null) continue;
+    if (body === null) {
+      unfetched++;
+      continue;
+    }
 
     const candidates = adapter.parseSearchResults(body);
+    // A robot check or an error page is no more an answer than a failed
+    // fetch. The adapter says which it got; it never guesses `[]`.
+    if (candidates === null) {
+      notAResultsPage++;
+      continue;
+    }
     candidatesSeen += candidates.length;
     for (const candidate of candidates) {
       if (!pool.has(candidate.itemId)) pool.set(candidate.itemId, candidate);
@@ -414,14 +449,40 @@ export async function resolveItem(
     if (pool.size > options.candidateFlood * 4) break; // runaway generic query
   }
 
+  /**
+   * 🔴 **A miss needs EVERY search answered, not any.** The plan asks its most
+   * specific query first and its vaguest last, so "one answered" would let a
+   * throttled exact-part-number search be outvoted by an empty answer to a
+   * vague phrase — "the retailer does not carry this", resting on the search
+   * least able to say so. Every return below that reports a miss consults
+   * this; a finding never does, because a listing found is found.
+   *
+   * The counts go in the words so a run's record says whether to fix a
+   * credential or wait out a block.
+   */
+  const unanswered = unfetched + notAResultsPage;
+  const missFailure =
+    unanswered === 0
+      ? null
+      : `${unanswered} of ${tried.length} searches went unanswered by the ` +
+        `retailer: ${unfetched} could not be fetched and ${notAResultsPage} ` +
+        `came back as not a results page, so a miss here cannot be told from ` +
+        `a search nobody answered`;
+  const counted = {
+    ...base,
+    searchesUnfetched: unfetched,
+    searchesNotResultsPage: notAResultsPage,
+  };
+
   if (pool.size === 0) {
     return {
-      ...base,
+      ...counted,
       outcome: "not-found",
       identity,
       queriesTried: tried,
       candidatesSeen,
       requests: fetcher.liveRequestCount,
+      failure: missFailure,
     };
   }
 
@@ -470,7 +531,7 @@ export async function resolveItem(
       remembered.find((value) => gtinMatches(request.barcode, value)) ?? null;
     if (known === null) continue;
     return {
-      ...base,
+      ...counted,
       outcome: "verified",
       identity,
       queriesTried: tried,
@@ -514,7 +575,7 @@ export async function resolveItem(
 
     if (agreeing !== null) {
       return {
-        ...base,
+        ...counted,
         outcome: "verified",
         identity,
         queriesTried: tried,
@@ -543,13 +604,14 @@ export async function resolveItem(
   const best = ranked[0];
   if (best === undefined) {
     return {
-      ...base,
+      ...counted,
       outcome: "not-found",
       identity,
       queriesTried: tried,
       candidatesSeen,
       probes,
       requests: fetcher.liveRequestCount,
+      failure: missFailure,
     };
   }
 
@@ -566,19 +628,22 @@ export async function resolveItem(
   });
   if (best.score < MIN_EVIDENCE_TO_REPORT || !bestHasEvidence) {
     return {
-      ...base,
+      ...counted,
       outcome: "not-found",
       identity,
       queriesTried: tried,
       candidatesSeen,
       probes,
       requests: fetcher.liveRequestCount,
+      // A miss, so the same rule: weak candidates from the vague searches
+      // that answered say nothing about the specific one that did not.
+      failure: missFailure,
     };
   }
 
   if (noBarcodeFound !== null) {
     return {
-      ...base,
+      ...counted,
       outcome: "unverifiable",
       identity,
       queriesTried: tried,
@@ -596,7 +661,7 @@ export async function resolveItem(
   }
 
   return {
-    ...base,
+    ...counted,
     outcome: "unconfirmed",
     identity,
     queriesTried: tried,

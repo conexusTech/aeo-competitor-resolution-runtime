@@ -11,6 +11,7 @@ import {
   parseSearchResults,
   toPublicItemId,
 } from "../src/adapters/newegg.js";
+import type { ParsedCandidate } from "../src/adapters/types.js";
 import manifest from "./raw/manifest.json" with { type: "json" };
 
 /**
@@ -25,6 +26,13 @@ import manifest from "./raw/manifest.json" with { type: "json" };
 const raw = (name: string): string => {
   const url = new URL(`./raw/${name}.html.gz`, import.meta.url);
   return gunzipSync(readFileSync(fileURLToPath(url))).toString("utf8");
+};
+
+/** The candidates on a page that must be a results page. */
+const candidatesOn = (html: string): ParsedCandidate[] => {
+  const parsed = parseSearchResults(html);
+  if (parsed === null) throw new Error("expected a results page, got null");
+  return parsed;
 };
 
 describe("the manifest and the fixtures agree", () => {
@@ -46,7 +54,7 @@ describe("the manifest and the fixtures agree", () => {
 
 describe("parseSearchResults, on real pages", () => {
   it("reads every candidate off the most populated captured page", () => {
-    const candidates = parseSearchResults(raw("search-many-results"));
+    const candidates = candidatesOn(raw("search-many-results"));
     expect(candidates).toHaveLength(44);
     // Every candidate must be usable: an id, a fetchable url, a title.
     for (const c of candidates) {
@@ -70,9 +78,19 @@ describe("parseSearchResults, on real pages", () => {
     expect(parseSearchResults(html)).toEqual([]);
   });
 
-  it("returns [] for markup carrying no state at all", () => {
-    expect(parseSearchResults("<html><body>nope</body></html>")).toEqual([]);
+  it("🔴 returns null for markup carrying no state at all — not a results page", () => {
+    // A block page, an error page, a truncated body: none of them is the
+    // retailer saying "nothing matched", and `[]` would let the pipeline file
+    // the item as not carried. `null` makes it an unanswered search instead.
+    expect(parseSearchResults("<html><body>nope</body></html>")).toBeNull();
     expect(extractInitialState("<html></html>")).toBeNull();
+  });
+
+  it("keeps [] and null apart on the same real page — the CONTROL", () => {
+    // Without this, a parser returning null for everything would satisfy the
+    // check above while turning the majority case into an error.
+    expect(parseSearchResults(raw("search-no-results"))).toEqual([]);
+    expect(parseSearchResults(raw("search-many-results"))?.length).toBe(44);
   });
 
   it("🔴 calls a warehouse-shaped id with a named seller NOT first-party", () => {
@@ -81,9 +99,7 @@ describe("parseSearchResults, on real pages", () => {
     // measured across 1,992 listings the two signals disagree on 358 (18%).
     // Ranking only cares because a marketplace listing publishes the SELLER's
     // barcode, so whose barcode it is follows the seller, not the stock.
-    const candidates = parseSearchResults(
-      raw("search-warehouse-id-named-seller"),
-    );
+    const candidates = candidatesOn(raw("search-warehouse-id-named-seller"));
     const offer = candidates.find((c) => c.sellerName !== null);
     expect(offer).toBeDefined();
     expect(offer?.itemId).toMatch(/^N82E168/); // warehouse-shaped, publicly addressed
@@ -91,7 +107,7 @@ describe("parseSearchResults, on real pages", () => {
   });
 
   it("marks a listing with no named seller as first-party", () => {
-    const candidates = parseSearchResults(raw("search-many-results"));
+    const candidates = candidatesOn(raw("search-many-results"));
     const own = candidates.find((c) => c.sellerName === null);
     expect(own).toBeDefined();
     expect(own?.isFirstParty).toBe(true);
@@ -101,7 +117,7 @@ describe("parseSearchResults, on real pages", () => {
     // A control on the signal itself: if `isFirstParty` were hardcoded either
     // way, one of these would be zero and every ranking assertion downstream
     // would still pass.
-    const candidates = parseSearchResults(raw("search-many-results"));
+    const candidates = candidatesOn(raw("search-many-results"));
     expect(candidates.filter((c) => c.isFirstParty).length).toBeGreaterThan(0);
     expect(candidates.filter((c) => !c.isFirstParty).length).toBeGreaterThan(0);
   });
@@ -189,7 +205,7 @@ describe("the adapter's own configuration", () => {
  * listings carried an image before this.
  */
 describe("a candidate carries the retailer's product image", () => {
-  const results = parseSearchResults(raw("search-many-results"));
+  const results = candidatesOn(raw("search-many-results"));
 
   it("builds the CDN url from the published filename", () => {
     const withImage = results.filter((c) => c.imageUrl !== null);

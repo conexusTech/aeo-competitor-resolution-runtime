@@ -162,6 +162,42 @@ export async function readJournal(
   return done;
 }
 
+/** A run's unanswered searches, for its summary line. */
+export interface SearchTally {
+  readonly unfetched: number;
+  readonly notAResultsPage: number;
+  /** Items with at least one unanswered search. */
+  readonly items: number;
+}
+
+/**
+ * Total the searches a run's retailer never answered.
+ *
+ * 🔑 **The count §11 asks for is the second one** — searches answered by a
+ * page that was not a results page. A block that grows from a handful to
+ * every search is the earliest sign a retailer's markup or its patience has
+ * changed, and only a total across the run shows it.
+ */
+export function tallySearches(results: readonly Resolution[]): SearchTally {
+  let unfetched = 0;
+  let notAResultsPage = 0;
+  let items = 0;
+  for (const r of results) {
+    unfetched += r.searchesUnfetched;
+    notAResultsPage += r.searchesNotResultsPage;
+    if (r.searchesUnfetched + r.searchesNotResultsPage > 0) items++;
+  }
+  return { unfetched, notAResultsPage, items };
+}
+
+export function describeSearchTally(tally: SearchTally): string {
+  return (
+    `searches unanswered: ${tally.unfetched} could not be fetched, ` +
+    `${tally.notAResultsPage} came back as not a results page, ` +
+    `across ${tally.items} item(s)`
+  );
+}
+
 export function estimateUsd(requests: number): number {
   return (requests / 1000) * COST.usdPer1000Requests;
 }
@@ -212,8 +248,8 @@ export async function runList(
   const memory = createProbeMemory();
 
   let cursor = 0;
-  /** What a deferred item spent on its first attempt, by barcode. */
-  const carried = new Map<string, number>();
+  /** What a deferred item's first attempt spent and went unanswered, by barcode. */
+  const carried = new Map<string, Resolution>();
   let completed = 0;
 
   /**
@@ -241,7 +277,7 @@ export async function runList(
   // starts at zero, so settling on it alone would drop the first attempt's
   // requests — the same spend-vanishing defect the per-item meter was built to
   // remove, reintroduced by the retry. A check caught exactly that.
-  const deferred: { item: ResolveRequest; spent: number }[] = [];
+  const deferred: { item: ResolveRequest; first: Resolution }[] = [];
 
   const worker = async (
     queue: readonly ResolveRequest[],
@@ -283,22 +319,32 @@ export async function runList(
           requests: meter.liveRequestCount,
           match: null,
           failure: error instanceof Error ? error.message : String(error),
+          // It threw before saying; unknown is counted as none rather than
+          // guessed. The failure above is what the run reports for it.
+          searchesUnfetched: 0,
+          searchesNotResultsPage: 0,
         };
       }
 
       // ⚠️ One retry per item, and only for a pipeline that could not
       // complete — never for a clean miss, which is a finding.
       if (resolution.failure !== null && !isRetry) {
-        deferred.push({ item, spent: resolution.requests });
+        deferred.push({ item, first: resolution });
         continue;
       }
 
-      // A retried item is charged for both attempts, because both were paid.
-      const alreadySpent = carried.get(item.barcode) ?? 0;
-      if (alreadySpent > 0) {
+      // A retried item is charged for both attempts, because both were paid —
+      // and keeps both attempts' unanswered searches, because both happened
+      // in this run and the run reports them.
+      const first = carried.get(item.barcode);
+      if (first !== undefined) {
         resolution = {
           ...resolution,
-          requests: resolution.requests + alreadySpent,
+          requests: resolution.requests + first.requests,
+          searchesUnfetched:
+            resolution.searchesUnfetched + first.searchesUnfetched,
+          searchesNotResultsPage:
+            resolution.searchesNotResultsPage + first.searchesNotResultsPage,
         };
       }
 
@@ -340,7 +386,7 @@ export async function runList(
   // stops it being deferred a second time, so the queue cannot grow.
   if (deferred.length > 0 && options.shouldContinue?.() !== false) {
     const held = deferred.map((d) => d.item);
-    for (const d of deferred) carried.set(d.item.barcode, d.spent);
+    for (const d of deferred) carried.set(d.item.barcode, d.first);
     deferred.length = 0;
     cursor = 0;
     await worker(held, true);

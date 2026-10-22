@@ -18,6 +18,8 @@ import {
 import {
   estimateRun,
   readJournal,
+  describeSearchTally,
+  tallySearches,
   runList,
   RUN_DEFAULTS,
   COST,
@@ -210,6 +212,84 @@ describe("runList", () => {
     // journal shows it asked and got nothing rather than claiming a miss.
     expect(results[0]?.outcome).toBe("not-found");
     expect(results[0]?.queriesTried).toEqual([]);
+  });
+
+  it("🔴 retries after the run an item whose every search went unanswered", async () => {
+    // The 2026-10-22 shape: identity answers, every search fetch fails. That
+    // item is a failure, so it is held back and asked again once the run has
+    // stopped pressing — and here the retailer answers the second time.
+    const dir = runDir();
+    const searchUrl = "https://retailer.test/s?q=Kingwin%20CF-08LB";
+    const refusedOnce = new Set<string>();
+    const all = bodies("812348010548");
+    const healing: Fetcher & { liveRequestCount: number } = {
+      liveRequestCount: 0,
+      fetch(url: string): Promise<FetchResult> {
+        if (
+          url.startsWith("https://retailer.test/s?") &&
+          !refusedOnce.has(url)
+        ) {
+          refusedOnce.add(url);
+          return Promise.reject(new FetchFailed(url));
+        }
+        const body = all[url];
+        if (body === undefined) return Promise.reject(new FetchFailed(url));
+        this.liveRequestCount++;
+        return Promise.resolve({ url, body, cached: false });
+      },
+    };
+    const results = await runList(
+      [{ barcode: "812348010548", clientSku: "531814" }],
+      adapter,
+      healing,
+      { ...RUN_DEFAULTS, runDir: dir, concurrency: 1 },
+    );
+
+    expect(refusedOnce.has(searchUrl)).toBe(true);
+    expect(results[0]?.outcome).toBe("verified");
+    expect(results[0]?.failure).toBeNull();
+    // 🔑 The first pass's unanswered searches stay on the record, as its
+    // requests do: they happened in this run, and §11 reports them.
+    expect(results[0]?.searchesUnfetched).toBe(refusedOnce.size);
+    expect(results[0]?.searchesNotResultsPage).toBe(0);
+    // And they reach the journal, which is the run's durable record.
+    const journal = readFileSync(
+      path.join(dir, RUN_DEFAULTS.journalName),
+      "utf8",
+    );
+    expect(journal).toContain(`"searchesUnfetched":${refusedOnce.size}`);
+    expect(journal).toContain(`"searchesNotResultsPage":0`);
+  });
+
+  it("totals the run's unanswered searches for its summary line", async () => {
+    const dir = runDir();
+    // Every search fails on both passes, so each item settles as a failure.
+    const serp = "https://www.google.com/search?q=%22812348010548%22";
+    const fetcher = new CountingFetcher({
+      [serp]: bodies("812348010548")[serp] ?? "",
+    });
+    const results = await runList(
+      [{ barcode: "812348010548", clientSku: "531814" }],
+      adapter,
+      fetcher,
+      { ...RUN_DEFAULTS, runDir: dir, concurrency: 1 },
+    );
+    const searchesAsked = fetcher.asked.filter((u) =>
+      u.startsWith("https://retailer.test/s?"),
+    ).length;
+
+    expect(searchesAsked).toBeGreaterThan(1);
+    expect(results[0]?.failure).not.toBeNull();
+    const tally = tallySearches(results);
+    expect(tally).toEqual({
+      unfetched: searchesAsked,
+      notAResultsPage: 0,
+      items: 1,
+    });
+    expect(describeSearchTally(tally)).toBe(
+      `searches unanswered: ${searchesAsked} could not be fetched, ` +
+        `0 came back as not a results page, across 1 item(s)`,
+    );
   });
 
   it("returns results in input order whatever the completion order", async () => {

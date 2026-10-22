@@ -266,6 +266,8 @@ describe("what the reporter tells the gateway it spent", () => {
     match: null,
     alternatives: [],
     failure: null,
+    searchesUnfetched: 0,
+    searchesNotResultsPage: 0,
   });
 
   it("sends the counter as it reads WHEN THE BATCH GOES, not when the reporter was built", async () => {

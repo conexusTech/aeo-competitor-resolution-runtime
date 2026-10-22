@@ -153,8 +153,22 @@ export interface RetailerAdapter {
   /** Where to send a search for `query`. Pure. */
   buildSearchUrl(query: string): string;
 
-  /** Raw search-page body -> candidates. Pure. Returns `[]` for an unparseable page. */
-  parseSearchResults(html: string): ParsedCandidate[];
+  /**
+   * Raw search-page body -> candidates. Pure.
+   *
+   * 🔴 **Two empty answers, and they must not be confused.** `[]` is the
+   * retailer answering the search with a results page that holds nothing —
+   * the item is not carried, which is real assortment information. `null` is a
+   * body that is not a results page at all: a robot check, an error page,
+   * something truncated. The pipeline treats `null` exactly as it treats a
+   * fetch that failed — a search nobody answered — so the customer is never
+   * told a retailer does not stock an item on the strength of a block page.
+   *
+   * ⚠️ Each adapter recognises its own results page by STRUCTURE the retailer
+   * always emits for one, calibrated on a real no-results page; never by the
+   * absence of results, which is the very thing the two answers differ on.
+   */
+  parseSearchResults(html: string): ParsedCandidate[] | null;
 
   /** Raw product-page body -> the fields resolution needs. Pure. */
   parseProductPage(html: string): ParsedProduct;

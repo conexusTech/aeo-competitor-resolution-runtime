@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
+import type { ParsedCandidate } from "../src/adapters/types.js";
 import {
   amazonAdapter,
   parseProductPage,
@@ -41,12 +42,37 @@ const raw = (name: string): string => {
 };
 
 const SEARCH = raw("amazon-search-results");
+const NO_RESULTS = raw("amazon-search-no-results");
 const PDP = raw("amazon-pdp-gtin-labelled");
 
+/**
+ * A hand-built cell inside the container a real results page carries.
+ *
+ * ⚠️ The cell checks below are about how a CELL is read, and a lone cell is
+ * not a results page — `parseSearchResults` answers `null` for one. So each is
+ * placed where Amazon places it, and the page-recognition checks further down
+ * use the real captures instead.
+ */
+const resultsPage = (cells: string): string =>
+  `<div class="s-main-slot s-result-list s-search-results" data-component-type="s-search-results">${cells}</div>`;
+
+/** A result cell every rule accepts, to stand beside the ones under test. */
+const VALID_CELL =
+  '<div data-asin="B0VALIDCEL" data-component-type="s-search-result">' +
+  '<h2 aria-label="Valid Widget">Valid Widget</h2></div>';
+
+/** The candidates on a page that must be a results page. */
+const candidatesOn = (html: string): ParsedCandidate[] => {
+  const parsed = parseSearchResults(html);
+  if (parsed === null) throw new Error("expected a results page, got null");
+  return parsed;
+};
+
 describe("the manifest lists the Amazon fixtures", () => {
-  it("names both, so their provenance survives this file", () => {
+  it("names every one, so their provenance survives this file", () => {
     const names = manifest.fixtures.map((f) => f.name);
     expect(names).toContain("amazon-search-results");
+    expect(names).toContain("amazon-search-no-results");
     expect(names).toContain("amazon-pdp-gtin-labelled");
   });
 });
@@ -74,7 +100,7 @@ describe("splitResultCells", () => {
 });
 
 describe("parseSearchResults against a real search page", () => {
-  const candidates = parseSearchResults(SEARCH);
+  const candidates = candidatesOn(SEARCH);
 
   it("returns every organic result once", () => {
     expect(candidates).toHaveLength(16);
@@ -147,7 +173,7 @@ describe("parseSearchResults against a real search page", () => {
       '<span class="a-price" data-a-size="xl">' +
       '<span class="a-offscreen">$119.99</span></span>' +
       "</div>";
-    const parsed = parseSearchResults(cell);
+    const parsed = candidatesOn(resultsPage(cell));
     expect(parsed).toHaveLength(1);
     expect(parsed[0]?.priceCents).toBe(11999);
   });
@@ -158,20 +184,117 @@ describe("parseSearchResults against a real search page", () => {
     expect(candidates.every((c) => c.priceCents !== null)).toBe(true);
   });
 
+  /**
+   * ⚠️ Each skipped cell sits beside a valid one. A page whose every cell is
+   * unreadable is not "no results" — it is markup the parser no longer
+   * understands, and that answers `null` (checked below). Skipping one bad
+   * cell among good ones is the behaviour these two pin.
+   */
   it("skips a cell with no ASIN rather than throwing", () => {
     const html = `<div ${'data-component-type="s-search-result"'}><h2 aria-label="x">x</h2></div>`;
-    expect(parseSearchResults(html)).toEqual([]);
+    const parsed = candidatesOn(resultsPage(html + VALID_CELL));
+    expect(parsed.map((c) => c.itemId)).toEqual(["B0VALIDCEL"]);
   });
 
   it("skips a cell with no title rather than inventing one", () => {
     const html = `<div data-asin="B0XXXXXXXX" ${'data-component-type="s-search-result"'}></div>`;
-    expect(parseSearchResults(html)).toEqual([]);
+    const parsed = candidatesOn(resultsPage(html + VALID_CELL));
+    expect(parsed.map((c) => c.itemId)).toEqual(["B0VALIDCEL"]);
+  });
+});
+
+/**
+ * Which pages are results pages at all.
+ *
+ * 🔴 **`[]` and `null` are different answers, and the difference is what the
+ * customer is told.** `[]` is Amazon saying nothing matched — the item is not
+ * carried, which is real assortment information. `null` is a page that is not
+ * a results page — a robot check, an error page, a truncated body — and the
+ * pipeline files it as a search nobody answered. This used to return `[]` for
+ * both, so a blocked search reached the customer as "Amazon does not stock
+ * this".
+ *
+ * 🔑 **Calibrated on a real no-results page**, captured 2026-10-22 through the
+ * live proxy for a query nothing matches. It carries the same results
+ * container as a page full of results (`data-component-type="s-search-results"`)
+ * and no result cells — so the container, not the cells, is what says "this is
+ * Amazon answering a search".
+ */
+describe("parseSearchResults tells a results page from anything else", () => {
+  it("returns [] for Amazon's real no-results page", () => {
+    // Guards that this IS the page it claims to be, so the check below
+    // cannot pass on an empty or wrong capture.
+    expect(NO_RESULTS).toContain("No results for");
+    // Amazon's own no-results widget is what makes an empty page an answer.
+    expect(NO_RESULTS).toContain("widgetId=messaging-messages-no-results");
+    expect(splitResultCells(NO_RESULTS)).toEqual([]);
+    expect(parseSearchResults(NO_RESULTS)).toEqual([]);
   });
 
-  it("returns [] for an unparseable page", () => {
+  it("returns candidates for Amazon's real results page — the CONTROL", () => {
+    expect(parseSearchResults(SEARCH)?.length).toBe(16);
+  });
+
+  /**
+   * 🔴 **A truncated page must not read as "no results".** The container
+   * arrives early in the body; cut the real results page ~2,000 bytes after
+   * it and what remains carries the container and neither a readable result
+   * nor Amazon's own no-results message. Before these rules that was `[]` —
+   * a clean miss filed on half a page.
+   */
+  it("🔴 returns null for the real results page cut short after its container", () => {
+    const at = SEARCH.indexOf('data-component-type="s-search-results"');
+    expect(at).toBeGreaterThan(0);
+    const truncated = SEARCH.slice(0, at + 2000);
+    expect(truncated).not.toContain("messaging-messages-no-results");
+    expect(parseSearchResults(truncated)).toBeNull();
+  });
+
+  /**
+   * 🔴 **A page whose cells all fail to parse is markup we no longer read**,
+   * not an empty answer — Amazon renaming an attribute must surface as an
+   * error, never as every item quietly not carried.
+   */
+  it("🔴 returns null when there are result cells and none of them parses", () => {
+    const unreadable =
+      '<div data-component-type="s-search-result"><h2>no asin</h2></div>' +
+      '<div data-asin="B0NOTITLE1" data-component-type="s-search-result"></div>';
+    expect(parseSearchResults(resultsPage(unreadable))).toBeNull();
+  });
+
+  /**
+   * 🔴 The container marker ends `s-search-results"` — with the closing
+   * quote. Without it the marker would match a lone result cell's
+   * `s-search-result"`, and a fragment would pass for a results page.
+   */
+  it("🔴 returns null for a lone valid result cell with no results container", () => {
+    expect(parseSearchResults(VALID_CELL)).toBeNull();
+    // The CONTROL: the same cell inside the container is read.
+    expect(candidatesOn(resultsPage(VALID_CELL))).toHaveLength(1);
+  });
+
+  it("🔴 returns null for a page that is not a results page", () => {
     expect(
       parseSearchResults("<html><body>nothing here</body></html>"),
-    ).toEqual([]);
+    ).toBeNull();
+    expect(parseSearchResults("")).toBeNull();
+  });
+
+  /**
+   * ⚠️ **Hand-built, not captured** — no robot check has been captured through
+   * the proxy, which unblocks before it answers. Modelled on the shape of
+   * Amazon's captcha interstitial: full Amazon chrome, a form, no results.
+   */
+  it("🔴 returns null for a robot check, however Amazon-shaped it looks", () => {
+    const robotCheck =
+      "<html><head><title>Amazon.com</title></head><body>" +
+      '<div class="a-container a-padding-double-large">' +
+      "<h4>Enter the characters you see below</h4>" +
+      "<p>Sorry, we just need to make sure you're not a robot.</p>" +
+      '<form method="get" action="/errors/validateCaptcha">' +
+      '<input id="captchacharacters" name="field-keywords"></form>' +
+      "</div></body></html>";
+    expect(parseSearchResults(robotCheck)).toBeNull();
   });
 });
 
@@ -282,7 +405,7 @@ describe("the adapter itself", () => {
  */
 describe("a candidate carries the retailer's product image", () => {
   it("reads Amazon's search-result thumbnail", () => {
-    const first = parseSearchResults(SEARCH)[0];
+    const first = candidatesOn(SEARCH)[0];
     expect(first?.imageUrl).toBe(
       "https://m.media-amazon.com/images/I/61gD0yqG+AL._AC_UY218_.jpg",
     );
@@ -291,7 +414,7 @@ describe("a candidate carries the retailer's product image", () => {
   it("finds one for every result on the page — the CONTROL", () => {
     // Without this, a pattern that matched exactly one cell by luck would
     // satisfy the check above.
-    const all = parseSearchResults(SEARCH);
+    const all = candidatesOn(SEARCH);
     expect(all).toHaveLength(16);
     // ⚠️ Asserted as a STRING, not as “not null”. The first version of this
     // line read `!== null` and passed before the field existed at all, because
@@ -317,7 +440,7 @@ describe("a candidate carries the retailer's product image", () => {
       '<h2 aria-label="Widget">Widget</h2>' +
       '<img class="s-image" src="https://m.media-amazon.com/images/I/real.jpg">' +
       "</div>";
-    expect(parseSearchResults(cell)[0]?.imageUrl).toBe(
+    expect(candidatesOn(resultsPage(cell))[0]?.imageUrl).toBe(
       "https://m.media-amazon.com/images/I/real.jpg",
     );
   });
@@ -328,7 +451,7 @@ describe("a candidate carries the retailer's product image", () => {
       '<h2 aria-label="Widget">Widget</h2>' +
       '<span class="a-price"><span class="a-offscreen">$1.00</span></span>' +
       "</div>";
-    expect(parseSearchResults(cell)[0]?.imageUrl).toBeNull();
+    expect(candidatesOn(resultsPage(cell))[0]?.imageUrl).toBeNull();
   });
 
   /**
@@ -348,7 +471,7 @@ describe("a candidate carries the retailer's product image", () => {
         '<h2 aria-label="Widget">Widget</h2>' +
         `<img class="s-image" src="${bad}">` +
         "</div>";
-      expect(parseSearchResults(cell)[0]?.imageUrl).toBeNull();
+      expect(candidatesOn(resultsPage(cell))[0]?.imageUrl).toBeNull();
     }
   });
 });

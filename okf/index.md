@@ -33,4 +33,9 @@ It is **not** a scraper for one retailer. Retailer capability is read from a
 registry in `aeo-backend`, and every retailer-varying behaviour sits behind the
 adapter seam. **No customer and no retailer is named in a code path** — that is the
 change's exit criterion, not a style preference, and the reason is that the second
-real retailer is what teaches the abstraction's shape. Nobody has looked at one yet.
+real retailer is what teaches the abstraction's shape. **The second retailer exists**:
+Amazon has had an adapter behind the same seam since 2026-09-13, and its behaviour is
+in [competitor-resolution](/capabilities/competitor-resolution.md). What it taught the
+seam is recorded there: it states no model and no seller at the search stage, it
+publishes a barcode under several labels and sometimes two in one field, and a search
+answer has to say whether it was a results page at all.
