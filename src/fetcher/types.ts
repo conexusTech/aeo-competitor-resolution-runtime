@@ -12,6 +12,14 @@ export interface FetchResult {
   readonly body: string;
   /** True when no network request was made. */
   readonly cached: boolean;
+  /**
+   * When the page arrived from the vendor — before it was cached and before
+   * the politeness jitter. Absent for a page served from a cache or a corpus.
+   *
+   * 🔑 A read run's "as of" is this, not the moment the fetcher returned: the
+   * jitter alone is up to a second and a half per page.
+   */
+  readonly fetchedAt?: Date;
 }
 
 export interface Fetcher {
@@ -48,6 +56,15 @@ export class FetchFailed extends Error {
   constructor(
     readonly url: string,
     override readonly cause?: unknown,
+    /**
+     * The HTTP status the vendor answered the LAST attempt with, or `null`
+     * when no response arrived (a dropped connection, a timeout).
+     *
+     * ⚠️ **It is the vendor's status, which is not proven to be the
+     * retailer's.** Whether the proxy relays a retailer's 404 as its own 404
+     * has not been measured.
+     */
+    readonly status: number | null = null,
   ) {
     super(`could not fetch ${url}`);
     this.name = "FetchFailed";

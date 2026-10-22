@@ -35,6 +35,7 @@ import {
   type CapturePolicy,
 } from "../capture/types.js";
 import { buildVersion } from "../fetcher/select.js";
+import type { ListingReading } from "../read-run.js";
 import type { Resolution } from "../resolve.js";
 
 export const GATEWAY_URL_ENV = "RESOLUTION_GATEWAY_URL";
@@ -235,8 +236,7 @@ export class GatewayClient {
   }
 
   private get authHeader(): string {
-    const { user, password } = this.credentials;
-    return `Basic ${Buffer.from(`${user}:${password}`, "utf8").toString("base64")}`;
+    return basicAuth(this.credentials);
   }
 
   private get runUrl(): string {
@@ -452,54 +452,20 @@ export class GatewayClient {
       ...event,
     });
 
-    let lastDetail = "no attempt was made";
-    for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
-      if (attempt > 0) await this.sleep(BACKOFF_BASE_MS * 2 ** attempt);
-      let response: Response;
-      try {
-        response = await this.fetchImpl(`${this.runUrl}/events`, {
-          method: "POST",
-          headers: {
-            Authorization: this.authHeader,
-            "Content-Type": "application/json",
-          },
-          body,
-          signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-        });
-      } catch (error) {
-        // A transport failure is the case retrying exists for.
-        lastDetail = error instanceof Error ? error.message : String(error);
-        continue;
-      }
-
-      if (response.ok) return { kind: "applied" };
-
-      if (response.status === 404) {
-        return {
-          kind: "run-gone",
-          detail:
-            `the gateway does not recognise run ${this.identity.runId} ` +
-            `under this tenant, or it has ended`,
-        };
-      }
-
-      if (response.status < 500) {
-        // 🔴 Non-retryable by contract. A 400 means the shapes disagree and a
-        // 401/403 means the credential is wrong; neither improves by asking
-        // again, and a retry loop against either is the failure mode the
-        // gateway's own docblock warns about.
-        const detail = await safeText(response);
-        return { kind: "refused", status: response.status, detail };
-      }
-
-      lastDetail = `status ${response.status}: ${await safeText(response)}`;
-    }
-
-    this.log(
-      `gateway unreachable after ${ATTEMPTS} attempts (${lastDetail}) — the ` +
-        `findings stay journalled and a resumed run will re-send them`,
+    const outcome = await postWithRetries(
+      { fetch: this.fetchImpl, sleep: this.sleep, auth: this.authHeader },
+      `${this.runUrl}/events`,
+      body,
+      `the gateway does not recognise run ${this.identity.runId} ` +
+        `under this tenant, or it has ended`,
     );
-    return { kind: "unreachable", detail: lastDetail };
+    if (outcome.kind === "unreachable") {
+      this.log(
+        `gateway unreachable after ${ATTEMPTS} attempts (${outcome.detail}) — the ` +
+          `findings stay journalled and a resumed run will re-send them`,
+      );
+    }
+    return outcome;
   }
 
   /** Retry a GET the same way, since the job fetch has the same failure modes. */
@@ -507,24 +473,101 @@ export class GatewayClient {
     send: () => Promise<Response>,
     what: string,
   ): Promise<Response> {
-    let lastError: unknown = null;
-    for (let i = 0; i < ATTEMPTS; i++) {
-      if (i > 0) await this.sleep(BACKOFF_BASE_MS * 2 ** i);
-      try {
-        const response = await send();
-        // A 5xx is worth another try; anything else is the answer.
-        if (response.status < 500) return response;
-        lastError = new Error(`status ${response.status}`);
-      } catch (error) {
-        lastError = error;
-      }
-    }
-    throw new Error(
-      `could not ${what} after ${ATTEMPTS} attempts: ${
-        lastError instanceof Error ? lastError.message : String(lastError)
-      }`,
-    );
+    return getWithRetries(this.sleep, send, what);
   }
+}
+
+/** The `Authorization` header for the gateway's runtime callbacks. */
+function basicAuth({ user, password }: GatewayCredentials): string {
+  return `Basic ${Buffer.from(`${user}:${password}`, "utf8").toString("base64")}`;
+}
+
+/** What both clients need to talk to the gateway. */
+interface Transport {
+  readonly fetch: typeof globalThis.fetch;
+  readonly sleep: (ms: number) => Promise<void>;
+  readonly auth: string;
+}
+
+/**
+ * POST one JSON body to an events route under the status contract in this
+ * module's docblock.
+ *
+ * 🔑 **One implementation for both run kinds.** The contract is the retry
+ * policy, and a second copy of it is the place a second run kind would come to
+ * retry a 400 or give up on a 5xx.
+ *
+ * @param goneDetail What a 404 means for the caller's run, in its own words.
+ */
+async function postWithRetries(
+  transport: Transport,
+  url: string,
+  body: string,
+  goneDetail: string,
+): Promise<ReportOutcome> {
+  let lastDetail = "no attempt was made";
+  for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
+    if (attempt > 0) await transport.sleep(BACKOFF_BASE_MS * 2 ** attempt);
+    let response: Response;
+    try {
+      response = await transport.fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: transport.auth,
+          "Content-Type": "application/json",
+        },
+        body,
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      });
+    } catch (error) {
+      // A transport failure is the case retrying exists for.
+      lastDetail = error instanceof Error ? error.message : String(error);
+      continue;
+    }
+
+    if (response.ok) return { kind: "applied" };
+
+    if (response.status === 404) {
+      return { kind: "run-gone", detail: goneDetail };
+    }
+
+    if (response.status < 500) {
+      // 🔴 Non-retryable by contract. A 400 means the shapes disagree and a
+      // 401/403 means the credential is wrong; neither improves by asking
+      // again, and a retry loop against either is the failure mode the
+      // gateway's own docblock warns about.
+      const detail = await safeText(response);
+      return { kind: "refused", status: response.status, detail };
+    }
+
+    lastDetail = `status ${response.status}: ${await safeText(response)}`;
+  }
+  return { kind: "unreachable", detail: lastDetail };
+}
+
+/** A GET, retried on a 5xx or a transport failure; anything else is the answer. */
+async function getWithRetries(
+  sleepFor: (ms: number) => Promise<void>,
+  send: () => Promise<Response>,
+  what: string,
+): Promise<Response> {
+  let lastError: unknown = null;
+  for (let i = 0; i < ATTEMPTS; i++) {
+    if (i > 0) await sleepFor(BACKOFF_BASE_MS * 2 ** i);
+    try {
+      const response = await send();
+      // A 5xx is worth another try; anything else is the answer.
+      if (response.status < 500) return response;
+      lastError = new Error(`status ${response.status}`);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw new Error(
+    `could not ${what} after ${ATTEMPTS} attempts: ${
+      lastError instanceof Error ? lastError.message : String(lastError)
+    }`,
+  );
 }
 
 /**
@@ -641,3 +684,260 @@ export function parseJob(body: unknown, runId: string): ResolutionJob {
 
 /** Re-exported so a caller needs one import for the disabled default. */
 export { CAPTURE_DISABLED };
+
+// ── Read runs ───────────────────────────────────────────────────────────
+
+/**
+ * Readings per `readings` event.
+ *
+ * 🔴 **A requirement on the gateway's read callback (T-7), not a description
+ * of it:** its DTO must accept at least this many readings in one event. The
+ * callback does not exist yet; this figure matches the resolutions cap so the
+ * two callbacks agree, and a smaller cap there would answer a full batch with a
+ * non-retryable 400.
+ */
+export const MAX_READINGS_PER_EVENT = 250;
+
+/** One listing a read run must read: the retailer's own id and its page. */
+export interface ReadListing {
+  readonly itemId: string;
+  readonly url: string;
+}
+
+/** The job for a read run: one retailer, the listings to read on it. */
+export interface ReadJob {
+  readonly readRunId: string;
+  readonly retailerSlug: string;
+  readonly listings: readonly ReadListing[];
+}
+
+/** The read run is not there to report to. */
+export class ReadRunGone extends Error {
+  constructor(readonly detail: string) {
+    super(`the listing read run is no longer live: ${detail}`);
+    this.name = "ReadRunGone";
+  }
+}
+
+/**
+ * The gateway, as a read run sees it.
+ *
+ * 🔴 **It carries no tenant, no organization and no list — by construction, not
+ * by omission.** A read run belongs to no organization: it is the platform
+ * reading pages several organizations may watch, and the readings it files are
+ * global rows. So this client is addressed by the read run's id alone, and its
+ * bodies have nowhere to put an organization even by mistake. Separate from
+ * `GatewayClient` for that reason, sharing only the transport and the status
+ * contract.
+ */
+export class ReadRunClient {
+  private readonly fetchImpl: typeof globalThis.fetch;
+  private readonly log: (message: string) => void;
+  private readonly sleep: (ms: number) => Promise<void>;
+
+  constructor(
+    private readonly credentials: GatewayCredentials,
+    private readonly readRunId: string,
+    seams: GatewayClientSeams = {},
+  ) {
+    this.fetchImpl = seams.fetch ?? globalThis.fetch;
+    this.log = seams.log ?? console.warn;
+    this.sleep = seams.sleep ?? sleep;
+  }
+
+  private get authHeader(): string {
+    return basicAuth(this.credentials);
+  }
+
+  private get readUrl(): string {
+    return `${this.credentials.baseUrl}/runtime/insights/reads/${encodeURIComponent(this.readRunId)}`;
+  }
+
+  /**
+   * The listings to read.
+   *
+   * ⚠️ **A 404 means the read run has ended**, and it is what stops a container
+   * restarted after its read run was settled from buying the pages again.
+   */
+  async fetchJob(): Promise<ReadJob> {
+    const response = await getWithRetries(
+      this.sleep,
+      () =>
+        this.fetchImpl(this.readUrl, {
+          headers: { Authorization: this.authHeader },
+          signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        }),
+      "fetch the read job",
+    );
+    if (response.status === 404) {
+      throw new ReadRunGone(
+        `the gateway serves no job for read run ${this.readRunId} — it has ` +
+          `ended, so there is nothing to read`,
+      );
+    }
+    if (!response.ok) {
+      throw new Error(
+        `could not fetch the job for read run ${this.readRunId}: status ` +
+          `${response.status}`,
+      );
+    }
+    const body: unknown = await response.json();
+    return parseReadJob(body, this.readRunId);
+  }
+
+  /**
+   * One batch of readings, with what the container has bought so far.
+   *
+   * @param requestsSpent A running total, not this batch's share — the
+   * gateway takes a `GREATEST` of it, as it does for a resolution run.
+   */
+  async reportReadings(
+    readings: readonly ListingReading[],
+    requestsSpent: number,
+  ): Promise<ReportOutcome> {
+    if (readings.length === 0) return { kind: "applied" };
+    if (readings.length > MAX_READINGS_PER_EVENT) {
+      throw new Error(
+        `a readings event carries at most ${MAX_READINGS_PER_EVENT} readings ` +
+          `and this one carries ${readings.length} — the gateway answers a ` +
+          `larger batch with a non-retryable 400`,
+      );
+    }
+    return this.postEvent({
+      type: "readings",
+      readings,
+      requests_spent: requestsSpent,
+    });
+  }
+
+  async reportCompleted(requestsSpent: number): Promise<ReportOutcome> {
+    return this.postEvent({ type: "completed", requests_spent: requestsSpent });
+  }
+
+  /** @param requestsSpent A failed read run still spent money. */
+  async reportError(
+    message: string,
+    requestsSpent: number,
+  ): Promise<ReportOutcome> {
+    return this.postEvent({
+      type: "error",
+      requests_spent: requestsSpent,
+      message: message.slice(0, 2000),
+    });
+  }
+
+  private async postEvent(
+    event: Record<string, unknown>,
+  ): Promise<ReportOutcome> {
+    const outcome = await postWithRetries(
+      { fetch: this.fetchImpl, sleep: this.sleep, auth: this.authHeader },
+      `${this.readUrl}/events`,
+      JSON.stringify({ runtime_version: buildVersion(), ...event }),
+      `the gateway does not recognise read run ${this.readRunId}, or it has ended`,
+    );
+    if (outcome.kind === "unreachable") {
+      this.log(
+        `gateway unreachable after ${ATTEMPTS} attempts (${outcome.detail}) — ` +
+          `these readings are not filed`,
+      );
+    }
+    return outcome;
+  }
+}
+
+/**
+ * Why a listing url is refused, or `null` when it is acceptable.
+ *
+ * 🔴 **Parsed, not pattern-matched.** It is fetched through a paid proxy on the
+ * job's say-so, so only `https`, no credentials in it and no explicit port.
+ * Which host is the reader's to say — see `ListingReader.hosts`.
+ */
+function urlRefusal(raw: string): string | null {
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    return "has a url that does not parse";
+  }
+  if (url.protocol !== "https:") return `has a non-https url (${url.protocol})`;
+  if (url.username !== "" || url.password !== "") {
+    return "has a url carrying credentials";
+  }
+  if (url.port !== "") return `has a url with an explicit port (${url.port})`;
+  if (url.hostname === "") return "has a url with no host";
+  return null;
+}
+
+/** A string field, or `null` when absent, empty or not a string. */
+function textField(record: object, key: string): string | null {
+  const value: unknown = Reflect.get(record, key);
+  return typeof value === "string" && value !== "" ? value : null;
+}
+
+/**
+ * Read the read job, refusing a shape the container cannot work.
+ *
+ * 🔴 **A listing named twice is refused, not deduplicated.** The gateway builds
+ * the list from distinct listings, so a repeat means the two builds disagree —
+ * and reading it twice would buy the same page twice in one read run, the one
+ * thing a read run exists to prevent. The same for two ids on one url.
+ */
+export function parseReadJob(body: unknown, readRunId: string): ReadJob {
+  if (body === null || typeof body !== "object") {
+    throw new Error(
+      `the gateway's job for read run ${readRunId} is not an object`,
+    );
+  }
+  const retailerSlug = textField(body, "retailerSlug");
+  if (retailerSlug === null) {
+    throw new Error(`the job for read run ${readRunId} names no retailer`);
+  }
+  const field: unknown = Reflect.get(body, "listings");
+  if (!Array.isArray(field)) {
+    throw new Error(
+      `the job for read run ${readRunId} carries no listings array`,
+    );
+  }
+
+  const listings: readonly unknown[] = field;
+  const parsed: ReadListing[] = [];
+  const ids = new Set<string>();
+  const urls = new Set<string>();
+  for (const [index, entry] of listings.entries()) {
+    if (entry === null || typeof entry !== "object") {
+      throw new Error(
+        `listing ${index} of read run ${readRunId} is not an object`,
+      );
+    }
+    const itemId = textField(entry, "itemId");
+    const url = textField(entry, "url");
+    const refusal =
+      itemId === null
+        ? "has no itemId"
+        : url === null
+          ? "has no url"
+          : urlRefusal(url);
+    if (refusal !== null || itemId === null || url === null) {
+      throw new Error(
+        `listing ${index} of read run ${readRunId} ${refusal ?? ""}`,
+      );
+    }
+    if (ids.has(itemId) || urls.has(url)) {
+      throw new Error(
+        `listing ${index} of read run ${readRunId} names a listing twice ` +
+          `(${itemId}) — reading it again would buy the same page twice`,
+      );
+    }
+    ids.add(itemId);
+    urls.add(url);
+    parsed.push({ itemId, url });
+  }
+
+  if (parsed.length === 0) {
+    throw new Error(
+      `the job for read run ${readRunId} carries no listings — a read run ` +
+        `is created over listings, so this build and the gateway disagree`,
+    );
+  }
+  return { readRunId, retailerSlug, listings: parsed };
+}

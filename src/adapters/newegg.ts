@@ -12,6 +12,8 @@
  */
 
 import type {
+  ListingPageResult,
+  ListingReader,
   ParsedCandidate,
   ParsedProduct,
   QuerySupport,
@@ -216,11 +218,81 @@ export function parseProductPage(html: string): ParsedProduct {
   };
 }
 
-export const neweggAdapter: RetailerAdapter = {
+/**
+ * What a listing's own page says, for a read run.
+ *
+ * 🔑 **A product page is recognised by `ItemDetail` in the embedded state.**
+ * All four captured product pages carry it, and the three captured search pages
+ * carry the same embedded state with no `ItemDetail` at all — so a search page
+ * the retailer redirected to, a block page and a body cut short inside the
+ * state are all `not-a-product-page`.
+ *
+ * 🔑 **The page's identity is derived exactly as a search derives a listing's
+ * id** — `ParentItem` when there is one, else `Item`, in its public form. A
+ * product page can show a marketplace seller's offer: `pdp-barcode-12` shows
+ * offer `9SIA6ZPK9U9854` of product `86-949-047`, and a search names that
+ * listing `N82E16886949047`. Reporting the offer's own id would make every
+ * such reading look like a different product.
+ *
+ * ⚠️ **The barcode comes from the same field the resolution parse reads**, so
+ * a reading and the pairing it is checked against never disagree about which
+ * field was meant. It is trimmed, and an empty field stays `""`.
+ *
+ * Price is `ItemDetail.FinalPrice`, the offered price (the 14-digit page shows
+ * 299.99 struck through and offers 199.99), and stock is `ItemDetail.Instock`.
+ */
+export function readListingPage(html: string): ListingPageResult {
+  const state = asRecord(extractInitialState(html));
+  const detail = state === null ? null : asRecord(state["ItemDetail"]);
+  if (detail === null) {
+    return {
+      kind: "not-a-product-page",
+      detail: "no product detail in the page's embedded state",
+    };
+  }
+
+  const canonical = str(detail["ParentItem"]) ?? str(detail["Item"]);
+  const raw = BARCODE_FIELD.exec(html)?.[1];
+  const price = detail["FinalPrice"];
+  const priceCents =
+    typeof price === "number" && Number.isFinite(price) && price > 0
+      ? Math.round(price * 100)
+      : null;
+  const stock = detail["Instock"];
+  const inStock = typeof stock === "boolean" ? stock : null;
+
+  // 🔴 An offer in stock always has a price, and a product page always says
+  // something about its offer. Either gap is markup that moved, and filing it
+  // as "no price" would be a claim about the retailer made on our own parse.
+  if (priceCents === null && inStock !== false) {
+    return {
+      kind: "unreadable-offer",
+      detail:
+        inStock === true
+          ? "in stock with no readable price"
+          : "neither a price nor an availability could be read",
+    };
+  }
+
+  return {
+    kind: "page",
+    page: {
+      pageItemId: canonical === null ? null : toPublicItemId(canonical),
+      barcode: raw === undefined ? null : raw.trim(),
+      additionalBarcodes: [],
+      priceCents,
+      inStock,
+    },
+  };
+}
+
+export const neweggAdapter: RetailerAdapter & ListingReader = {
   slug: "newegg",
   querySupport: QUERY_SUPPORT,
   buildSearchUrl: (query) =>
     `https://www.newegg.com/p/pl?d=${encodeURIComponent(query)}`,
   parseSearchResults,
   parseProductPage,
+  hosts: ["newegg.com", "www.newegg.com"],
+  readListingPage,
 };

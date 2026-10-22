@@ -22,12 +22,27 @@
 
 import { amazonAdapter } from "./adapters/amazon.js";
 import { neweggAdapter } from "./adapters/newegg.js";
-import type { RetailerAdapter } from "./adapters/types.js";
-import { buildVersion, fetcherFromEnv } from "./fetcher/select.js";
+import type { ListingReader, RetailerAdapter } from "./adapters/types.js";
+import {
+  buildVersion,
+  fetcherFromEnv,
+  readFetcherFromEnv,
+} from "./fetcher/select.js";
 import { jobFileFromEnv, readJobEnvelope } from "./job-file.js";
-import { GatewayClient, RunGone, gatewayFromEnv } from "./gateway/client.js";
-import { bootstrapFromQueue, inQueueMode } from "./queue/task-record.js";
+import {
+  GatewayClient,
+  ReadRunClient,
+  ReadRunGone,
+  RunGone,
+  gatewayFromEnv,
+} from "./gateway/client.js";
+import {
+  bootstrapFromQueue,
+  inQueueMode,
+  type ReadDispatch,
+} from "./queue/task-record.js";
 import { runDispatchedJob } from "./queue-run.js";
+import { runReadJob } from "./read-run.js";
 import { GatewayReporter } from "./reporting/reporter.js";
 import {
   describeSearchTally,
@@ -44,7 +59,7 @@ import type { Resolution } from "./resolve.js";
  * job supplies to the adapter that implements it — so adding a retailer is a
  * new adapter file and one entry, never a change to the engine.
  */
-const ADAPTERS: Record<string, RetailerAdapter> = {
+const ADAPTERS: Record<string, RetailerAdapter & ListingReader> = {
   [neweggAdapter.slug]: neweggAdapter,
   [amazonAdapter.slug]: amazonAdapter,
 };
@@ -53,7 +68,7 @@ const ADAPTERS: Record<string, RetailerAdapter> = {
  * Pick the adapter, refusing up front by name. Discovering this mid-run would
  * waste whatever had already been paid for.
  */
-function requireAdapter(retailerSlug: string): RetailerAdapter {
+function requireAdapter(retailerSlug: string): RetailerAdapter & ListingReader {
   const adapter = ADAPTERS[retailerSlug];
   if (adapter === undefined) {
     throw new Error(
@@ -158,13 +173,33 @@ function tally(
   console.log(`requests:  ${liveRequests}`);
 }
 
+/**
+ * A listing read run: read each listing's page once and report the readings.
+ *
+ * 🔑 **Same image, same catalog entry, same credentials** — only the payload
+ * differs. No reporter journal, no capturer and no run directory: a read is one
+ * fetch per listing with nothing to resume and nothing to keep.
+ */
+async function readFromQueue(read: ReadDispatch): Promise<void> {
+  const client = new ReadRunClient(gatewayFromEnv(), read.listingReadRunId);
+  // 🔴 The cache is off: a reading is the page now, never one bought earlier.
+  const fetcher = readFetcherFromEnv();
+  console.log(`resolution-runtime ${version()}: listing read mode`);
+  await runReadJob({ client, readerFor: requireAdapter, fetcher });
+}
+
 async function runFromQueue(): Promise<void> {
-  const dispatch = await bootstrapFromQueue();
-  if (dispatch === null) {
+  const queued = await bootstrapFromQueue();
+  if (queued === null) {
     // Unreachable: the caller checked. An assertion rather than a non-null
     // cast, so the two checks cannot drift apart silently.
     throw new Error("queue mode was selected but no dispatch was resolved");
   }
+  if (queued.mode === "read") {
+    await readFromQueue(queued.read);
+    return;
+  }
+  const dispatch = queued.resolution;
 
   const client = new GatewayClient(gatewayFromEnv(), {
     runId: dispatch.resolutionRunId,
@@ -242,7 +277,7 @@ async function main(): Promise<void> {
   try {
     await runFromQueue();
   } catch (error) {
-    if (error instanceof RunGone) {
+    if (error instanceof RunGone || error instanceof ReadRunGone) {
       // Not a failure of this container. The run ended before it started, so
       // there is nothing to report and nothing to retry.
       console.log(error.message);

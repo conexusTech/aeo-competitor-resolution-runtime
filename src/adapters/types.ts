@@ -175,6 +175,82 @@ export interface RetailerAdapter {
 }
 
 /**
+ * What one read of a listing's own page says, for a listing already paired.
+ *
+ * 🔑 **Separate from `ParsedProduct` because the two answer different
+ * questions.** Resolution fetches a product page to settle identity and takes
+ * price and stock from the search cell it already holds, so its parse reads
+ * only the barcode. A read has no search cell: the page is the only source, so
+ * price and stock must come off it.
+ */
+export interface ListingPageReading {
+  /**
+   * The listing this page says it is, in the same form a search names it —
+   * or `null` when the page carries no identity this build can read.
+   *
+   * 🔴 **The gateway must refuse a reading whose page names a different
+   * listing from the one it asked for.** A product url can come to serve
+   * another product, and a reading that echoed the job's id would file that
+   * product's price against this one.
+   */
+  readonly pageItemId: string | null;
+  /**
+   * The retailer's barcode field, trimmed of surrounding whitespace and
+   * otherwise exactly as published: `""` where the page carries the field and
+   * leaves it empty, `null` where there is no barcode field at all. Resolution
+   * collapses both to `null`; a reading keeps the difference.
+   */
+  readonly barcode: string | null;
+  /** Further barcodes the same field published. Empty for a single value. */
+  readonly additionalBarcodes: readonly string[];
+  /** The price the offer is made at, or `null` when it shows none. Never 0. */
+  readonly priceCents: number | null;
+  /** `null` where the page states no availability this build recognises. */
+  readonly inStock: boolean | null;
+}
+
+/**
+ * What a reader made of a body.
+ *
+ * Three answers, because the caller files three different things:
+ * - `page`: a product page, and what it says;
+ * - `not-a-product-page`: a robot check, an error page, a search page, a body
+ *   cut short — nothing about the listing at all;
+ * - `unreadable-offer`: a product page whose offer this build cannot read —
+ *   in stock with no readable price, or neither a price nor an availability
+ *   with nothing saying there is no offer. Markup that moved, most likely.
+ *
+ * 🔴 **Neither refusal is "no price" or "out of stock".** Each says something
+ * about our parse, not about the retailer, and is filed as a failed reading.
+ */
+export type ListingPageResult =
+  | { readonly kind: "page"; readonly page: ListingPageReading }
+  | { readonly kind: "not-a-product-page"; readonly detail: string }
+  | { readonly kind: "unreadable-offer"; readonly detail: string };
+
+/**
+ * Reading a page the platform already knows, for a read run.
+ *
+ * 🔑 **A second seam beside `RetailerAdapter`, not a method added to it**, so
+ * the resolution path's type is untouched and every adapter double in its tests
+ * stays what it was. Each adapter in this repo implements both.
+ */
+export interface ListingReader {
+  /** The registry slug. */
+  readonly slug: string;
+  /**
+   * The only hosts a read job may send this reader to, lower-case, exact.
+   *
+   * 🔴 **A listing url is fetched through a paid proxy on the job's say-so.**
+   * Checking the host before anything is bought stops a malformed or hostile
+   * job spending on, or reaching, somewhere that is not this retailer.
+   */
+  readonly hosts: readonly string[];
+  /** Raw product-page body -> what it says. Pure. */
+  readListingPage(html: string): ListingPageResult;
+}
+
+/**
  * Can this retailer be asked this query at all?
  *
  * Pure, and deliberately outside the adapter so the rule is written once rather

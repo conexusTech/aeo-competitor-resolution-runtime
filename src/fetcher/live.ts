@@ -41,6 +41,15 @@ export interface LiveFetcherOptions {
    * nowhere near long enough.
    */
   readonly throttleDelayMs: number;
+  /**
+   * Whether a page already in the disk cache is served instead of fetched.
+   *
+   * 🔴 **Off for a read run.** A reading is a statement about the page *now*;
+   * a cached page is a statement about whenever it was bought, and would reach
+   * every watching list stamped with today's time. Resolution keeps it on: for
+   * a run resumed after a crash, the cache is what stops it paying twice.
+   */
+  readonly serveFromCache: boolean;
 }
 
 export const LIVE_DEFAULTS = {
@@ -64,6 +73,7 @@ export const LIVE_DEFAULTS = {
    * than a hardcoded number.
    */
   throttleDelayMs: 5000,
+  serveFromCache: true,
 } as const;
 
 /** PNG signature. Four bytes, and the only honest test of an image body. */
@@ -91,6 +101,11 @@ export class LiveFetcher implements Fetcher {
   throttleCount = 0;
 
   constructor(private readonly options: LiveFetcherOptions) {}
+
+  /** Whether this fetcher serves pages from its disk cache. */
+  get servesFromCache(): boolean {
+    return this.options.serveFromCache;
+  }
 
   /**
    * A PNG of the page, rendered by the proxy.
@@ -164,12 +179,14 @@ export class LiveFetcher implements Fetcher {
 
   async fetch(url: string): Promise<FetchResult> {
     const cached = this.cachePath(url);
-    try {
-      const body = await readFile(cached, "utf8");
-      this.cacheHitCount++;
-      return { url, body, cached: true };
-    } catch {
-      // Not cached; fall through and pay for it.
+    if (this.options.serveFromCache) {
+      try {
+        const body = await readFile(cached, "utf8");
+        this.cacheHitCount++;
+        return { url, body, cached: true };
+      } catch {
+        // Not cached; fall through and pay for it.
+      }
     }
 
     // 🔑 **Two backoffs, because there are two failures.** `throttled` is set
@@ -177,7 +194,11 @@ export class LiveFetcher implements Fetcher {
     // as a literal ZERO bytes on a 200 — and that needs a far longer wait than
     // a dropped connection does.
     let throttled = false;
+    // The status of the LATEST attempt only: a 404 followed by a dropped
+    // connection is a dropped connection, not a page that is gone.
+    let status: number | null = null;
     for (let attempt = 0; attempt < this.options.attempts; attempt++) {
+      status = null;
       if (attempt > 0) {
         await sleep(
           throttled
@@ -202,6 +223,8 @@ export class LiveFetcher implements Fetcher {
           },
         );
         const body = await response.text();
+        const fetchedAt = new Date();
+        status = response.status;
 
         // Both conditions. A 200 carrying a 300-byte block notice is a failure
         // that looks like a success, and caching it makes the failure permanent.
@@ -220,14 +243,14 @@ export class LiveFetcher implements Fetcher {
         await mkdir(this.options.cacheDir, { recursive: true });
         await writeFile(cached, body, "utf8");
         await this.jitter();
-        return { url, body, cached: false };
+        return { url, body, cached: false, fetchedAt };
       } catch (error) {
         if (attempt === this.options.attempts - 1) {
           this.failureCount++;
           // 🔑 Counted apart, because a run that says `16 throttled` tells an
           // operator what to change and one that says `16 failures` does not.
           if (throttled) this.throttleCount++;
-          throw new FetchFailed(url, error);
+          throw new FetchFailed(url, error, status);
         }
       }
     }

@@ -184,6 +184,81 @@ export function dispatchFromPayload(payload: unknown): DispatchPayload {
   };
 }
 
+/** The payload key that selects read mode. */
+export const READ_RUN_KEY = "listing_read_run_id";
+/** The payload key that selects resolution mode. */
+export const RESOLUTION_RUN_KEY = "resolution_run_id";
+
+/**
+ * A read run's dispatch: the read run, and nothing else.
+ *
+ * 🔴 **No tenant, no organization, no list.** A read run belongs to no
+ * organization — the readings it files are shared by every list watching a
+ * listing — so a payload naming one is refused rather than ignored: it means
+ * the gateway attached an organization to the one record that must never carry
+ * one.
+ */
+export interface ReadDispatch {
+  readonly listingReadRunId: string;
+}
+
+/** Which run this container was dispatched for. One image, one catalog entry. */
+export type QueueDispatch =
+  | { readonly mode: "resolution"; readonly resolution: DispatchPayload }
+  | { readonly mode: "read"; readonly read: ReadDispatch };
+
+/** Keys a read payload must never carry. */
+const ORGANIZATION_KEYS = ["tenant_id", "organization_id", "watchlist_id"];
+
+function readDispatchFromPayload(raw: object): ReadDispatch {
+  const id: unknown = Reflect.get(raw, READ_RUN_KEY);
+  if (typeof id !== "string" || id === "") {
+    throw new BootstrapError(
+      `the read payload's ${READ_RUN_KEY} is empty or not a string — cannot run`,
+    );
+  }
+  const named = ORGANIZATION_KEYS.filter((key) => key in raw);
+  if (named.length > 0) {
+    throw new BootstrapError(
+      `a listing read run belongs to no organization, and this payload names ` +
+        `${named.join(", ")} — refused rather than ignored`,
+    );
+  }
+  return { listingReadRunId: id };
+}
+
+/**
+ * Pick the mode from the payload, refusing anything ambiguous.
+ *
+ * ⚠️ **Exactly one of the two run ids, and presence is what counts.** A payload
+ * naming both would leave the choice to the order of two `if`s; one naming
+ * neither is not a job this build knows. Both are refused at start, before
+ * anything is bought.
+ */
+export function queueDispatchFromPayload(payload: unknown): QueueDispatch {
+  if (payload === null || typeof payload !== "object") {
+    // The resolution parse owns the wording of this refusal.
+    return { mode: "resolution", resolution: dispatchFromPayload(payload) };
+  }
+  const isRead = READ_RUN_KEY in payload;
+  const isResolution = RESOLUTION_RUN_KEY in payload;
+  if (isRead && isResolution) {
+    throw new BootstrapError(
+      `the dispatch payload carries both ${READ_RUN_KEY} and ` +
+        `${RESOLUTION_RUN_KEY} — one container runs one mode`,
+    );
+  }
+  if (isRead) return { mode: "read", read: readDispatchFromPayload(payload) };
+  if (isResolution) {
+    return { mode: "resolution", resolution: dispatchFromPayload(payload) };
+  }
+  throw new BootstrapError(
+    `the dispatch payload carries neither ${READ_RUN_KEY} nor ` +
+      `${RESOLUTION_RUN_KEY} — cannot tell which run this is. Keys present: ` +
+      `${Object.keys(payload).sort().join(", ") || "(none)"}`,
+  );
+}
+
 /**
  * Resolve the dispatch from the queue. Returns `null` when not in queue mode.
  *
@@ -195,7 +270,7 @@ export function dispatchFromPayload(payload: unknown): DispatchPayload {
 export async function bootstrapFromQueue(
   env: NodeJS.ProcessEnv = process.env,
   fetchImpl: typeof globalThis.fetch = globalThis.fetch,
-): Promise<DispatchPayload | null> {
+): Promise<QueueDispatch | null> {
   const taskRecordId = env[TASK_RECORD_ID_ENV];
   if (taskRecordId == null || taskRecordId === "") return null;
 
@@ -209,5 +284,5 @@ export async function bootstrapFromQueue(
   }
 
   const payload = await fetchTaskPayload(queueUrl, taskRecordId, fetchImpl);
-  return dispatchFromPayload(payload);
+  return queueDispatchFromPayload(payload);
 }

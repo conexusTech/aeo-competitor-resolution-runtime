@@ -42,6 +42,12 @@ Two ways in, one pipeline. Full behaviour:
 | **Queue** | `TASK_RECORD_ID` present | the queue by reference, then the gateway | the gateway, in batches, as the run goes |
 | **File** | its absence | `RESOLUTION_JOB_FILE` | standard output |
 
+A queued container runs one of two jobs, picked by its payload: a
+**resolution run** (`resolution_run_id`), described here, or a **listing read**
+(`listing_read_run_id`), which fetches each page of listings the gateway
+already knows once and reports what each says. Same image, same catalog entry.
+Full behaviour: [listing-reads](/capabilities/listing-reads.md).
+
 🔑 **The queue injects exactly one variable and keeps the job in the portal's
 database.** So the container reads the task record for the run, tenant and
 organization, then fetches the client's list from
@@ -177,6 +183,7 @@ src/queue/           the task record — the queue's by-reference handover
 src/gateway/         the gateway seam: the job in, the findings out
 src/reporting/       batching, and remembering what was accepted
 src/queue-run.ts     the sequence a dispatched run follows — testable
+src/read-run.ts      a listing read: one fetch per listing, readings out
 src/job-file.ts      a job from a file, for a run with no services
 src/main.ts          reads the environment, picks a mode. No logic.
 ```

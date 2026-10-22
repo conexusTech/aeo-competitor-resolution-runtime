@@ -225,8 +225,13 @@ describe("bootstrapping", () => {
       { [TASK_RECORD_ID_ENV]: "task-1", [QUEUE_API_URL_ENV]: "http://queue" },
       fetchOk,
     );
-    expect(dispatch?.resolutionRunId).toBe(PAYLOAD.resolution_run_id);
-    expect(dispatch?.retailerSlug).toBe("newegg");
+    // A resolution payload selects resolution mode — read mode is the other
+    // half of the same switch, checked in `read-run.spec.ts`.
+    if (dispatch?.mode !== "resolution") {
+      throw new Error(`expected resolution mode, got ${dispatch?.mode}`);
+    }
+    expect(dispatch.resolution.resolutionRunId).toBe(PAYLOAD.resolution_run_id);
+    expect(dispatch.resolution.retailerSlug).toBe("newegg");
   });
 
   it("reads the environment at call time, not at import time", async () => {

@@ -1,4 +1,6 @@
 import type {
+  ListingPageResult,
+  ListingReader,
   ParsedCandidate,
   ParsedProduct,
   QuerySupport,
@@ -290,11 +292,184 @@ export function parseProductPage(html: string): ParsedProduct {
   };
 }
 
-export const amazonAdapter: RetailerAdapter = {
+/**
+ * A product page's own title — present on every product page and on no search
+ * page or block page captured. It is how a body is recognised as a product page
+ * at all.
+ */
+const PRODUCT_TITLE = 'id="productTitle"';
+
+/** The page's own ASIN, from the hidden form field the buy box posts. */
+const ASIN_INPUT = /<input\b[^>]*\bid="ASIN"[^>]*>/;
+const VALUE_ATTRIBUTE = /\bvalue="([^"]*)"/;
+
+/** The buy box, and the marker every buying option row carries. */
+const BUYBOX = 'id="buybox"';
+const OPTION_ROW = "data-a-accordion-row-name=";
+
+/**
+ * The offer's price-to-pay, inside one buying option.
+ *
+ * Its figure is in an `a-offscreen` span inside the `apex-pricetopay-value`
+ * price; where that span is blank the figure is spelled out in
+ * `a-price-whole` / `a-price-fraction`, so both are read.
+ */
+const PRICE_TO_PAY = /class="a-price\b[^"]*\bapex-pricetopay-value\b[^"]*"/;
+const OFFSCREEN = /<span class="a-offscreen">([^<]*)</;
+const WHOLE_AND_FRACTION =
+  /a-price-whole">([0-9,]+)[\s\S]{0,120}?a-price-fraction">([0-9]{2})</;
+
+/** The availability line inside one buying option. */
+const AVAILABILITY = /primary-availability-message[^>]*>([^<]*)</;
+
+/**
+ * Amazon saying in so many words that there is no offer to read.
+ *
+ * ⚠️ **Matched as visible text, not as a string anywhere in the page.** The
+ * committed page carries "No featured offers" inside a JSON label table it
+ * ships to every product page; only a text node between tags is Amazon telling
+ * this visitor so. No captured page shows it, so this is the wording Amazon
+ * uses rather than a calibration.
+ */
+const NO_FEATURED_OFFER = />\s*No featured offers available\s*</i;
+
+const DIV_TAG = /<div\b|<\/div\s*>/g;
+
+/**
+ * The element opening at `open`, by balancing `<div>` tags — or everything to
+ * the end of the body when the page is cut short before it closes.
+ */
+function divAt(html: string, open: number): string {
+  let depth = 0;
+  DIV_TAG.lastIndex = open;
+  let tag: RegExpExecArray | null;
+  while ((tag = DIV_TAG.exec(html)) !== null) {
+    depth += tag[0].startsWith("</") ? -1 : 1;
+    if (depth === 0) return html.slice(open, DIV_TAG.lastIndex);
+  }
+  return html.slice(open);
+}
+
+/** The `<div` whose opening tag contains `marker` at `at`. */
+function divOpening(html: string, at: number): number {
+  return html.lastIndexOf("<div", at);
+}
+
+/**
+ * The featured buying option: the buy box's first option row, or the buy box
+ * itself when it holds no rows. `null` when the page has no buy box.
+ *
+ * 🔴 **Price and availability are both read from this one element.** The
+ * committed page carries two buying options — the open one at $472.00 ("Only 8
+ * left in stock") and a second at $479.99 ("In Stock") — and repeats both
+ * further down the page. Reading each figure from wherever it first appears
+ * would let a gap in one option be filled from another, pairing one offer's
+ * price with another's stock.
+ *
+ * ⚠️ **One captured product page calibrates this.** On it the buy box opens
+ * at offset 243,239 and its first row is offset 246,504 to 349,179.
+ */
+function featuredOffer(html: string): string | null {
+  const box = html.indexOf(BUYBOX);
+  if (box < 0) return null;
+  const buybox = divAt(html, divOpening(html, box));
+  const row = buybox.indexOf(OPTION_ROW);
+  if (row < 0) return buybox;
+  return divAt(buybox, divOpening(buybox, row));
+}
+
+/** `$0.00` is not a price: the same rule the launch retailer's reader keeps. */
+function offerPriceCents(offer: string): number | null {
+  const at = offer.search(PRICE_TO_PAY);
+  if (at < 0) return null;
+  const span = offer.slice(at, at + 1200);
+  const parts = WHOLE_AND_FRACTION.exec(span);
+  const cents =
+    priceCentsOf(OFFSCREEN.exec(span)?.[1]) ??
+    (parts === null
+      ? null
+      : priceCentsOf(`${parts[1] ?? ""}.${parts[2] ?? ""}`));
+  return cents !== null && cents > 0 ? cents : null;
+}
+
+/**
+ * `true` for "In Stock" and "Only 8 left in stock"; `false` for "Currently
+ * unavailable", "Temporarily out of stock", "In stock soon" and "In Stock on
+ * <date>" — the last two are a back-order, not stock; `null` for anything else.
+ */
+function offerInStock(offer: string): boolean | null {
+  const text = AVAILABILITY.exec(offer)?.[1];
+  if (text === undefined) return null;
+  const said = textOf(text).toLowerCase();
+  if (/out of stock|unavailable|in stock soon|in stock on\b/.test(said)) {
+    return false;
+  }
+  if (/in stock/.test(said)) return true;
+  return null;
+}
+
+/**
+ * What a listing's own page says, for a read run.
+ *
+ * ⚠️ **The barcode is the resolution parse's**, by calling it: a reading and
+ * the pairing it is checked against read the same labelled rows. Amazon has no
+ * field it publishes empty, so a page publishing no barcode reads `null`.
+ */
+export function readListingPage(html: string): ListingPageResult {
+  if (!html.includes(PRODUCT_TITLE)) {
+    return { kind: "not-a-product-page", detail: "no product title" };
+  }
+
+  const offer = featuredOffer(html);
+  const priceCents = offer === null ? null : offerPriceCents(offer);
+  const inStock = offer === null ? null : offerInStock(offer);
+
+  // 🔴 An offer in stock always has a price. In stock with none readable is a
+  // buying option whose markup moved — not a listing with no price.
+  if (inStock === true && priceCents === null) {
+    return {
+      kind: "unreadable-offer",
+      detail: "the featured offer is in stock with no readable price",
+    };
+  }
+  // Neither figure, and nothing saying there is no offer: unreadable too.
+  if (
+    priceCents === null &&
+    inStock === null &&
+    !NO_FEATURED_OFFER.test(html)
+  ) {
+    return {
+      kind: "unreadable-offer",
+      detail:
+        offer === null
+          ? "no buy box"
+          : "the featured offer shows neither a price nor an availability",
+    };
+  }
+
+  const asinTag = ASIN_INPUT.exec(html)?.[0];
+  const asin =
+    asinTag === undefined ? undefined : VALUE_ATTRIBUTE.exec(asinTag)?.[1];
+  const product = parseProductPage(html);
+  return {
+    kind: "page",
+    page: {
+      pageItemId: asin === undefined || asin.trim() === "" ? null : asin.trim(),
+      barcode: product.barcode,
+      additionalBarcodes: product.additionalBarcodes,
+      priceCents,
+      inStock,
+    },
+  };
+}
+
+export const amazonAdapter: RetailerAdapter & ListingReader = {
   slug: "amazon",
   querySupport: QUERY_SUPPORT,
   buildSearchUrl: (query) =>
     `https://www.amazon.com/s?k=${encodeURIComponent(query)}`,
   parseSearchResults,
   parseProductPage,
+  hosts: ["amazon.com", "www.amazon.com"],
+  readListingPage,
 };

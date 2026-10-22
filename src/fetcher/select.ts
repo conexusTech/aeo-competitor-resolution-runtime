@@ -91,6 +91,20 @@ export function loadCorpus(path: string): Corpus {
 }
 
 /**
+ * The fetcher for a listing read run: the same choice, with the cache off.
+ *
+ * 🔴 **A read never serves a page from disk.** See
+ * `LiveFetcherOptions.serveFromCache`. A replay still replays — a corpus is
+ * named on purpose, and every report it makes is stamped.
+ */
+export function readFetcherFromEnv(
+  env: NodeJS.ProcessEnv = process.env,
+): Fetcher {
+  if (!isReplaying(env)) return liveFetcherFromEnv({ serveFromCache: false });
+  return fetcherFromEnv(env);
+}
+
+/**
  * Pick the fetcher, refusing up front rather than mid-run.
  *
  * 🔴 **Live is the default, and that direction is load-bearing.** A replay
