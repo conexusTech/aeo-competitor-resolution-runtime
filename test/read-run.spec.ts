@@ -1,5 +1,11 @@
 import { gunzipSync } from "node:zlib";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -818,6 +824,67 @@ describe("the live fetcher, for a read", () => {
       .fetch("https://www.newegg.com/p/A")
       .catch((error: unknown) => error);
     expect(failure instanceof FetchFailed ? failure.status : "none").toBeNull();
+  });
+
+  it("🔴 a page whose cache write fails is still the page, and is bought once", async () => {
+    const vendor = vi.fn(() => Promise.resolve(respond(200, PAGE)));
+    vi.stubGlobal("fetch", vendor);
+    // No real backoff if a retry happened: run each wait at once.
+    vi.spyOn(globalThis, "setTimeout").mockImplementation((fn) => {
+      fn();
+      const handle = setInterval(() => undefined, 1_000_000);
+      clearInterval(handle);
+      return handle;
+    });
+    // A FILE where the cache directory should be: mkdir and write both fail.
+    const blocked = path.join(cacheDir, "not-a-directory");
+    writeFileSync(blocked, "x");
+    const fetcher = new LiveFetcher({
+      ...options(),
+      cacheDir: blocked,
+      attempts: 3,
+    });
+    const result = await fetcher.fetch("https://www.newegg.com/p/A");
+    expect(result.body).toBe(PAGE);
+    expect(vendor).toHaveBeenCalledTimes(1);
+    expect(fetcher.liveRequestCount).toBe(1);
+    expect(fetcher.failureCount).toBe(0);
+  });
+
+  it("🔴 a read's fetcher writes nothing to the cache it never serves", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => Promise.resolve(respond(200, PAGE))),
+    );
+    await new LiveFetcher(options({ serveFromCache: false })).fetch(
+      "https://www.newegg.com/p/A",
+    );
+    expect(readdirSync(cacheDir)).toEqual([]);
+  });
+
+  it("🔴 a read whose cache cannot be written still reports the page read, once", async () => {
+    const vendor = vi.fn(() => Promise.resolve(respond(200, PAGES.barcode12)));
+    vi.stubGlobal("fetch", vendor);
+    const blocked = path.join(cacheDir, "not-a-directory");
+    writeFileSync(blocked, "x");
+    const port = new RecordingPort(neweggJob([NEWEGG_LISTINGS[0]]));
+    const waits: number[] = [];
+    await runReadJob({
+      client: port,
+      readerFor: readers,
+      fetcher: new LiveFetcher({
+        ...options({ serveFromCache: false }),
+        cacheDir: blocked,
+      }),
+      sleep: (ms) => {
+        waits.push(ms);
+        return Promise.resolve();
+      },
+      log: quiet,
+    });
+    expect(pageOf(port.delivered[0]).priceCents).toBe(7126);
+    expect(vendor).toHaveBeenCalledTimes(1);
+    expect(waits).toEqual([]);
   });
 
   it("🔴 a read run's live fetcher is built with the cache off", () => {
@@ -1787,7 +1854,79 @@ describe("a throttled page is read again at a measured pace", () => {
       log: quiet,
     });
     expect(result.stoppedEarly).toBe(true);
-    // The set-aside page was never bought again.
+    // The set-aside page was never bought again, and no re-read is claimed.
     expect(fetcher.callsFor(L0.url)).toHaveLength(1);
+    expect(result.rereads).toBe(0);
+  });
+
+  it("🔴 sends the readings it has before waiting out a re-read", async () => {
+    const clock = new Clock();
+    const fetcher = new ThrottlingFetcher(
+      NEWEGG_PAGES,
+      clock,
+      new Map([[L0.url, ALWAYS]]),
+    );
+    const port = new RecordingPort(neweggJob());
+    // How many readings the gateway held at each wait.
+    const heldAtWait: number[] = [];
+    await runReadJob({
+      client: port,
+      readerFor: readers,
+      fetcher,
+      now: clock.now,
+      sleep: (ms) => {
+        heldAtWait.push(port.delivered.length);
+        clock.advance(ms);
+        return Promise.resolve();
+      },
+      concurrency: 1,
+      // Far above the job: only the wait can have sent them.
+      flushAt: 100,
+      log: quiet,
+    });
+    expect(heldAtWait[0]).toBe(3);
+    expect(port.delivered).toHaveLength(4);
+  });
+
+  it("🔴 stops every worker on the first worker's crash, so nothing more is bought", async () => {
+    const clock = new Clock();
+    const inner = new ThrottlingFetcher(
+      NEWEGG_PAGES,
+      clock,
+      new Map([[L0.url, ALWAYS]]),
+    );
+    // The second listing breaks the fetcher outright: not a failed fetch.
+    const fetcher: Fetcher = {
+      get liveRequestCount() {
+        return inner.liveRequestCount;
+      },
+      fetch: async (url) => {
+        if (url === L1.url) {
+          await Promise.resolve();
+          throw new Error("the fetcher broke");
+        }
+        return inner.fetch(url);
+      },
+    };
+    const { sleep } = fakeSleep(clock);
+    const port = new RecordingPort(neweggJob());
+    await expect(
+      runReadJob({
+        client: port,
+        readerFor: readers,
+        fetcher,
+        now: clock.now,
+        sleep,
+        concurrency: 2,
+        log: quiet,
+      }),
+    ).rejects.toThrow("the fetcher broke");
+    const callsAtError = inner.calls.length;
+    // Let any worker still running finish whatever it would do next.
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(inner.calls.length).toBe(callsAtError);
+    // The set-aside page was never re-read after the run reported its error.
+    expect(inner.callsFor(L0.url)).toHaveLength(1);
+    expect(port.sent.filter((s) => s.type === "error")).toHaveLength(1);
   });
 });

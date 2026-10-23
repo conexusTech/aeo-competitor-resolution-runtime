@@ -122,8 +122,12 @@ and T-9 (filing). The runtime is built against them.
 - WHEN a read run reads that listing
 - THEN the page is fetched again and billed, never served from the cache
 - AND resolution still serves its cache
+- AND a read writes no page to the cache, and a page whose cache write fails is still the page, bought once and reported read
 
 **Checked by:** listing-read-never-serves-the-cache
+**Checked by:** listing-read-writes-no-cache
+**Checked by:** listing-read-cache-write-failure-is-not-a-refetch
+**Checked by:** listing-read-cache-failure-still-read
 **Checked by:** listing-read-resolution-keeps-its-cache
 **Checked by:** listing-read-run-builds-its-fetcher-cacheless
 
@@ -190,12 +194,14 @@ and T-9 (filing). The runtime is built against them.
 - AND a page read on a later attempt is reported once, as the page it was, read when it arrived
 - AND a page throttled every time is reported once, as not read with the reason a failed fetch always carries, only after its last attempt
 - AND a job nobody throttles reads each page once and never waits
+- AND before any wait, the readings already finished are sent
 
 **Checked by:** listing-read-throttled-page-read-later
 **Checked by:** listing-read-throttled-every-time-fails-last
 **Checked by:** listing-read-rereads-wait-longer-each-time
 **Checked by:** listing-read-429-is-a-throttle
 **Checked by:** listing-read-no-throttle-no-wait
+**Checked by:** listing-read-sends-before-waiting
 
 #### Scenario: Only a throttle is read again
 - GIVEN a page the retailer answered — gone, refused, an error, a body that is not a product page — or one that could not be reached at all
@@ -231,10 +237,12 @@ and T-9 (filing). The runtime is built against them.
 - THEN every batch, the completion and any error carry the requests bought so far
 - AND a failed fetch is not counted as bought
 - AND a run whose readings the gateway did not accept ends in error, naming how many
+- AND once one worker crashes, no worker buys another page
 
 **Checked by:** listing-read-cost-on-every-event
 **Checked by:** listing-read-undelivered-ends-in-error
 **Checked by:** listing-read-crash-reports-what-was-spent
+**Checked by:** listing-read-crash-stops-every-worker
 
 #### Scenario: A read run carries no organization
 - GIVEN a read run

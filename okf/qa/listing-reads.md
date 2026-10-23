@@ -22,7 +22,7 @@ proxy relays a retailer's 404 at all. It costs real requests, and the lead
 decides whether to run it.
 
 🔴 **Forty-eight mutations across two rounds, each shown red, then reverted byte
-for byte** — and seven more for the throttle re-reads, on 2026-10-23, with a syntax-error control scoring "no tests" rather than red. The
+for byte** — and twelve more for the throttle re-reads and their review fixes, on 2026-10-23, with a syntax-error control scoring "no tests" rather than red. The
 checks below name the mutations that turned them red.
 
 ---
@@ -166,6 +166,48 @@ Build a read run's fetcher with proxy credentials set and no corpus; then with a
 **Expect**
 
 A `LiveFetcher` whose `servesFromCache` is `false`; with a corpus, a `ReplayFetcher`. 🔴 Mutation: building the default live fetcher turns this red.
+
+### Check: listing-read-writes-no-cache
+
+**Requirement:** A read is always a fresh page
+**Surface:** `LiveFetcher` with `serveFromCache: false`
+**Automated:** test/read-run.spec.ts
+
+**Do**
+
+Fetch a page with a read's fetcher against a stubbed vendor.
+
+**Expect**
+
+The cache directory is still empty. 🔴 Mutation: writing the cache whatever the option turns this red.
+
+### Check: listing-read-cache-write-failure-is-not-a-refetch
+
+**Requirement:** A read is always a fresh page
+**Surface:** `LiveFetcher` default
+**Automated:** test/read-run.spec.ts
+
+**Do**
+
+With a file where the cache directory should be, so the write fails, fetch a page with three attempts allowed.
+
+**Expect**
+
+The page is returned, the vendor is called once, one request is counted and no failure. 🔴 Mutation: letting the write failure fail the attempt turns this red.
+
+### Check: listing-read-cache-failure-still-read
+
+**Requirement:** A read is always a fresh page
+**Surface:** `runReadJob` over `LiveFetcher`
+**Automated:** test/read-run.spec.ts
+
+**Do**
+
+Run a one-listing read job through a read's live fetcher whose cache directory cannot be written, the vendor serving `pdp-barcode-12`.
+
+**Expect**
+
+The listing is delivered as a page priced 7126, the vendor is called once and nothing waits. Red before the fix, when the failed write was retried, paid again, and then taken for a throttle.
 
 ### Check: listing-read-newegg-pages
 
@@ -531,6 +573,20 @@ Run the four-listing job with nothing throttled.
 
 Four fetches, no wait asked of the sleep, `rereads` 0. The control for a pacing that slows every job.
 
+### Check: listing-read-sends-before-waiting
+
+**Requirement:** A throttled page is read again at a measured pace before it is reported as not read
+**Surface:** `runReadJob`
+**Automated:** test/read-run.spec.ts
+
+**Do**
+
+Run the four-listing job on one worker with batches of 100, the first page throttled on every read, and count what the gateway holds at each wait.
+
+**Expect**
+
+At the first wait the gateway already holds the other three readings, and all four are delivered. 🔴 Mutation: not flushing before a wait turns this red.
+
 ### Check: listing-read-answered-page-is-not-reread
 
 **Requirement:** Only a throttle is read again
@@ -671,6 +727,20 @@ Run a job for a retailer this image has no adapter for.
 
 Exactly one event, `error`, naming the retailer, with `requests_spent`; then the error is rethrown.
 
+### Check: listing-read-crash-stops-every-worker
+
+**Requirement:** Every event carries what the container bought
+**Surface:** `runReadJob`
+**Automated:** test/read-run.spec.ts
+
+**Do**
+
+Run the four-listing job on two workers, the first page throttled on every read and the fetcher throwing outright on the second.
+
+**Expect**
+
+The run rejects with the fetcher's error and sends one `error` event. No fetch happens after it rejects, and the throttled page is never read again. 🔴 Mutation: not stopping the other workers on a crash turns this red.
+
 ### Check: listing-read-payload-refuses-an-organization
 
 **Requirement:** A read run carries no organization
@@ -781,7 +851,7 @@ Run the four-listing job, batches of one, the first page throttled on every read
 
 **Expect**
 
-`stoppedEarly`, and the set-aside page is fetched only once: nothing is bought again for a run that has ended. 🔴 Mutation: re-reading at once with no wait turns this red.
+`stoppedEarly`, and the set-aside page is fetched only once: nothing is bought again for a run that has ended. `rereads` is 0, because a re-read is counted when it is fetched, not when it is promised. 🔴 Mutation: counting at set-aside turns this red. 🔴 Mutation: re-reading at once with no wait turns this red.
 
 ### Check: listing-read-status-contract
 

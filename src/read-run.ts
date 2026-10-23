@@ -490,7 +490,17 @@ export async function runReadJob(deps: ReadRunDeps): Promise<ReadRunResult> {
       readonly dueAt: number;
     }
     const setAside: SetAside[] = [];
+    /** Re-reads promised to set-aside pages; what the budget is spent on. */
+    let reserved = 0;
+    /** Re-reads actually fetched. */
     let rereads = 0;
+    /**
+     * 🔴 **Set on the first worker's crash, so the others buy nothing more.**
+     * `Promise.all` rejects at once while the rest carry on, and a worker
+     * waiting out a re-read would otherwise buy it after the error was sent.
+     * Apart from `gone`, which also stops the sending of readings.
+     */
+    let halted = false;
     let capLogged = false;
 
     /** The page to read next, or how long until one is due, or nothing. */
@@ -511,15 +521,21 @@ export async function runReadJob(deps: ReadRunDeps): Promise<ReadRunResult> {
     };
 
     let next = 0;
-    const worker = async (): Promise<void> => {
-      while (!gone) {
+    const work = async (): Promise<void> => {
+      while (!gone && !halted) {
         const task = take();
         if (task === null) return;
         if (typeof task === "number") {
+          // 🔑 Send what is finished before waiting: a container killed in a
+          // long re-read tail then loses only what is in flight, and a run the
+          // gateway has ended is learnt of now rather than at the end.
+          await flush(true);
+          if (gone || halted) return;
           await sleep(task);
           continue;
         }
         const { listing } = task;
+        if (task.reads > 0) rereads++;
         const attempt = await attemptListing(
           listing,
           reader,
@@ -532,10 +548,10 @@ export async function runReadJob(deps: ReadRunDeps): Promise<ReadRunResult> {
           const delay = pacing.rereadDelaysMs[reads - 1];
           if (delay === undefined) {
             reading = noted(reading, `throttled on all ${reads} reads`);
-          } else if (rereads < budget) {
+          } else if (reserved < budget) {
             // 🔴 Set aside, NOT recorded: a reading is posted once, when the
             // page is finally read or finally fails.
-            rereads++;
+            reserved++;
             setAside.push({ listing, reads, dueAt: now().getTime() + delay });
             continue;
           } else {
@@ -555,6 +571,14 @@ export async function runReadJob(deps: ReadRunDeps): Promise<ReadRunResult> {
         }
         record(reading);
         if (buffer.length >= flushAt) await flush(false);
+      }
+    };
+    const worker = async (): Promise<void> => {
+      try {
+        await work();
+      } catch (error) {
+        halted = true;
+        throw error;
       }
     };
     await Promise.all(

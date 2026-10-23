@@ -240,8 +240,8 @@ export class LiveFetcher implements Fetcher {
         }
 
         this.liveRequestCount++;
-        await mkdir(this.options.cacheDir, { recursive: true });
-        await writeFile(cached, body, "utf8");
+        // A read never serves the cache, so it does not write one either.
+        if (this.options.serveFromCache) await this.writeCache(cached, body);
         await this.jitter();
         return { url, body, cached: false, fetchedAt };
       } catch (error) {
@@ -258,6 +258,25 @@ export class LiveFetcher implements Fetcher {
     // Unreachable: the loop either returns or throws on its last attempt.
     this.failureCount++;
     throw new FetchFailed(url);
+  }
+
+  /**
+   * Keep a page for a later run. Best effort.
+   *
+   * 🔴 **A page in hand is never bought again because the disk refused it.**
+   * Inside the attempt loop a write failure read as a failed attempt: the
+   * request was counted as paid, fetched and paid again, and on the last
+   * attempt reported as a `FetchFailed` with status 200 — which read mode
+   * takes for a throttle and re-reads. Losing the cache entry costs a later
+   * run one request; losing the page costs this one up to twelve.
+   */
+  private async writeCache(file: string, body: string): Promise<void> {
+    try {
+      await mkdir(this.options.cacheDir, { recursive: true });
+      await writeFile(file, body, "utf8");
+    } catch {
+      // Not cached. The page is still the page.
+    }
   }
 
   private jitter(): Promise<void> {
