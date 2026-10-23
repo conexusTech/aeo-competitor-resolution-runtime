@@ -72,6 +72,24 @@ export class FetchFailed extends Error {
 }
 
 /**
+ * Whether a failed fetch was the vendor saying *not now* rather than *no*.
+ *
+ * 🔑 **The live fetcher's own classification, read back from the status it
+ * settled on.** It fails a 2xx only when the body is too short to be a page —
+ * measured as a literal zero-byte 200 under load, and the same url answering
+ * 338 KB after a wait — so a `FetchFailed` carrying a status below 400 IS that
+ * silent throttle. A 429 is the same answer said out loud.
+ *
+ * ⚠️ **Nothing else is a throttle.** A 404 or 410 is the page gone, a 403 or a
+ * 5xx is a refusal or an outage, and no response at all is a dropped
+ * connection; re-reading any of those later spends again to be told the same.
+ * An adapter's `not-a-product-page` is not one either: a body arrived.
+ */
+export function isThrottled(error: FetchFailed): boolean {
+  return error.status !== null && (error.status < 400 || error.status === 429);
+}
+
+/**
  * Raised by the replay fetcher for a url the corpus does not hold.
  *
  * 🔑 A distinct type, and deliberately not a `FetchFailed`. During a replay this

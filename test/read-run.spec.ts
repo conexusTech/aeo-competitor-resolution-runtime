@@ -27,6 +27,7 @@ import {
 import {
   FetchFailed,
   NotInCorpus,
+  isThrottled,
   type Fetcher,
   type FetchResult,
 } from "../src/fetcher/types.js";
@@ -44,7 +45,9 @@ import {
 } from "../src/queue/task-record.js";
 import {
   READ_FAILURE,
+  READ_PACING,
   readListing,
+  rereadBudget,
   runReadJob,
   type ListingReading,
   type ReadRunPort,
@@ -1429,5 +1432,362 @@ describe("which mode a dispatched container runs in", () => {
     expect(() => queueDispatchFromPayload({ listing_read_run_id: "" })).toThrow(
       BootstrapError,
     );
+  });
+});
+
+// ════════════════════════════════════════════════════════════════════════
+// A throttled page is read again at a measured pace
+// ════════════════════════════════════════════════════════════════════════
+
+/**
+ * A vendor that throttles.
+ *
+ * Each url in `throttledFor` is answered with a throttle — the vendor's empty
+ * 200 by default, or the status given — for that many calls, then its page is
+ * served. Every call is timed on the test's clock, which moves a second per
+ * call, so the gaps between re-reads can be measured without real waiting.
+ */
+class ThrottlingFetcher implements Fetcher {
+  liveRequestCount = 0;
+  readonly calls: { readonly url: string; readonly at: number }[] = [];
+
+  constructor(
+    private readonly pages: ReadonlyMap<string, string>,
+    private readonly clock: Clock,
+    private readonly throttledFor: ReadonlyMap<string, number>,
+    private readonly throttleStatus = 200,
+    /** Urls answered with this status, or with no response (`null`). */
+    private readonly statuses: ReadonlyMap<string, number | null> = new Map(),
+  ) {}
+
+  async fetch(url: string): Promise<FetchResult> {
+    await Promise.resolve();
+    this.clock.advance(1_000);
+    const fetchedAt = this.clock.now();
+    const earlier = this.callsFor(url).length;
+    this.calls.push({ url, at: fetchedAt.getTime() });
+    if (this.statuses.has(url)) {
+      const status = this.statuses.get(url) ?? null;
+      throw new FetchFailed(
+        url,
+        new Error(status === null ? "socket hang up" : `status=${status}`),
+        status,
+      );
+    }
+    if (earlier < (this.throttledFor.get(url) ?? 0)) {
+      throw new FetchFailed(
+        url,
+        new Error(`status=${this.throttleStatus} bytes=0`),
+        this.throttleStatus,
+      );
+    }
+    const body = this.pages.get(url);
+    if (body === undefined) {
+      throw new FetchFailed(url, new Error("status=403 bytes=0"), 403);
+    }
+    this.liveRequestCount++;
+    return { url, body, cached: false, fetchedAt };
+  }
+
+  callsFor(url: string): { readonly url: string; readonly at: number }[] {
+    return this.calls.filter((c) => c.url === url);
+  }
+}
+
+/** A sleep that records each wait and moves the test's clock instead. */
+function fakeSleep(clock: Clock): {
+  readonly waits: number[];
+  readonly sleep: (ms: number) => Promise<void>;
+} {
+  const waits: number[] = [];
+  return {
+    waits,
+    sleep: (ms: number): Promise<void> => {
+      waits.push(ms);
+      clock.advance(ms);
+      return Promise.resolve();
+    },
+  };
+}
+
+const ALWAYS = Number.POSITIVE_INFINITY;
+const [L0, L1, L2, L3] = NEWEGG_LISTINGS;
+
+describe("a throttled page is read again at a measured pace", () => {
+  it("🔴 sets a throttled page aside, reads the rest, then reads it again and reports it read", async () => {
+    const clock = new Clock();
+    const fetcher = new ThrottlingFetcher(
+      NEWEGG_PAGES,
+      clock,
+      new Map([[L0.url, 1]]),
+    );
+    const { sleep } = fakeSleep(clock);
+    const port = new RecordingPort(neweggJob());
+    const result = await runReadJob({
+      client: port,
+      readerFor: readers,
+      fetcher,
+      now: clock.now,
+      sleep,
+      concurrency: 1,
+      log: quiet,
+    });
+
+    // The rest of the job went on while the throttled page waited.
+    expect(fetcher.calls.map((c) => c.url)).toEqual([
+      L0.url,
+      L1.url,
+      L2.url,
+      L3.url,
+      L0.url,
+    ]);
+    const [first, second] = fetcher.callsFor(L0.url);
+    expect((second?.at ?? 0) - (first?.at ?? 0)).toBeGreaterThanOrEqual(
+      READ_PACING.rereadDelaysMs[0],
+    );
+
+    // Reported once, as the page it finally was, read when it arrived.
+    const readings = port.delivered.filter((r) => r.itemId === L0.itemId);
+    expect(readings).toHaveLength(1);
+    expect(pageOf(readings[0]).priceCents).toBe(7126);
+    expect(readings[0]?.readAt).toBe(new Date(second?.at ?? 0).toISOString());
+    // Four pages bought; a throttled answer is not a purchase.
+    expect(result.liveRequests).toBe(4);
+    expect(port.sent.at(-1)?.type).toBe("completed");
+  });
+
+  it("🔴 reports a page throttled every time as not read only after its last re-read", async () => {
+    const clock = new Clock();
+    const fetcher = new ThrottlingFetcher(
+      NEWEGG_PAGES,
+      clock,
+      new Map([[L0.url, ALWAYS]]),
+    );
+    const { sleep } = fakeSleep(clock);
+    const port = new RecordingPort(neweggJob());
+    await runReadJob({
+      client: port,
+      readerFor: readers,
+      fetcher,
+      now: clock.now,
+      sleep,
+      concurrency: 1,
+      flushAt: 1,
+      log: quiet,
+    });
+
+    const reads = fetcher.callsFor(L0.url);
+    expect(reads).toHaveLength(1 + READ_PACING.rereadDelaysMs.length);
+
+    // Posted exactly once, after every other listing, with the existing reason.
+    const batches = port.sent.filter((s) => s.type === "readings");
+    expect(batches.map((b) => b.readings.map((r) => r.itemId))).toEqual([
+      [L1.itemId],
+      [L2.itemId],
+      [L3.itemId],
+      [L0.itemId],
+    ]);
+    const failed = failureOf(batches.at(-1)?.readings[0]);
+    expect(failed.failure.startsWith(`${READ_FAILURE.fetchFailed}:`)).toBe(
+      true,
+    );
+    expect(failed.failure).toContain("throttled on all 4 reads");
+    // When the LAST attempt ended — not the first.
+    expect(Date.parse(failed.readAt)).toBeGreaterThanOrEqual(
+      reads.at(-1)?.at ?? Number.POSITIVE_INFINITY,
+    );
+    expect(port.sent.at(-1)?.type).toBe("completed");
+  });
+
+  it("🔴 waits longer before each re-read than before the last, and never really sleeps", async () => {
+    const clock = new Clock();
+    const fetcher = new ThrottlingFetcher(
+      NEWEGG_PAGES,
+      clock,
+      new Map([[L0.url, ALWAYS]]),
+    );
+    const { waits, sleep } = fakeSleep(clock);
+    const port = new RecordingPort(neweggJob([L0]));
+    await runReadJob({
+      client: port,
+      readerFor: readers,
+      fetcher,
+      now: clock.now,
+      sleep,
+      concurrency: 1,
+      log: quiet,
+    });
+
+    expect(waits).toEqual([...READ_PACING.rereadDelaysMs]);
+    for (let i = 1; i < waits.length; i++) {
+      expect(waits[i]).toBeGreaterThan(
+        waits[i - 1] ?? Number.POSITIVE_INFINITY,
+      );
+    }
+    // And the vendor saw the same growing gaps.
+    const at = fetcher.callsFor(L0.url).map((c) => c.at);
+    const gaps = at.slice(1).map((t, i) => t - (at[i] ?? 0));
+    gaps.forEach((gap, i) => {
+      expect(gap).toBeGreaterThanOrEqual(READ_PACING.rereadDelaysMs[i] ?? 0);
+    });
+  });
+
+  it("🔴 never re-reads a page the retailer answered, or one that could not be reached", async () => {
+    const clock = new Clock();
+    const pages = new Map(NEWEGG_PAGES);
+    // A body that is not a product page: the retailer answered.
+    pages.set(L3.url, PAGES.neweggSearch);
+    const fetcher = new ThrottlingFetcher(
+      pages,
+      clock,
+      new Map(),
+      200,
+      new Map<string, number | null>([
+        [L0.url, 404],
+        [L1.url, 403],
+        [L2.url, null],
+      ]),
+    );
+    const { waits, sleep } = fakeSleep(clock);
+    const port = new RecordingPort(neweggJob());
+    await runReadJob({
+      client: port,
+      readerFor: readers,
+      fetcher,
+      now: clock.now,
+      sleep,
+      concurrency: 1,
+      log: quiet,
+    });
+
+    expect(fetcher.calls).toHaveLength(4);
+    expect(waits).toEqual([]);
+    const by = (id: string): ListingReading | undefined =>
+      port.delivered.find((r) => r.itemId === id);
+    expect(by(L0.itemId)?.pageFound).toBe(false);
+    expect(failureOf(by(L1.itemId)).failure).toMatch(/^fetch-failed:/);
+    expect(failureOf(by(L2.itemId)).failure).toMatch(/^fetch-failed:/);
+    expect(failureOf(by(L3.itemId)).failure).toMatch(/^not-a-product-page:/);
+  });
+
+  it("🔴 stops re-reading at the job's cap, and reports the rest not read", async () => {
+    const clock = new Clock();
+    const fetcher = new ThrottlingFetcher(
+      NEWEGG_PAGES,
+      clock,
+      new Map(NEWEGG_LISTINGS.map((l) => [l.url, ALWAYS])),
+    );
+    const { sleep } = fakeSleep(clock);
+    const lines: string[] = [];
+    const port = new RecordingPort(neweggJob());
+    const result = await runReadJob({
+      client: port,
+      readerFor: readers,
+      fetcher,
+      now: clock.now,
+      sleep,
+      concurrency: 2,
+      log: (line) => lines.push(line),
+    });
+
+    const cap = rereadBudget(NEWEGG_LISTINGS.length);
+    expect(cap).toBeLessThan(
+      NEWEGG_LISTINGS.length * READ_PACING.rereadDelaysMs.length,
+    );
+    expect(fetcher.calls).toHaveLength(NEWEGG_LISTINGS.length + cap);
+    expect(result.rereads).toBe(cap);
+    // Every listing still reported exactly once, each as not read.
+    expect(port.delivered.map((r) => r.itemId).sort()).toEqual(
+      NEWEGG_LISTINGS.map((l) => l.itemId).sort(),
+    );
+    for (const reading of port.delivered) {
+      expect(failureOf(reading).failure).toMatch(/^fetch-failed:/);
+    }
+    expect(
+      port.delivered.some((r) => (r.failure ?? "").includes("re-read cap")),
+    ).toBe(true);
+    expect(lines.some((l) => l.includes("re-read cap"))).toBe(true);
+    expect(port.sent.at(-1)?.type).toBe("completed");
+  });
+
+  it("sizes the cap as a share of the job, with a floor and a ceiling", () => {
+    expect(rereadBudget(1)).toBe(READ_PACING.rereadFloor);
+    expect(rereadBudget(40)).toBe(Math.ceil(40 * READ_PACING.rereadShare));
+    expect(rereadBudget(100_000)).toBe(READ_PACING.rereadCeiling);
+  });
+
+  it("treats a 429 as a throttle, as it does an empty 200", async () => {
+    const clock = new Clock();
+    const fetcher = new ThrottlingFetcher(
+      NEWEGG_PAGES,
+      clock,
+      new Map([[L0.url, 1]]),
+      429,
+    );
+    const { sleep } = fakeSleep(clock);
+    const port = new RecordingPort(neweggJob([L0]));
+    await runReadJob({
+      client: port,
+      readerFor: readers,
+      fetcher,
+      now: clock.now,
+      sleep,
+      log: quiet,
+    });
+    expect(fetcher.calls).toHaveLength(2);
+    expect(pageOf(port.delivered[0]).priceCents).toBe(7126);
+  });
+
+  it("names a throttle by the vendor's answer, and nothing else", () => {
+    const failure = (status: number | null): FetchFailed =>
+      new FetchFailed("https://www.newegg.com/p/A", undefined, status);
+    expect(isThrottled(failure(200))).toBe(true);
+    expect(isThrottled(failure(429))).toBe(true);
+    for (const status of [null, 400, 403, 404, 410, 500, 503]) {
+      expect(isThrottled(failure(status))).toBe(false);
+    }
+  });
+
+  it("CONTROL: a job nobody throttles reads once each and never waits", async () => {
+    const clock = new Clock();
+    const fetcher = new ThrottlingFetcher(NEWEGG_PAGES, clock, new Map());
+    const { waits, sleep } = fakeSleep(clock);
+    const port = new RecordingPort(neweggJob());
+    const result = await runReadJob({
+      client: port,
+      readerFor: readers,
+      fetcher,
+      now: clock.now,
+      sleep,
+      log: quiet,
+    });
+    expect(fetcher.calls).toHaveLength(4);
+    expect(waits).toEqual([]);
+    expect(result.rereads).toBe(0);
+  });
+
+  it("abandons a waiting re-read once the gateway says the run has ended", async () => {
+    const clock = new Clock();
+    const fetcher = new ThrottlingFetcher(
+      NEWEGG_PAGES,
+      clock,
+      new Map([[L0.url, ALWAYS]]),
+    );
+    const { sleep } = fakeSleep(clock);
+    const port = new RecordingPort(neweggJob());
+    port.answerReadings = () => ({ kind: "run-gone", detail: "ended" });
+    const result = await runReadJob({
+      client: port,
+      readerFor: readers,
+      fetcher,
+      now: clock.now,
+      sleep,
+      concurrency: 1,
+      flushAt: 1,
+      log: quiet,
+    });
+    expect(result.stoppedEarly).toBe(true);
+    // The set-aside page was never bought again.
+    expect(fetcher.callsFor(L0.url)).toHaveLength(1);
   });
 });

@@ -22,7 +22,7 @@ proxy relays a retailer's 404 at all. It costs real requests, and the lead
 decides whether to run it.
 
 🔴 **Forty-eight mutations across two rounds, each shown red, then reverted byte
-for byte**, with a syntax-error control scoring "no tests" rather than red. The
+for byte** — and seven more for the throttle re-reads, on 2026-10-23, with a syntax-error control scoring "no tests" rather than red. The
 checks below name the mutations that turned them red.
 
 ---
@@ -461,6 +461,132 @@ Run the four-listing job with the second page failing.
 
 The second reading is a `fetch-failed` failure, the first still reads 7126, and the run ends `completed`. 🔴 Mutation: skipping failed readings turns this red.
 
+### Check: listing-read-throttled-page-read-later
+
+**Requirement:** A throttled page is read again at a measured pace before it is reported as not read
+**Surface:** `runReadJob`
+**Automated:** test/read-run.spec.ts
+
+**Do**
+
+Run the four-listing Newegg job on one worker, the vendor answering the first page with an empty 200 once and then serving it; waits go through a sleep that moves the test's clock.
+
+**Expect**
+
+Fetches in the order first, second, third, fourth, first: the throttled page waited while the rest were read. The second read of it came at least 20 s after the first. It is delivered once, as a page priced 7126, with `readAt` the time of the second read; four requests bought; the run ends `completed`. 🔴 Mutations: posting the throttled reading before setting it aside, nothing counting as a throttle, and re-reading at once with no wait, each turn this red.
+
+### Check: listing-read-throttled-every-time-fails-last
+
+**Requirement:** A throttled page is read again at a measured pace before it is reported as not read
+**Surface:** `runReadJob`
+**Automated:** test/read-run.spec.ts
+
+**Do**
+
+Run the same job with the first page throttled on every read, batches of one.
+
+**Expect**
+
+The page is fetched 4 times (one read and three re-reads). The batches arrive as second, third, fourth, then first: the failed reading is posted once, last. It starts `fetch-failed:`, says `throttled on all 4 reads`, and its `readAt` is no earlier than the last read. The run ends `completed`. 🔴 Mutations: posting before setting aside, nothing counting as a throttle, and no wait, each turn this red.
+
+### Check: listing-read-rereads-wait-longer-each-time
+
+**Requirement:** A throttled page is read again at a measured pace before it is reported as not read
+**Surface:** `runReadJob`
+**Automated:** test/read-run.spec.ts
+
+**Do**
+
+Run a one-listing job throttled on every read, recording each wait asked of the sleep and each read's time on the vendor.
+
+**Expect**
+
+The waits are exactly 20 000, 40 000 and 80 000 ms, each longer than the last, and each gap between reads at the vendor is at least its wait. No real time passes. 🔴 Mutations: every wait the first wait, and no wait at all, each turn this red.
+
+### Check: listing-read-429-is-a-throttle
+
+**Requirement:** A throttled page is read again at a measured pace before it is reported as not read
+**Surface:** `runReadJob`
+**Automated:** test/read-run.spec.ts
+
+**Do**
+
+Run a one-listing job whose page is answered with a 429 once, then served.
+
+**Expect**
+
+Two fetches, and the listing is delivered as a page priced 7126. 🔴 Mutation: dropping 429 from the throttle rule turns this red.
+
+### Check: listing-read-no-throttle-no-wait
+
+**Requirement:** A throttled page is read again at a measured pace before it is reported as not read
+**Surface:** `runReadJob`
+**Automated:** test/read-run.spec.ts
+
+**Do**
+
+Run the four-listing job with nothing throttled.
+
+**Expect**
+
+Four fetches, no wait asked of the sleep, `rereads` 0. The control for a pacing that slows every job.
+
+### Check: listing-read-answered-page-is-not-reread
+
+**Requirement:** Only a throttle is read again
+**Surface:** `runReadJob`
+**Automated:** test/read-run.spec.ts
+
+**Do**
+
+Run the four-listing job with the vendor answering 404, 403 and no response at all for three pages, and a search page for the fourth.
+
+**Expect**
+
+Four fetches, no wait. Readings: `pageFound: false` for the 404; `fetch-failed:` for the 403 and for no response; `not-a-product-page:` for the search page. 🔴 Mutation: treating every answered status as a throttle turns this red, and turns the existing once-each checks red too.
+
+### Check: listing-read-throttle-is-the-vendors-answer
+
+**Requirement:** Only a throttle is read again
+**Surface:** `isThrottled`
+**Automated:** test/read-run.spec.ts
+
+**Do**
+
+Classify a failed fetch carrying 200, 429, no status, 400, 403, 404, 410, 500 and 503.
+
+**Expect**
+
+A throttle for 200 (the fetcher fails a 2xx only for a body too short to be a page) and 429; not a throttle for all the rest. 🔴 Mutations: nothing a throttle, everything a throttle, and 429 not a throttle, each turn this red.
+
+### Check: listing-read-reread-cap-stops-rereads
+
+**Requirement:** A job's re-reads are capped
+**Surface:** `runReadJob`
+**Automated:** test/read-run.spec.ts
+
+**Do**
+
+Run the four-listing job on two workers with every page throttled on every read.
+
+**Expect**
+
+Exactly 4 + 3 fetches, the 3 being this job's cap, which is fewer than the 12 the per-page limit alone would allow; `rereads` is 3. All four listings are delivered once, each `fetch-failed:`, at least one saying the re-read cap is spent, a log line says the cap was reached, and the run ends `completed`. 🔴 Mutation: ignoring the cap turns this red.
+
+### Check: listing-read-reread-cap-is-sized-by-the-job
+
+**Requirement:** A job's re-reads are capped
+**Surface:** `rereadBudget`
+**Automated:** test/read-run.spec.ts
+
+**Do**
+
+Size the cap for jobs of 1, 40 and 100 000 listings.
+
+**Expect**
+
+3 (the floor), 10 (a quarter), and 100 (the ceiling).
+
 ### Check: listing-read-time-is-when-the-page-arrived
 
 **Requirement:** Every reading carries when its page was read
@@ -642,6 +768,20 @@ Run ten listings, batches of two, against a gateway answering every batch with 4
 **Expect**
 
 Fewer than ten fetches, `stoppedEarly`, and no completion or error sent.
+
+### Check: listing-read-gone-abandons-rereads
+
+**Requirement:** A read stops when the gateway says the read run has ended
+**Surface:** `runReadJob`
+**Automated:** test/read-run.spec.ts
+
+**Do**
+
+Run the four-listing job, batches of one, the first page throttled on every read, against a gateway answering every batch with 404.
+
+**Expect**
+
+`stoppedEarly`, and the set-aside page is fetched only once: nothing is bought again for a run that has ended. 🔴 Mutation: re-reading at once with no wait turns this red.
 
 ### Check: listing-read-status-contract
 

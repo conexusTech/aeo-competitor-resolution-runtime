@@ -8,6 +8,22 @@
  * bought. The gateway files those readings into every list that watches the
  * listing — which is why a reading carries no organization at all.
  *
+ * ── A throttled page is read again, at a measured pace ────────────────
+ * 🔑 **The one exception to "once each".** A page the vendor answers with
+ * nothing — the empty 200 the live fetcher calls a silent throttle, or a 429 —
+ * has said *not now*, not *no*. The live fetcher already waits 5 s then 10 s
+ * inside its own call; a page still throttled after that is caught in a burst,
+ * and reading it again at once would join the same burst. So it is set aside,
+ * the rest of the job carries on, and it is read again after a wait that
+ * doubles each time (`READ_PACING`). Only after its last re-read is it
+ * reported as not read, with the reason it always had.
+ *
+ * ⚠️ **Bounded twice.** Each page gets at most `rereadDelaysMs.length`
+ * re-reads, and each job at most `rereadBudget(listings)` in all; a throttled
+ * page found once the budget is spent is reported as not read at once, and
+ * says so. Without the second bound a job the vendor throttles end to end
+ * would quadruple its reads and its run time.
+ *
  * ── What read mode does NOT do ────────────────────────────────────────
  * No search, no probe and no capture. A listing whose page has gone or no
  * longer agrees with its pairing is re-resolved by its own organization's run,
@@ -30,7 +46,7 @@
  */
 
 import type { ListingReader } from "./adapters/types.js";
-import { FetchFailed, type Fetcher } from "./fetcher/types.js";
+import { FetchFailed, isThrottled, type Fetcher } from "./fetcher/types.js";
 import {
   MAX_READINGS_PER_EVENT,
   type ReadJob,
@@ -182,8 +198,8 @@ function gone(listing: ReadListing, readAt: Date, detail: string): GoneReading {
  * Read one listing: one fetch, one parse.
  *
  * ⚠️ **One call to the fetcher, whatever happens.** The live fetcher already
- * retries inside that call; a second call here would be a second purchase of
- * the same page in the same read run.
+ * retries inside that call. A re-read of a throttled page is the job's
+ * decision, paced and budgeted in `runReadJob`, never this function's.
  *
  * ⚠️ **A corpus gap is rethrown, not filed.** During a replay a missing page is
  * a defect in the test data, and filing it as a failed reading would make a
@@ -196,6 +212,22 @@ export async function readListing(
   fetcher: Fetcher,
   now: () => Date,
 ): Promise<ListingReading> {
+  return (await attemptListing(listing, reader, fetcher, now)).reading;
+}
+
+/** One read, and whether the vendor's answer was a throttle. */
+interface Attempt {
+  readonly reading: ListingReading;
+  /** True only for a failed fetch the vendor answered with *not now*. */
+  readonly throttled: boolean;
+}
+
+async function attemptListing(
+  listing: ReadListing,
+  reader: ListingReader,
+  fetcher: Fetcher,
+  now: () => Date,
+): Promise<Attempt> {
   let body: string;
   let readAt: Date;
   try {
@@ -209,11 +241,22 @@ export async function readListing(
       error.cause instanceof Error ? ` (${error.cause.message})` : "";
     const detail = `${error.message}${cause}`;
     if (error.status !== null && GONE_STATUSES.has(error.status)) {
-      return gone(listing, now(), detail);
+      return { reading: gone(listing, now(), detail), throttled: false };
     }
-    return failed(listing, now(), READ_FAILURE.fetchFailed, detail);
+    return {
+      reading: failed(listing, now(), READ_FAILURE.fetchFailed, detail),
+      throttled: isThrottled(error),
+    };
   }
+  return { reading: readBody(listing, reader, body, readAt), throttled: false };
+}
 
+function readBody(
+  listing: ReadListing,
+  reader: ListingReader,
+  body: string,
+  readAt: Date,
+): ListingReading {
   const result = reader.readListingPage(body);
   if (result.kind === "not-a-product-page") {
     return failed(
@@ -268,6 +311,67 @@ function requireOwnHosts(job: ReadJob, reader: ListingReader): void {
   }
 }
 
+/**
+ * How a throttled page is read again. One schedule for every retailer: both
+ * adapters reach their pages through the same fetcher, and neither has a
+ * throttle signal of its own, so there is nothing per retailer to tune.
+ *
+ * 🔑 **The delays carry on the live fetcher's own doubling.** Inside one call
+ * it waits 5 s then 10 s after an empty 200 — measured: a url that answered
+ * 0 bytes twice answered 338 KB after 15 s. A page still throttled after that
+ * has met a throttle that outlasted the measured recovery (three of 20 Amazon
+ * rows did, 2026-09-13), so the next waits are the next rungs: 20 s, 40 s,
+ * 80 s. ⚠️ **Reasoned, not measured.** No throttle has yet been seen in read
+ * mode; when one is, these are the numbers to correct from it.
+ *
+ * 🔑 **The cap is a quarter of the job, at least 3 and at most 100 re-reads.**
+ * The worst throttle rate measured on this vendor is a third of requests
+ * (6 of 18, identity lookups, 2026-09) and the one measured on Amazon pages
+ * 15% (3 of 20); a quarter covers the second with each throttled page re-read
+ * about 1.7 times. The floor lets a small job take one page through every
+ * re-read; the ceiling bounds the time a job can add whatever its size — 100
+ * re-reads of at most ~63 s each, three at a time, plus the last page's
+ * 140 s of waiting, is under 41 minutes against the catalog's 3 h and the
+ * gateway's 6 h. Above 400 listings the ceiling binds, and a job the vendor
+ * throttles harder than that reports the rest as not read.
+ */
+export const READ_PACING = {
+  /** The wait before each re-read; its length is the re-reads per page. */
+  rereadDelaysMs: [20_000, 40_000, 80_000],
+  /** Re-reads per job, as a share of its listings. */
+  rereadShare: 0.25,
+  rereadFloor: 3,
+  rereadCeiling: 100,
+} as const;
+
+export type ReadPacing = {
+  readonly rereadDelaysMs: readonly number[];
+  readonly rereadShare: number;
+  readonly rereadFloor: number;
+  readonly rereadCeiling: number;
+};
+
+/** How many re-reads a job of this many listings may make in all. */
+export function rereadBudget(
+  listings: number,
+  pacing: ReadPacing = READ_PACING,
+): number {
+  return Math.min(
+    pacing.rereadCeiling,
+    Math.max(pacing.rereadFloor, Math.ceil(listings * pacing.rereadShare)),
+  );
+}
+
+/** A failed reading with a note on why it was not read again. */
+function noted(reading: ListingReading, note: string): ListingReading {
+  return reading.failure === null
+    ? reading
+    : { ...reading, failure: `${reading.failure} — ${note}` };
+}
+
+const realSleep = (ms: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, ms));
+
 export interface ReadRunDeps {
   readonly client: ReadRunPort;
   /** Resolved from the job's retailer slug. */
@@ -278,6 +382,10 @@ export interface ReadRunDeps {
   readonly concurrency?: number;
   /** Readings buffered before a batch is sent; capped at the gateway's limit. */
   readonly flushAt?: number;
+  /** How a throttled page is read again. `READ_PACING` unless a test says. */
+  readonly pacing?: ReadPacing;
+  /** Waits out a re-read's delay. A test passes one that moves its clock. */
+  readonly sleep?: (ms: number) => Promise<void>;
   readonly log?: (message: string) => void;
 }
 
@@ -288,6 +396,8 @@ export interface ReadRunResult {
   readonly stoppedEarly: boolean;
   /** Readings the gateway never accepted. Non-zero ends the run in `error`. */
   readonly undelivered: number;
+  /** Throttled pages read again, across the whole job. */
+  readonly rereads: number;
 }
 
 export const READ_DEFAULTS = { concurrency: 3, flushAt: 100 } as const;
@@ -318,6 +428,8 @@ export async function runReadJob(deps: ReadRunDeps): Promise<ReadRunResult> {
     MAX_READINGS_PER_EVENT,
   );
   const spent = (): number => deps.fetcher.liveRequestCount;
+  const pacing = deps.pacing ?? READ_PACING;
+  const sleep = deps.sleep ?? realSleep;
 
   const job = await deps.client.fetchJob();
 
@@ -357,22 +469,91 @@ export async function runReadJob(deps: ReadRunDeps): Promise<ReadRunResult> {
   try {
     const reader = deps.readerFor(job.retailerSlug);
     requireOwnHosts(job, reader);
+    const budget = rereadBudget(job.listings.length, pacing);
+    const maxReads = 1 + pacing.rereadDelaysMs.length;
     log(
       `listing read ${job.readRunId}: ${job.listings.length} listing(s) on ` +
-        `${reader.slug}, one request each at most`,
+        `${reader.slug}, one read each, a throttled page up to ${maxReads}, ` +
+        `${budget} re-read(s) in all`,
     );
 
-    // 🔑 One shared cursor: each index is taken by exactly one worker, so each
-    // listing is fetched exactly once however many workers there are.
+    const record = (reading: ListingReading): void => {
+      readings.push(reading);
+      buffer.push(reading);
+    };
+
+    /** A throttled page waiting to be read again. */
+    interface SetAside {
+      readonly listing: ReadListing;
+      /** Reads made so far, the first included. */
+      readonly reads: number;
+      readonly dueAt: number;
+    }
+    const setAside: SetAside[] = [];
+    let rereads = 0;
+    let capLogged = false;
+
+    /** The page to read next, or how long until one is due, or nothing. */
+    const take = (): SetAside | number | null => {
+      const at = now().getTime();
+      // A due re-read first, so its wait is the wait it was given.
+      const due = setAside.findIndex((s) => s.dueAt <= at);
+      if (due >= 0) return setAside.splice(due, 1)[0] ?? null;
+      // 🔑 One shared cursor: each index is taken by exactly one worker, so
+      // each listing's first read happens exactly once however many workers.
+      const listing = job.listings[next];
+      if (listing !== undefined) {
+        next++;
+        return { listing, reads: 0, dueAt: at };
+      }
+      if (setAside.length === 0) return null;
+      return Math.max(1, Math.min(...setAside.map((s) => s.dueAt)) - at);
+    };
+
     let next = 0;
     const worker = async (): Promise<void> => {
       while (!gone) {
-        const index = next++;
-        const listing = job.listings[index];
-        if (listing === undefined) return;
-        const reading = await readListing(listing, reader, deps.fetcher, now);
-        readings.push(reading);
-        buffer.push(reading);
+        const task = take();
+        if (task === null) return;
+        if (typeof task === "number") {
+          await sleep(task);
+          continue;
+        }
+        const { listing } = task;
+        const attempt = await attemptListing(
+          listing,
+          reader,
+          deps.fetcher,
+          now,
+        );
+        const reads = task.reads + 1;
+        let reading = attempt.reading;
+        if (attempt.throttled) {
+          const delay = pacing.rereadDelaysMs[reads - 1];
+          if (delay === undefined) {
+            reading = noted(reading, `throttled on all ${reads} reads`);
+          } else if (rereads < budget) {
+            // 🔴 Set aside, NOT recorded: a reading is posted once, when the
+            // page is finally read or finally fails.
+            rereads++;
+            setAside.push({ listing, reads, dueAt: now().getTime() + delay });
+            continue;
+          } else {
+            if (!capLogged) {
+              capLogged = true;
+              log(
+                `re-read cap reached: ${budget} re-read(s) spent; further ` +
+                  `throttled pages are reported as not read`,
+              );
+            }
+            reading = noted(
+              reading,
+              `throttled, not read again: this job's re-read cap of ` +
+                `${budget} is spent`,
+            );
+          }
+        }
+        record(reading);
         if (buffer.length >= flushAt) await flush(false);
       }
     };
@@ -388,7 +569,7 @@ export async function runReadJob(deps: ReadRunDeps): Promise<ReadRunResult> {
     log(
       `read ${readings.length} of ${job.listings.length} listing(s): ` +
         `${readings.length - failures} page(s), ${failures} failed reading(s), ` +
-        `${spent()} request(s)`,
+        `${rereads} re-read(s) of a throttled page, ${spent()} request(s)`,
     );
 
     if (gone) {
@@ -397,6 +578,7 @@ export async function runReadJob(deps: ReadRunDeps): Promise<ReadRunResult> {
         liveRequests: spent(),
         stoppedEarly: true,
         undelivered,
+        rereads,
       };
     }
 
@@ -414,6 +596,7 @@ export async function runReadJob(deps: ReadRunDeps): Promise<ReadRunResult> {
       liveRequests: spent(),
       stoppedEarly: false,
       undelivered,
+      rereads,
     };
   } catch (error) {
     // Whatever was read is still worth filing before the run is marked failed

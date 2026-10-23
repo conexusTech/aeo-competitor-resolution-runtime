@@ -1,7 +1,7 @@
 ---
 type: Capability
 title: The runtime reads listings the platform already knows, once each
-description: Read mode — a read job names a retailer and its listings; each page is fetched once, fresh, read by the adapter, and reported with which listing the page says it is, when it was read and what the container bought. A page nobody could read is a failed reading, never a finding.
+description: Read mode — a read job names a retailer and its listings; each page is fetched once, fresh, read by the adapter, and reported with which listing the page says it is, when it was read and what the container bought. A page the vendor throttles is read again at a measured pace, within a per-job cap, before it is reported as not read. A page nobody could read is a failed reading, never a finding.
 ---
 
 # The runtime reads listings, once each
@@ -99,7 +99,7 @@ and T-9 (filing). The runtime is built against them.
 - GIVEN a read job naming several listings
 - WHEN the container reads it, with any number of workers
 - THEN each listing's page is requested exactly once
-- AND nothing else is requested: no search, no probe, no capture, no retry of a failed page
+- AND nothing else is requested: no search, no probe, no capture, no retry of a failed page other than a throttled one, below
 - AND a job naming one listing, or one page, twice is refused before anything is bought
 
 **Checked by:** listing-read-fetches-each-once
@@ -182,6 +182,39 @@ and T-9 (filing). The runtime is built against them.
 **Checked by:** listing-read-both-missing-is-a-failure
 **Checked by:** listing-read-failure-does-not-stop-the-job
 
+#### Scenario: A throttled page is read again at a measured pace before it is reported as not read
+- GIVEN a read job in which the vendor answers a page with a throttle — an empty answer, or "too many requests" — even after the fetcher's own waits
+- WHEN the container reads the job
+- THEN that page is set aside and the rest of the job carries on
+- AND it is read again after a wait, each wait longer than the one before, at most three more times
+- AND a page read on a later attempt is reported once, as the page it was, read when it arrived
+- AND a page throttled every time is reported once, as not read with the reason a failed fetch always carries, only after its last attempt
+- AND a job nobody throttles reads each page once and never waits
+
+**Checked by:** listing-read-throttled-page-read-later
+**Checked by:** listing-read-throttled-every-time-fails-last
+**Checked by:** listing-read-rereads-wait-longer-each-time
+**Checked by:** listing-read-429-is-a-throttle
+**Checked by:** listing-read-no-throttle-no-wait
+
+#### Scenario: Only a throttle is read again
+- GIVEN a page the retailer answered — gone, refused, an error, a body that is not a product page — or one that could not be reached at all
+- WHEN it is read
+- THEN it is read once and reported as before, never read again
+
+**Checked by:** listing-read-answered-page-is-not-reread
+**Checked by:** listing-read-throttle-is-the-vendors-answer
+
+#### Scenario: A job's re-reads are capped
+- GIVEN a job the vendor throttles throughout
+- WHEN its re-reads reach a quarter of its listings — at least 3, at most 100
+- THEN no further page is read again
+- AND each further throttled page is reported as not read at once, saying the cap was reached
+- AND every listing is still reported exactly once and the job completes
+
+**Checked by:** listing-read-reread-cap-stops-rereads
+**Checked by:** listing-read-reread-cap-is-sized-by-the-job
+
 #### Scenario: Every reading carries when its page was read
 - GIVEN a read job
 - WHEN each page arrives
@@ -229,6 +262,7 @@ and T-9 (filing). The runtime is built against them.
 
 **Checked by:** listing-read-job-404-is-gone
 **Checked by:** listing-read-stops-when-gone
+**Checked by:** listing-read-gone-abandons-rereads
 **Checked by:** listing-read-status-contract
 **Checked by:** listing-read-batch-cap
 
@@ -252,6 +286,20 @@ and T-9 (filing). The runtime is built against them.
 - **Newegg's identity is calibrated on four product pages**, two showing a
   marketplace offer of a warehouse product. The page names the listing as a
   search does: `ParentItem` when there is one, else `Item`.
+- **The re-read pacing is reasoned, not measured.** No page has yet been seen
+  throttled in read mode: the only Amazon read-mode-shaped evidence is two
+  resolution rehearsals on 2026-10-23 (166 and 176 requests, zero errors), and
+  read mode itself has run only on Newegg (14 listings, all read). The waits —
+  20 s, 40 s, 80 s — continue the fetcher's own measured 5 s / 10 s schedule,
+  and the cap is sized from throttle rates measured elsewhere on the same
+  vendor. The first read run that meets a throttle is the measurement to
+  correct them from.
+- **Worst-case time added is bounded by the cap, not by a clock.** At the cap
+  of 100 re-reads, each no longer than a throttled first read (about 63 s at
+  the rehearsal's measured ~16 s per request), three at a time, plus the last
+  page's 140 s of waiting, a job grows by under 41 minutes. The fetcher sets
+  no timeout on a single request, so a request that hangs is outside this
+  bound — as it already was.
 - **A read run keeps no journal.** A restarted container's counter starts again
   from zero, so `requests_spent` under-reports that case; T-7 serving only the
   unread listings bounds what it re-buys.
