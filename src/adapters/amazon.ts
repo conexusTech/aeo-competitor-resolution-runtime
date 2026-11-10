@@ -466,6 +466,8 @@ export function readListingPage(html: string): ListingPageResult {
 export const amazonAdapter: RetailerAdapter & ListingReader = {
   slug: "amazon",
   querySupport: QUERY_SUPPORT,
+  // Three, as before the registry carried a figure (the lead, 2026-11-10).
+  pacing: { pagesAtOnce: 3 },
   buildSearchUrl: (query) =>
     `https://www.amazon.com/s?k=${encodeURIComponent(query)}`,
   parseSearchResults,

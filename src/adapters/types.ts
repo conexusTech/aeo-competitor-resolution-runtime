@@ -141,6 +141,46 @@ export interface QuerySupport {
   readonly barcodeIsSearchable: boolean;
 }
 
+/**
+ * How hard a retailer may be pressed.
+ *
+ * 🔑 **A fallback, not the setting.** How many pages a competitor is read at
+ * once is operational tuning — one retailer's page time was measured at 20 s
+ * one day and 1-3 min the day before — so it lives in the gateway's retailer
+ * registry and arrives with the job, where it can change without a rebuild and
+ * a re-pin. This is what the runtime uses only when a gateway that predates the
+ * field sends none. Required, so the next adapter must state its answer.
+ *
+ * ⚠️ Pages within one item are fetched one after another, so pages at once is
+ * the number of items (or listings) worked at once.
+ */
+export interface Pacing {
+  readonly pagesAtOnce: number;
+}
+
+/**
+ * The most pages any competitor is read at once, whatever the job or the
+ * adapter asks for.
+ *
+ * 🔴 **A politeness rule, not a tuning value** (the lead, 2026-11-10, on
+ * Jody's rule of two to four parallel fetches). The registry can lower a
+ * competitor below it; nothing can raise one above it, so a mistyped registry
+ * row cannot turn a run into a burst the retailer reads as an attack.
+ */
+export const MAX_PAGES_AT_ONCE = 4;
+
+/**
+ * How many pages to read at once: the job's figure, else the adapter's, never
+ * more than `MAX_PAGES_AT_ONCE` and never fewer than one.
+ *
+ * Pure, and written once for both run kinds — a resolution run and a read run
+ * are the same pages through the same proxy.
+ */
+export function pagesAtOnce(requested: number | null, pacing: Pacing): number {
+  const wanted = requested ?? pacing.pagesAtOnce;
+  return Math.min(MAX_PAGES_AT_ONCE, Math.max(1, wanted));
+}
+
 export interface RetailerAdapter {
   /**
    * The registry slug — a string, deliberately. Retailer capability is a row in
@@ -149,6 +189,9 @@ export interface RetailerAdapter {
   readonly slug: string;
 
   readonly querySupport: QuerySupport;
+
+  /** Pages at once when the job does not say. See `Pacing`. */
+  readonly pacing: Pacing;
 
   /** Where to send a search for `query`. Pure. */
   buildSearchUrl(query: string): string;
@@ -246,6 +289,8 @@ export interface ListingReader {
    * job spending on, or reaching, somewhere that is not this retailer.
    */
   readonly hosts: readonly string[];
+  /** Pages at once when the read job does not say. See `Pacing`. */
+  readonly pacing: Pacing;
   /** Raw product-page body -> what it says. Pure. */
   readListingPage(html: string): ListingPageResult;
 }

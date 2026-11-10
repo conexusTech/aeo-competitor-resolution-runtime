@@ -45,7 +45,11 @@
  * are not touched, so a read cannot change what a resolution finds.
  */
 
-import type { ListingReader } from "./adapters/types.js";
+import {
+  MAX_PAGES_AT_ONCE,
+  pagesAtOnce,
+  type ListingReader,
+} from "./adapters/types.js";
 import { FetchFailed, isThrottled, type Fetcher } from "./fetcher/types.js";
 import {
   MAX_READINGS_PER_EVENT,
@@ -378,7 +382,11 @@ export interface ReadRunDeps {
   readonly readerFor: (retailerSlug: string) => ListingReader;
   readonly fetcher: Fetcher;
   readonly now?: () => Date;
-  /** Listings read at once. The resolution default, for the same proxy. */
+  /**
+   * Listings read at once, when the job does not say. Absent, the reader's
+   * own `pacing.pagesAtOnce`. The job's figure wins over this, and the result
+   * is clamped to `MAX_PAGES_AT_ONCE`.
+   */
   readonly concurrency?: number;
   /** Readings buffered before a batch is sent; capped at the gateway's limit. */
   readonly flushAt?: number;
@@ -400,7 +408,7 @@ export interface ReadRunResult {
   readonly rereads: number;
 }
 
-export const READ_DEFAULTS = { concurrency: 3, flushAt: 100 } as const;
+export const READ_DEFAULTS = { flushAt: 100 } as const;
 
 /**
  * Run one read job end to end.
@@ -419,10 +427,6 @@ export const READ_DEFAULTS = { concurrency: 3, flushAt: 100 } as const;
 export async function runReadJob(deps: ReadRunDeps): Promise<ReadRunResult> {
   const log = deps.log ?? console.log;
   const now = deps.now ?? ((): Date => new Date());
-  const concurrency = Math.max(
-    1,
-    deps.concurrency ?? READ_DEFAULTS.concurrency,
-  );
   const flushAt = Math.min(
     Math.max(1, deps.flushAt ?? READ_DEFAULTS.flushAt),
     MAX_READINGS_PER_EVENT,
@@ -469,12 +473,19 @@ export async function runReadJob(deps: ReadRunDeps): Promise<ReadRunResult> {
   try {
     const reader = deps.readerFor(job.retailerSlug);
     requireOwnHosts(job, reader);
+    // 🔑 After the reader, because its `pacing` is the fallback: the job's
+    // registry figure first, then the caller's, then the reader's own.
+    const concurrency = pagesAtOnce(
+      job.pagesAtOnce ?? deps.concurrency ?? null,
+      reader.pacing,
+    );
     const budget = rereadBudget(job.listings.length, pacing);
     const maxReads = 1 + pacing.rereadDelaysMs.length;
     log(
       `listing read ${job.readRunId}: ${job.listings.length} listing(s) on ` +
         `${reader.slug}, one read each, a throttled page up to ${maxReads}, ` +
-        `${budget} re-read(s) in all`,
+        `${budget} re-read(s) in all, ${concurrency} page(s) at once ` +
+        `(at most ${MAX_PAGES_AT_ONCE})`,
     );
 
     const record = (reading: ListingReading): void => {

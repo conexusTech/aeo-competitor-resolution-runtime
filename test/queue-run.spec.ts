@@ -59,6 +59,7 @@ const JOB: ResolutionJob = {
     },
   ],
   capture: CAPTURE_DISABLED,
+  pagesAtOnce: null,
 };
 
 const resolution = (clientSku: string): Resolution =>

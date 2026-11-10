@@ -9,7 +9,7 @@
 import { appendFile, mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
-import type { RetailerAdapter } from "./adapters/types.js";
+import { pagesAtOnce, type RetailerAdapter } from "./adapters/types.js";
 import { RequestMeter } from "./fetcher/meter.js";
 import type { Fetcher } from "./fetcher/types.js";
 import {
@@ -91,8 +91,15 @@ export interface RunProgress {
 }
 
 export interface RunOptions extends ResolveOptions {
-  /** Items resolved concurrently. Politeness, not throughput. */
-  readonly concurrency: number;
+  /**
+   * Items resolved at once — which is pages at once, since an item fetches its
+   * pages one after another. Politeness, not throughput.
+   *
+   * 🔑 `null` means the adapter's own `pacing.pagesAtOnce`. A queue run sets
+   * the job's figure here; whatever is set is clamped by `pagesAtOnce()` to
+   * `MAX_PAGES_AT_ONCE`.
+   */
+  readonly concurrency: number | null;
   /** Directory for the journal. */
   readonly runDir: string;
   /** Journal filename within `runDir`. */
@@ -127,7 +134,7 @@ export interface RunOptions extends ResolveOptions {
 
 export const RUN_DEFAULTS: RunOptions = {
   ...DEFAULT_OPTIONS,
-  concurrency: 3,
+  concurrency: null,
   runDir: "./runs",
   journalName: "resolutions.jsonl",
 };
@@ -370,8 +377,9 @@ export async function runList(
     }
   };
 
+  const workers = pagesAtOnce(options.concurrency, adapter.pacing);
   await Promise.all(
-    Array.from({ length: Math.min(options.concurrency, pending.length) }, () =>
+    Array.from({ length: Math.min(workers, pending.length) }, () =>
       worker(pending),
     ),
   );

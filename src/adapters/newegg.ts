@@ -289,6 +289,8 @@ export function readListingPage(html: string): ListingPageResult {
 export const neweggAdapter: RetailerAdapter & ListingReader = {
   slug: "newegg",
   querySupport: QUERY_SUPPORT,
+  // Three, as before the registry carried a figure (the lead, 2026-11-10).
+  pacing: { pagesAtOnce: 3 },
   buildSearchUrl: (query) =>
     `https://www.newegg.com/p/pl?d=${encodeURIComponent(query)}`,
   parseSearchResults,

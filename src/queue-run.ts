@@ -15,7 +15,11 @@
 
 import { Capturer, tallyCaptures } from "./capture/capturer.js";
 import type { CaptureRecord } from "./capture/types.js";
-import type { RetailerAdapter } from "./adapters/types.js";
+import {
+  MAX_PAGES_AT_ONCE,
+  pagesAtOnce,
+  type RetailerAdapter,
+} from "./adapters/types.js";
 import type { Fetcher } from "./fetcher/types.js";
 import type { GatewayClient, ResolutionJob } from "./gateway/client.js";
 import type { DispatchPayload } from "./queue/task-record.js";
@@ -123,6 +127,19 @@ export async function runDispatchedJob(
     );
   }
 
+  // 🔑 The registry's figure, from the job, wins over everything; only a
+  // gateway that predates it leaves the caller's setting (normally `null`, the
+  // adapter's own) in force. `runList` clamps either to `MAX_PAGES_AT_ONCE`.
+  const concurrency = job.pagesAtOnce ?? deps.baseOptions.concurrency;
+  const source =
+    job.pagesAtOnce === null
+      ? "the job names none"
+      : `the job asked for ${job.pagesAtOnce}`;
+  log(
+    `pages at once: ${pagesAtOnce(concurrency, adapter.pacing)} ` +
+      `(${source}; at most ${MAX_PAGES_AT_ONCE})`,
+  );
+
   let lastTick = 0;
 
   try {
@@ -136,6 +153,7 @@ export async function runDispatchedJob(
       deps.fetcher,
       {
         ...deps.baseOptions,
+        concurrency,
         onResolved: async (resolution) => {
           // 🔴 The finding first, the evidence second, and the order is a
           // priority rather than a correctness argument: the finding is the

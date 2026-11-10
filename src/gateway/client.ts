@@ -108,6 +108,36 @@ export interface ResolutionJob {
    * ⚠️ Absent means disabled — see `parseCapturePolicy`.
    */
   readonly capture: CapturePolicy;
+  /**
+   * How many pages this competitor may be read at once, from its registry row.
+   *
+   * 🔑 **The gateway's figure wins**, because it is operational tuning that has
+   * to change without a rebuild. `null` means a gateway that predates the
+   * field; the runtime then falls back to the adapter's own `pacing`. Either
+   * way `pagesAtOnce()` clamps it to `MAX_PAGES_AT_ONCE`.
+   */
+  readonly pagesAtOnce: number | null;
+}
+
+/**
+ * The job's pages-at-once figure: `null` when absent, the number when it is a
+ * whole number of at least one.
+ *
+ * ⚠️ Tolerant of absence, strict about type — the rule every optional field on
+ * a job follows. A zero, a fraction or a string is two builds disagreeing, and
+ * reading it as "not said" would hide that behind the adapter's fallback.
+ * ⚠️ **A figure above the runtime's ceiling is NOT refused here**: it is a
+ * legitimate registry value the runtime declines to honour in full, and
+ * `pagesAtOnce()` clamps it.
+ */
+function parsePagesAtOnce(value: unknown, what: string): number | null {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== "number" || !Number.isInteger(value) || value < 1) {
+    throw new Error(
+      `${what} has a 'pagesAtOnce' that is not a whole number of at least 1`,
+    );
+  }
+  return value;
 }
 
 /**
@@ -679,6 +709,10 @@ export function parseJob(body: unknown, runId: string): ResolutionJob {
     // support carries no block, and defaulting to on would spend a budget
     // nobody set. A MALFORMED block still throws — see `parseCapturePolicy`.
     capture: parseCapturePolicy(raw["capture"], runId),
+    pagesAtOnce: parsePagesAtOnce(
+      raw["pagesAtOnce"],
+      `the job for run ${runId}`,
+    ),
   };
 }
 
@@ -709,6 +743,8 @@ export interface ReadJob {
   readonly readRunId: string;
   readonly retailerSlug: string;
   readonly listings: readonly ReadListing[];
+  /** As on `ResolutionJob`: the registry's figure, `null` from an older gateway. */
+  readonly pagesAtOnce: number | null;
 }
 
 /** The read run is not there to report to. */
@@ -939,5 +975,13 @@ export function parseReadJob(body: unknown, readRunId: string): ReadJob {
         `is created over listings, so this build and the gateway disagree`,
     );
   }
-  return { readRunId, retailerSlug, listings: parsed };
+  return {
+    readRunId,
+    retailerSlug,
+    listings: parsed,
+    pagesAtOnce: parsePagesAtOnce(
+      Reflect.get(body, "pagesAtOnce"),
+      `the job for read run ${readRunId}`,
+    ),
+  };
 }

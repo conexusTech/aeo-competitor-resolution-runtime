@@ -288,6 +288,7 @@ const neweggJob = (
   readRunId: "55555555-5555-4555-8555-555555555555",
   retailerSlug: "newegg",
   listings,
+  pagesAtOnce: null,
 });
 
 const readers = (slug: string): ListingReader => {
@@ -1194,6 +1195,7 @@ describe("a read job", () => {
       readRunId: "66666666-6666-4666-8666-666666666666",
       retailerSlug: "amazon",
       listings: [{ itemId: "B0BFGB2D2Z", url }],
+      pagesAtOnce: null,
     });
     await runReadJob({
       client: port,
@@ -1275,6 +1277,8 @@ describe("the read run's gateway client", () => {
       readRunId: READ_RUN_ID,
       retailerSlug: "newegg",
       listings: [{ itemId: "A", url: "https://www.newegg.com/p/A" }],
+      // This gateway sends no figure, so the reader's own applies.
+      pagesAtOnce: null,
     });
   });
 

@@ -44,6 +44,7 @@ const candidate: ParsedCandidate = {
 const adapter: RetailerAdapter = {
   slug: "fake",
   querySupport: { maxNumericQueryDigits: 9, barcodeIsSearchable: false },
+  pacing: { pagesAtOnce: 3 },
   buildSearchUrl: (q) => `https://retailer.test/s?q=${encodeURIComponent(q)}`,
   parseSearchResults: (html) => (html === "SEARCH" ? [candidate] : []),
   parseProductPage: (html) => ({
