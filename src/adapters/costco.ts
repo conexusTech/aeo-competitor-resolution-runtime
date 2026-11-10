@@ -411,7 +411,15 @@ export function parseSearchResults(_html: string): ParsedCandidate[] | null {
 
 export const SITEMAP_INDEX = `${COSTCO_ORIGIN}/sitemap_lw_index.xml`;
 
-const LOC = /<loc>\s*([^<]+?)\s*<\/loc>/g;
+/**
+ * One `<loc>`, its text trimmed by the caller.
+ *
+ * 🔴 **One run of non-`<` characters, nothing either side of it.** The form
+ * this replaced, `<loc>\s*([^<]+?)\s*<\/loc>`, let three quantifiers share
+ * one run of whitespace: an unclosed `<loc>` of 2,000 spaces took 4 s and of
+ * 4,000 took 34 s — a broken or hostile sitemap holding a run forever.
+ */
+const LOC = /<loc>([^<]*)<\/loc>/g;
 
 const decodeXml = (s: string): string =>
   s
@@ -434,7 +442,7 @@ export function parseSitemapIndex(body: string): string[] | null {
   if (!body.includes("<sitemapindex")) return null;
   const files: string[] = [];
   for (const m of body.matchAll(LOC)) {
-    const url = decodeXml(m[1] ?? "");
+    const url = decodeXml((m[1] ?? "").trim());
     if (/^https:\/\/www\.costco\.com\/sitemap_lw_p_mod_\d+\.xml$/.test(url)) {
       files.push(url);
     }
@@ -449,7 +457,7 @@ export function parseSitemap(body: string): ProductIndexEntry[] | null {
   if (!body.includes("<urlset")) return null;
   const entries: ProductIndexEntry[] = [];
   for (const m of body.matchAll(LOC)) {
-    const url = decodeXml(m[1] ?? "");
+    const url = decodeXml((m[1] ?? "").trim());
     const parts = PRODUCT_URL.exec(url);
     if (parts === null) continue;
     let slug: string;
