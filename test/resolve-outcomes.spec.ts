@@ -668,10 +668,15 @@ describe("a search the retailer never answered", () => {
   });
 
   it("is a clean miss below the floor when every search answered — the CONTROL", async () => {
+    // 🔑 Its product page is read too: a miss over a page nobody could read
+    // is a failure as well (Jody's rule, `unanswered-probes.spec.ts`), so the
+    // control answers everything the item asks.
     const resolution = await resolveItem(
       item,
       blockingAdapter(),
-      new SearchFetcher(() => "WEAK"),
+      new SearchFetcher(() => "WEAK", {
+        "https://retailer.test/p/WEAK-1": "PDP-WEAK",
+      }),
       DEFAULT_OPTIONS,
     );
 

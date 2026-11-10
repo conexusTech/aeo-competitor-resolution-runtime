@@ -140,6 +140,15 @@ export interface Resolution {
   readonly searchesUnfetched: number;
   /** Searches answered by a page that was not a results page — a block, a robot check, a truncated body. */
   readonly searchesNotResultsPage: number;
+  /**
+   * Product pages this item probed that answered nothing about the listing:
+   * a page that could not be fetched, or a body that was not a product page.
+   *
+   * 🔴 **Jody's rule: a failed or refused read is never "not carried".** A
+   * `not-found` with any of these carries a `failure`, because the listing
+   * that would have proven the pairing may be the very page nobody read.
+   */
+  readonly probesUnanswered: number;
 }
 
 /**
@@ -360,6 +369,36 @@ export async function resolveItem(
    */
   index?: IndexCache,
 ): Promise<Resolution> {
+  // 🔑 Counted as the probes happen and stamped on whatever comes back, so
+  // no return below can report a figure from before its last probe.
+  const tally: ProbeTally = { probes: 0, unanswered: 0 };
+  const resolution = await resolveCounted(
+    request,
+    adapter,
+    sharedFetcher,
+    options,
+    tally,
+    memory,
+    index,
+  );
+  return { ...resolution, probesUnanswered: tally.unanswered };
+}
+
+/** Probes made for one item, and how many of them answered nothing. */
+interface ProbeTally {
+  probes: number;
+  unanswered: number;
+}
+
+async function resolveCounted(
+  request: ResolveRequest,
+  adapter: RetailerAdapter,
+  sharedFetcher: Fetcher,
+  options: ResolveOptions,
+  tally: ProbeTally,
+  memory?: ProbeMemory,
+  index?: IndexCache,
+): Promise<Resolution> {
   // 🔴 **Every `requests` below used to be `liveRequestCount - startedAt` on
   // the fetcher this was handed — and that is not an attribution.** `runList`
   // runs three of these concurrently by default over ONE fetcher, so each
@@ -382,6 +421,7 @@ export async function resolveItem(
     failure: null,
     searchesUnfetched: 0,
     searchesNotResultsPage: 0,
+    probesUnanswered: 0,
   };
 
   // Gather across every attempt into one pool, then rank globally.
@@ -474,7 +514,9 @@ export async function resolveItem(
       adapter.fetchProfile,
     );
     probes++;
+    tally.probes = probes;
     if (body === null) {
+      tally.unanswered++;
       probed.set(candidate.url, null);
       return null;
     }
@@ -484,6 +526,7 @@ export async function resolveItem(
     // never "publishes no barcode". Nothing is remembered, because nothing
     // was learned about the listing.
     if (product === null) {
+      tally.unanswered++;
       probed.set(candidate.url, null);
       return null;
     }
@@ -805,21 +848,53 @@ export async function resolveItem(
   const identityUnfetched =
     fetchFailed &&
     (productIndex === null ? partNumbers.length === 0 : itemBrand === null);
-  const missFailure =
-    unanswered !== 0
-      ? `${unanswered} of ${tried.length} searches went unanswered by the ` +
-        `retailer: ${unfetched} could not be fetched and ${notAResultsPage} ` +
-        `came back as not a results page, so a miss here cannot be told from ` +
-        `a search nobody answered`
-      : identityUnfetched
-        ? productIndex !== null
-          ? `could not establish what this item is: a source needed to ` +
-            `identify it could not be fetched, so it was looked up in the ` +
-            `retailer's product index by its name only, never by its brand`
-          : `could not establish what this item is: a source needed to ` +
-            `identify it could not be fetched, so it was searched only by ` +
-            `${tried.map((q) => `"${q}"`).join(", ")} and never by part number`
-        : null;
+  /**
+   * Why a miss here is not a finding, or `null` where it is one.
+   *
+   * 🔴 **A function, read at the moment of the miss**, because the probes it
+   * counts happen after this is declared: a value computed here would say
+   * "every page answered" about pages not yet asked for.
+   *
+   * 🔴 **Jody's rule: a failed or refused read is never "not carried".** A
+   * product page that could not be fetched, or came back as something other
+   * than a product page, may be the one listing that would have proven the
+   * pairing — so a miss over it is a failure, exactly as a miss over a search
+   * nobody answered is.
+   */
+  const missFailure = (): string | null => {
+    const unread = tally.unanswered;
+    const clauses: string[] = [];
+    if (unanswered !== 0) {
+      clauses.push(
+        `${unanswered} of ${tried.length} searches went unanswered by the ` +
+          `retailer: ${unfetched} could not be fetched and ${notAResultsPage} ` +
+          `came back as not a results page`,
+      );
+    }
+    if (unread !== 0) {
+      clauses.push(
+        `${unread} of ${probes} product pages could not be read: they could ` +
+          `not be fetched or were not product pages`,
+      );
+    }
+    if (clauses.length > 0) {
+      const nobody =
+        unanswered !== 0 && unread !== 0
+          ? "a search or a listing nobody answered"
+          : unanswered !== 0
+            ? "a search nobody answered"
+            : "a listing nobody read";
+      return `${clauses.join("; ")}, so a miss here cannot be told from ${nobody}`;
+    }
+    if (!identityUnfetched) return null;
+    return productIndex !== null
+      ? `could not establish what this item is: a source needed to ` +
+          `identify it could not be fetched, so it was looked up in the ` +
+          `retailer's product index by its name only, never by its brand`
+      : `could not establish what this item is: a source needed to ` +
+          `identify it could not be fetched, so it was searched only by ` +
+          `${tried.map((q) => `"${q}"`).join(", ")} and never by part number`;
+  };
   const counted = {
     ...base,
     searchesUnfetched: unfetched,
@@ -835,7 +910,7 @@ export async function resolveItem(
       candidatesSeen,
       probes,
       requests: fetcher.liveRequestCount,
-      failure: missFailure,
+      failure: missFailure(),
     };
   }
 
@@ -954,7 +1029,7 @@ export async function resolveItem(
       candidatesSeen,
       probes,
       requests: fetcher.liveRequestCount,
-      failure: missFailure,
+      failure: missFailure(),
     };
   }
 
@@ -980,7 +1055,7 @@ export async function resolveItem(
       requests: fetcher.liveRequestCount,
       // A miss, so the same rule: weak candidates from the vague searches
       // that answered say nothing about the specific one that did not.
-      failure: missFailure,
+      failure: missFailure(),
     };
   }
 

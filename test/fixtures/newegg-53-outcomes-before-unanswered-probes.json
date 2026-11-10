@@ -1,0 +1,373 @@
+[
+  {
+    "barcode": "649532609635",
+    "outcome": "verified",
+    "failure": null,
+    "probes": 1,
+    "matchItemId": "N82E16842102133"
+  },
+  {
+    "barcode": "663296413697",
+    "outcome": "verified",
+    "failure": null,
+    "probes": 1,
+    "matchItemId": "N82E16879337003"
+  },
+  {
+    "barcode": "035286302005",
+    "outcome": "not-found",
+    "failure": null,
+    "probes": 0,
+    "matchItemId": null
+  },
+  {
+    "barcode": "035286302012",
+    "outcome": "not-found",
+    "failure": null,
+    "probes": 0,
+    "matchItemId": null
+  },
+  {
+    "barcode": "046838064258",
+    "outcome": null,
+    "failure": null,
+    "probes": null,
+    "matchItemId": null
+  },
+  {
+    "barcode": "085854213196",
+    "outcome": "verified",
+    "failure": null,
+    "probes": 1,
+    "matchItemId": "0Z2-0025-00006"
+  },
+  {
+    "barcode": "035286302050",
+    "outcome": "verified",
+    "failure": null,
+    "probes": 1,
+    "matchItemId": "2RC-0089-00007"
+  },
+  {
+    "barcode": "710931610239",
+    "outcome": null,
+    "failure": null,
+    "probes": null,
+    "matchItemId": null
+  },
+  {
+    "barcode": "897337030295",
+    "outcome": "not-found",
+    "failure": null,
+    "probes": 6,
+    "matchItemId": null
+  },
+  {
+    "barcode": "710931505184",
+    "outcome": "verified",
+    "failure": null,
+    "probes": 1,
+    "matchItemId": "N82E16833156419"
+  },
+  {
+    "barcode": "884102021862",
+    "outcome": "unverifiable",
+    "failure": null,
+    "probes": 8,
+    "matchItemId": "2AM-000W-003D7"
+  },
+  {
+    "barcode": "034447044723",
+    "outcome": "not-found",
+    "failure": null,
+    "probes": 1,
+    "matchItemId": null
+  },
+  {
+    "barcode": "097855100665",
+    "outcome": "verified",
+    "failure": null,
+    "probes": 1,
+    "matchItemId": "0S6-003U-00015"
+  },
+  {
+    "barcode": "897337025918",
+    "outcome": "not-found",
+    "failure": null,
+    "probes": 0,
+    "matchItemId": null
+  },
+  {
+    "barcode": "619659102180",
+    "outcome": "unverifiable",
+    "failure": null,
+    "probes": 8,
+    "matchItemId": "0BD-000B-00BX9"
+  },
+  {
+    "barcode": "897337025970",
+    "outcome": null,
+    "failure": null,
+    "probes": null,
+    "matchItemId": null
+  },
+  {
+    "barcode": "897337025956",
+    "outcome": "not-found",
+    "failure": null,
+    "probes": 3,
+    "matchItemId": null
+  },
+  {
+    "barcode": "897337025925",
+    "outcome": "not-found",
+    "failure": null,
+    "probes": 8,
+    "matchItemId": null
+  },
+  {
+    "barcode": "747464127859",
+    "outcome": "verified",
+    "failure": null,
+    "probes": 1,
+    "matchItemId": "N82E16822165589"
+  },
+  {
+    "barcode": "747464127873",
+    "outcome": "verified",
+    "failure": null,
+    "probes": 1,
+    "matchItemId": "N82E16822165591"
+  },
+  {
+    "barcode": "747464128634",
+    "outcome": "verified",
+    "failure": null,
+    "probes": 1,
+    "matchItemId": "N82E16822165596"
+  },
+  {
+    "barcode": "606449101515",
+    "outcome": null,
+    "failure": null,
+    "probes": null,
+    "matchItemId": null
+  },
+  {
+    "barcode": "747464128658",
+    "outcome": "verified",
+    "failure": null,
+    "probes": 1,
+    "matchItemId": "N82E16822165598"
+  },
+  {
+    "barcode": "021299187203",
+    "outcome": "verified",
+    "failure": null,
+    "probes": 1,
+    "matchItemId": "N82E16826263223"
+  },
+  {
+    "barcode": "606449070156",
+    "outcome": "verified",
+    "failure": null,
+    "probes": 1,
+    "matchItemId": "12K-008X-00026"
+  },
+  {
+    "barcode": "649833202153",
+    "outcome": "not-found",
+    "failure": null,
+    "probes": 0,
+    "matchItemId": null
+  },
+  {
+    "barcode": "852552006050",
+    "outcome": "not-found",
+    "failure": null,
+    "probes": 0,
+    "matchItemId": null
+  },
+  {
+    "barcode": "766623560641",
+    "outcome": null,
+    "failure": null,
+    "probes": null,
+    "matchItemId": null
+  },
+  {
+    "barcode": "810830022031",
+    "outcome": null,
+    "failure": null,
+    "probes": null,
+    "matchItemId": null
+  },
+  {
+    "barcode": "852552006197",
+    "outcome": "not-found",
+    "failure": null,
+    "probes": 0,
+    "matchItemId": null
+  },
+  {
+    "barcode": "852552006258",
+    "outcome": "not-found",
+    "failure": null,
+    "probes": 0,
+    "matchItemId": null
+  },
+  {
+    "barcode": "852552006333",
+    "outcome": null,
+    "failure": null,
+    "probes": null,
+    "matchItemId": null
+  },
+  {
+    "barcode": "855597003992",
+    "outcome": "not-found",
+    "failure": null,
+    "probes": 0,
+    "matchItemId": null
+  },
+  {
+    "barcode": "855597003169",
+    "outcome": "not-found",
+    "failure": null,
+    "probes": 0,
+    "matchItemId": null
+  },
+  {
+    "barcode": "606449106657",
+    "outcome": "verified",
+    "failure": null,
+    "probes": 1,
+    "matchItemId": "N82E16825124013"
+  },
+  {
+    "barcode": "855597003985",
+    "outcome": "not-found",
+    "failure": null,
+    "probes": 4,
+    "matchItemId": null
+  },
+  {
+    "barcode": "897337049235",
+    "outcome": null,
+    "failure": null,
+    "probes": null,
+    "matchItemId": null
+  },
+  {
+    "barcode": "619659113551",
+    "outcome": "unconfirmed",
+    "failure": null,
+    "probes": 8,
+    "matchItemId": "0BD-000B-002P0"
+  },
+  {
+    "barcode": "6933337311393",
+    "outcome": null,
+    "failure": null,
+    "probes": null,
+    "matchItemId": null
+  },
+  {
+    "barcode": "812348012672",
+    "outcome": "unverifiable",
+    "failure": null,
+    "probes": 8,
+    "matchItemId": "3C6-01FW-001C4"
+  },
+  {
+    "barcode": "097855114693",
+    "outcome": "verified",
+    "failure": null,
+    "probes": 1,
+    "matchItemId": "N82E16826197074"
+  },
+  {
+    "barcode": "097855112859",
+    "outcome": "verified",
+    "failure": null,
+    "probes": 1,
+    "matchItemId": "N82E16826197072"
+  },
+  {
+    "barcode": "619659075538",
+    "outcome": "verified",
+    "failure": null,
+    "probes": 1,
+    "matchItemId": "N82E16820171764"
+  },
+  {
+    "barcode": "848354017011",
+    "outcome": "verified",
+    "failure": null,
+    "probes": 1,
+    "matchItemId": "N82E16820232091"
+  },
+  {
+    "barcode": "619659082321",
+    "outcome": null,
+    "failure": null,
+    "probes": null,
+    "matchItemId": null
+  },
+  {
+    "barcode": "663296420367",
+    "outcome": "not-found",
+    "failure": null,
+    "probes": 8,
+    "matchItemId": null
+  },
+  {
+    "barcode": "097855124197",
+    "outcome": null,
+    "failure": null,
+    "probes": null,
+    "matchItemId": null
+  },
+  {
+    "barcode": "097855124180",
+    "outcome": null,
+    "failure": null,
+    "probes": null,
+    "matchItemId": null
+  },
+  {
+    "barcode": "812348012993",
+    "outcome": "unverifiable",
+    "failure": null,
+    "probes": 5,
+    "matchItemId": "2WM-04B7-00001"
+  },
+  {
+    "barcode": "097855122834",
+    "outcome": "verified",
+    "failure": null,
+    "probes": 1,
+    "matchItemId": "N82E16823126476"
+  },
+  {
+    "barcode": "731304329374",
+    "outcome": "verified",
+    "failure": null,
+    "probes": 1,
+    "matchItemId": "N82E16842301682"
+  },
+  {
+    "barcode": "074101944662",
+    "outcome": "not-found",
+    "failure": null,
+    "probes": 8,
+    "matchItemId": null
+  },
+  {
+    "barcode": "663296420732",
+    "outcome": null,
+    "failure": null,
+    "probes": null,
+    "matchItemId": null
+  }
+]

@@ -352,6 +352,7 @@ export async function runList(
           // guessed. The failure above is what the run reports for it.
           searchesUnfetched: 0,
           searchesNotResultsPage: 0,
+          probesUnanswered: 0,
         };
       }
 
@@ -374,6 +375,8 @@ export async function runList(
             resolution.searchesUnfetched + first.searchesUnfetched,
           searchesNotResultsPage:
             resolution.searchesNotResultsPage + first.searchesNotResultsPage,
+          probesUnanswered:
+            resolution.probesUnanswered + first.probesUnanswered,
         };
       }
 

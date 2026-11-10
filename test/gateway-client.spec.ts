@@ -481,6 +481,7 @@ describe("the batch cap is a cross-repo contract", () => {
     failure: null,
     searchesUnfetched: 0,
     searchesNotResultsPage: 0,
+    probesUnanswered: 0,
   });
 
   it("sends the unverifiable reason camelCase, on the evidence", async () => {
