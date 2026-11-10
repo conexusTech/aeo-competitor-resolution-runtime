@@ -19,3 +19,59 @@ export const MAX_FAILURE_LENGTH = 512;
 export function boundText(text: string, max: number): string {
   return text.length <= max ? text : `${text.slice(0, max - 1)}…`;
 }
+
+/**
+ * `ResolutionEvidenceDto`'s limits on the strings a competitor's page puts on
+ * a finding — the chosen listing's and every alternative's.
+ */
+export const EVIDENCE_LIMITS = {
+  title: 512,
+  sellerName: 255,
+  brand: 160,
+  model: 128,
+  itemId: 128,
+} as const;
+
+/** `ResolutionQueryAttemptDto.query`: one entry of a finding's query trail. */
+export const MAX_QUERY_LENGTH = 500;
+
+/**
+ * `ResolutionEvidenceDto.unverifiableReason`. Re-exported by the adapter seam,
+ * where every adapter's reasons are held to it.
+ */
+export const MAX_UNVERIFIABLE_REASON_LENGTH = 200;
+
+/** The page-derived strings a finding carries about a listing. */
+interface ListingStrings {
+  readonly itemId: string;
+  readonly title: string;
+  readonly brand: string | null;
+  readonly model: string | null;
+  readonly sellerName: string | null;
+}
+
+const bounded = (value: string | null, max: number): string | null =>
+  value === null ? null : boundText(value, max);
+
+/**
+ * A listing's page-derived strings held to `EVIDENCE_LIMITS`, everything else
+ * as it is.
+ *
+ * 🔴 **For the chosen listing and every alternative alike**: both are
+ * validated by the same DTO, and either one too long refuses the batch.
+ *
+ * ⚠️ An `itemId` past 128 characters is cut like the rest. No retailer's id
+ * comes near it (the longest measured is Costco's ten digits); one that long
+ * is a page that broke the adapter, and a cut id is a finding the gateway can
+ * take — where the whole id would lose the batch it rides in.
+ */
+export function withinEvidenceLimits<T extends ListingStrings>(listing: T): T {
+  return {
+    ...listing,
+    itemId: boundText(listing.itemId, EVIDENCE_LIMITS.itemId),
+    title: boundText(listing.title, EVIDENCE_LIMITS.title),
+    brand: bounded(listing.brand, EVIDENCE_LIMITS.brand),
+    model: bounded(listing.model, EVIDENCE_LIMITS.model),
+    sellerName: bounded(listing.sellerName, EVIDENCE_LIMITS.sellerName),
+  };
+}

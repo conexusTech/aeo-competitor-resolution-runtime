@@ -24,6 +24,11 @@ import { identityFromSearchResults } from "./identity/from-search-results.js";
 import { identityFromStructuredData } from "./identity/from-structured-data.js";
 import { createIndexCache, type IndexCache } from "./product-index.js";
 import {
+  boundText,
+  MAX_QUERY_LENGTH,
+  withinEvidenceLimits,
+} from "./wire-limits.js";
+import {
   mergeIdentities,
   type IdentityProvenance,
   type ProductIdentity,
@@ -396,7 +401,15 @@ export async function resolveItem(
     memory,
     index,
   );
-  return { ...resolution, probesUnanswered: tally.unanswered };
+  return {
+    ...resolution,
+    // 🔴 A query is recorded at the gateway's limit, never sent cut: a client's
+    // product name of any length is still asked as written.
+    queriesTried: resolution.queriesTried.map((q) =>
+      boundText(q, MAX_QUERY_LENGTH),
+    ),
+    probesUnanswered: tally.unanswered,
+  };
 }
 
 /** Probes made for one item, and how many of them answered nothing. */
@@ -1206,7 +1219,8 @@ function evidence(
   /** Whether this is an `unverifiable` pairing, the only one with a reason. */
   unverifiable = false,
 ): ResolutionEvidence {
-  return {
+  // 🔴 Held to the gateway's limits: every string here is a competitor's.
+  return withinEvidenceLimits({
     itemId: candidate.itemId,
     url: candidate.url,
     title: candidate.title,
@@ -1224,5 +1238,5 @@ function evidence(
     unverifiableReason: unverifiable
       ? (page?.unverifiableReason ?? null)
       : null,
-  };
+  });
 }

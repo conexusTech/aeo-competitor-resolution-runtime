@@ -187,7 +187,7 @@ export interface ParsedProduct {
  * `null`, logged as an error, rather than truncating it into something nobody
  * wrote or losing the batch.
  */
-export const MAX_UNVERIFIABLE_REASON_LENGTH = 200;
+export { MAX_UNVERIFIABLE_REASON_LENGTH } from "../wire-limits.js";
 
 /**
  * Which query shapes a retailer can actually answer, as configuration.

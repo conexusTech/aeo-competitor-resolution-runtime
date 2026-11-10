@@ -37,6 +37,7 @@
  */
 
 import type { ParsedCandidate } from "./adapters/types.js";
+import { withinEvidenceLimits } from "./wire-limits.js";
 import {
   hasPartNumberEvidence,
   MIN_EVIDENCE_TO_REPORT,
@@ -143,26 +144,29 @@ export function alternativesFor(
           ? "absent"
           : "disagreed";
 
-    out.push({
-      itemId: entry.candidate.itemId,
-      url: entry.candidate.url,
-      title: entry.candidate.title,
-      brand: entry.candidate.brand,
-      model: entry.candidate.model,
-      priceCents: entry.candidate.priceCents,
-      inStock: entry.candidate.inStock,
-      isFirstParty: entry.candidate.isFirstParty,
-      sellerName: entry.candidate.sellerName,
-      retailerBarcode: probe?.retailerBarcode ?? null,
-      barcodeState,
-      score: entry.score,
-      reasonRankedLower: reasonRankedLower(
-        chosenSignals,
-        scoreBreakdown(scored).signals,
+    // 🔴 Held to the gateway's limits, as the chosen listing is.
+    out.push(
+      withinEvidenceLimits({
+        itemId: entry.candidate.itemId,
+        url: entry.candidate.url,
+        title: entry.candidate.title,
+        brand: entry.candidate.brand,
+        model: entry.candidate.model,
+        priceCents: entry.candidate.priceCents,
+        inStock: entry.candidate.inStock,
+        isFirstParty: entry.candidate.isFirstParty,
+        sellerName: entry.candidate.sellerName,
+        retailerBarcode: probe?.retailerBarcode ?? null,
         barcodeState,
-        entry.candidate,
-      ),
-    });
+        score: entry.score,
+        reasonRankedLower: reasonRankedLower(
+          chosenSignals,
+          scoreBreakdown(scored).signals,
+          barcodeState,
+          entry.candidate,
+        ),
+      }),
+    );
   }
   return out;
 }
