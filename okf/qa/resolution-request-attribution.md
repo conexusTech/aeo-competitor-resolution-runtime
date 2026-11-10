@@ -162,3 +162,77 @@ through the second, concurrently.
 **Expect**
 
 The first reports `1`, the second `2`, the shared fetcher `3`.
+
+### Check: attribution-counts-every-attempt
+
+**Requirement:** Every attempt sent to the vendor is counted, with the pages delivered reported beside it
+**Surface:** `LiveFetcher`
+**Automated:** `test/counts-every-request.spec.ts` — "a fetch that fails 3 times counts 3", "a short 200 counts 1", "a page that arrives on its second attempt is 2 sent and 1 delivered", "takes the url, the cause, the status and the attempts, none defaulted"
+
+**Do**
+
+```bash
+npx vitest run test/counts-every-request.spec.ts -t "fails 3 times counts 3|a short 200 counts 1|2 sent and 1 delivered|none defaulted"
+```
+
+**Expect**
+
+Four pass. The fetcher counts 3 for a fetch that fails three times and 1 for a
+200 too short to be a page, with 0 delivered for each. A page arriving on its
+second attempt is 2 sent and 1 delivered. A `FetchFailed` cannot be built
+without the attempts it took, so no failure can reach a meter uncounted.
+
+### Check: attribution-charges-a-failure-its-attempts
+
+**Requirement:** Every attempt sent to the vendor is counted, with the pages delivered reported beside it
+**Surface:** `RequestMeter`
+**Automated:** `test/counts-every-request.spec.ts` — "charges a failure's attempts, where it used to charge nothing", "charges a retried page for every attempt and one delivery"
+
+**Do**
+
+```bash
+npx vitest run test/counts-every-request.spec.ts -t "charges a failure's attempts|charges a retried page"
+```
+
+**Expect**
+
+Two pass. A meter over a fetch failing three times reports 3 sent and 0
+delivered, where it used to report nothing; over a page retried once, 2 sent and
+1 delivered.
+
+### Check: attribution-pages-delivered-beside-spend
+
+**Requirement:** Every attempt sent to the vendor is counted, with the pages delivered reported beside it
+**Surface:** `GatewayClient`, `ReadRunClient`
+**Automated:** `test/counts-every-request.spec.ts` — "on every resolution-run event that carries a spend", "on every read-run event", "CONTROL: absent when the caller has no figure, never a zero"
+
+**Do**
+
+```bash
+npx vitest run test/counts-every-request.spec.ts -t "on every resolution-run event|on every read-run event|absent when the caller has no figure"
+```
+
+**Expect**
+
+Three pass. A progress, completed and error event each carry
+`requests_spent: 9` and `pages_delivered: 6` when given both; a read run's
+events carry both too. Given no delivered figure, the body has
+`requests_spent` and no `pages_delivered` key at all, never `0`.
+
+### Check: attribution-sums-with-failures-and-retries
+
+**Requirement:** Every attempt sent to the vendor is counted, with the pages delivered reported beside it
+**Surface:** `runList`
+**Automated:** `test/counts-every-request.spec.ts` — "per-item figures still sum to the fetcher's total, failures and retries included"
+
+**Do**
+
+```bash
+npx vitest run test/counts-every-request.spec.ts -t "per-item figures still sum"
+```
+
+**Expect**
+
+Over a run with failures, retries and a second pass, the fetcher sent more
+requests than it delivered pages, and the per-item figures sum to exactly what
+it sent.

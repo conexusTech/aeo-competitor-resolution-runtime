@@ -71,6 +71,23 @@ nothing for pages it had already bought.
 
 **Checked by:** meters-are-isolated-from-each-other
 
+## Every attempt counts, and the pages delivered are reported beside it
+
+**Changed 2026-11-11** by `resolution-runtime-counts-a-bought-request`, pulled
+into the three-competitor build. Until then a request was a page delivered: the
+attempts a fetch spent on a retry, a body too short to be a page, a timeout or
+a refusal were not counted, so Best Buy's 166 requests sent for 110 pages
+delivered read as 110. Each of them is a request the vendor was asked for.
+
+#### Scenario: Every attempt sent to the vendor is counted, with the pages delivered reported beside it
+- GIVEN fetches that fail on every attempt, that are answered with a body too short to be a page, or that succeed only on a retry
+- WHEN their item and the run report what they spent
+- THEN every attempt sent is counted, and charged to the item that made it
+- AND the pages delivered are counted apart, and reported beside the spend on every event that carries one
+- AND the per-item figures still sum to the fetcher's total, failures and retries included
+
+**Checked by:** attribution-counts-every-attempt, attribution-charges-a-failure-its-attempts, attribution-pages-delivered-beside-spend, attribution-sums-with-failures-and-retries
+
 ## Telling the gateway, which is where the number is read
 
 Attribution makes the per-item figures honest. It does **not** make the
@@ -163,10 +180,19 @@ of that green.
 
 ## What a request means, and where the definition lives
 
-A charge happens when a fetch returns **not cached**. `LiveFetcher` reads a
-previously bought page off disk and reports `cached: true`; that page cost money
-once, on the run that bought it. The replay fetcher serves its whole corpus the
-same way, which is why a replayed run correctly reports zero.
+A charge is an attempt sent to the vendor. `LiveFetcher` counts each attempt
+as it sends it, and every page, screenshot and `FetchFailed` it hands back
+carries the attempts it took, so a meter charges them to the item that made
+them whether the fetch succeeded or not. A page it reads off disk reports
+`cached: true` and zero attempts; that page cost money once, on the run that
+bought it. The replay fetcher serves its whole corpus the same way, which is
+why a replayed run correctly reports zero.
+
+`pagesDelivered` counts the pages that arrived, apart from the attempts. Every
+event that carries `requests_spent` carries `pages_delivered` beside it, on the
+resolution and the read callbacks alike. Where the caller has no figure for the
+pages delivered, the field is omitted, never sent as zero, for the same reason
+an absent counter is not zero below.
 
 ⚠️ **The rule is stated in two places** — the meter and `LiveFetcher.fetch` — and
 it is pinned rather than commented: the per-item figures are asserted against the
@@ -175,12 +201,11 @@ check red.
 
 ## What this capability does NOT claim
 
-⚠️ **It does not claim the total is what the vendor will invoice.** `LiveFetcher`
-increments only on a success: a request that was made, answered `200`, and then
-rejected for carrying too short a body is not counted, and neither is any of the
-attempts a failing fetch makes. That is a known under-count of the vendor's side
-of the ledger and it is a separate change — roadmap row
-`resolution-runtime-counts-a-bought-request`.
+⚠️ **It does not claim the total is what the vendor will invoice.** Every attempt
+sent is counted, and whether Bright Data bills a retry, a short body or a
+timeout is unconfirmed until an invoice is read against it. Counting every
+attempt is the figure that is safe either way: it can only over-state the bill,
+never hide part of it.
 
 ⚠️ **And the money is still not validated.** `USD_PER_1000_REQUESTS` has never
 been checked against an invoice. Attribution makes the request counts

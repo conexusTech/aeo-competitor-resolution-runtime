@@ -28,8 +28,15 @@ organization. The container then reads its job from
 
 Each `url` must parse, be `https`, carry no credentials and no explicit port, and
 be on one of the reader's own hosts — `newegg.com` / `www.newegg.com`,
-`amazon.com` / `www.amazon.com`. One listing failing that refuses the whole job
-before anything is bought.
+`amazon.com` / `www.amazon.com`, `bestbuy.com` / `www.bestbuy.com`,
+`www.bhphotovideo.com`, `www.costco.com`. One listing failing that refuses the
+whole job before anything is bought. These are the gateway's own four
+conditions and its own host lists, so a listing the gateway sends to be read is
+one this runtime will read.
+
+The job may also carry `pagesAtOnce`, the competitor's figure from the
+gateway's retailer registry. Absent or `null`, the reader's own applies.
+Either is held to at most 4.
 
 **Out.** `POST /runtime/insights/reads/:readRunId/events`, Basic auth, the same
 status contract as a resolution run's callback. Three event types, each carrying
@@ -235,11 +242,12 @@ and T-9 (filing). The runtime is built against them.
 - GIVEN a read job in which some pages are bought and some fail
 - WHEN the container reports
 - THEN every batch, the completion and any error carry the requests bought so far
-- AND a failed fetch is not counted as bought
+- AND every attempt sent to the vendor is counted, a failed one included, with the pages delivered reported beside it
 - AND a run whose readings the gateway did not accept ends in error, naming how many
 - AND once one worker crashes, no worker buys another page
 
 **Checked by:** listing-read-cost-on-every-event
+**Checked by:** listing-reads-counts-every-attempt
 **Checked by:** listing-read-undelivered-ends-in-error
 **Checked by:** listing-read-crash-reports-what-was-spent
 **Checked by:** listing-read-crash-stops-every-worker
@@ -273,6 +281,56 @@ and T-9 (filing). The runtime is built against them.
 **Checked by:** listing-read-gone-abandons-rereads
 **Checked by:** listing-read-status-contract
 **Checked by:** listing-read-batch-cap
+
+#### Scenario: A member-only price is not a missing price (Costco)
+- GIVEN a Costco product page that shows its price only to signed-in members
+- WHEN its listing is read
+- THEN the reading says no price was shown, and is never zero and never a failure
+
+**Checked by:** listing-reads-costco-member-only-price
+
+#### Scenario: A price withheld until the cart is not a missing price (B&H)
+- GIVEN a B&H product page that withholds its price until the item is in the cart
+- WHEN its listing is read
+- THEN the reading says no price was shown, and is never zero and never a failure
+- AND a price B&H shows that this build cannot read is still an unreadable offer
+
+**Checked by:** listing-reads-bh-map-price, listing-reads-bh-shown-price-unread-is-unreadable
+
+#### Scenario: A Best Buy, B&H or Costco listing page is read for what it says
+- GIVEN a real Best Buy, B&H or Costco product page
+- WHEN its listing is read
+- THEN the reading carries the listing the page names, its barcode as published, its price and whether it is in stock
+- AND a page that is not a product page is refused as not one
+- AND Costco's stock, which its page does not state, is reported unknown
+- AND a Costco page selling several items at different prices is an unreadable offer, never one of the prices
+
+**Checked by:** listing-reads-bestbuy-reads-its-page, listing-reads-bh-reads-its-page, listing-reads-costco-reads-its-page, listing-reads-costco-several-prices-are-unreadable
+
+#### Scenario: A competitor's pages are fetched only on its own hosts
+- GIVEN a listing url at Best Buy, B&H or Costco
+- WHEN it is to be read, or opened during a resolution
+- THEN it is fetched only when it is https, carries no credentials and no port, and its host is exactly one of the competitor's own
+- AND a look-alike host that merely contains the competitor's name is refused
+- AND during a resolution a listing off those hosts is never opened and never proposed
+
+**Checked by:** listing-reads-bestbuy-own-hosts, listing-reads-bh-own-hosts, listing-reads-costco-own-hosts, listing-reads-own-host-rule, listing-reads-resolution-keeps-to-own-hosts
+
+#### Scenario: A read run is never read more pages at once than its limit
+- GIVEN a read job at a competitor, with or without a figure of its own for pages at once
+- WHEN its listings are read
+- THEN no more pages are in flight at once than the job's figure, or the competitor's own where the job states none
+- AND a job asking for more than 4 is read 4 at a time
+
+**Checked by:** listing-reads-pages-at-once-per-competitor, listing-reads-pages-at-once-never-above-four
+
+#### Scenario: A competitor's listing pages are fetched the way its website must be fetched
+- GIVEN a competitor whose pages must be asked from a country, with a longer wait than the vendor's own
+- WHEN a read run reads its listings
+- THEN every page is asked from that country, and an attempt past the wait is abandoned and retried as a failed attempt
+- AND Newegg's and Amazon's requests are byte for byte what they were
+
+**Checked by:** listing-reads-fetch-profile-on-every-read, listing-reads-timeout-is-a-failed-attempt, listing-reads-newegg-amazon-requests-unchanged
 
 #### Scenario: Reading changes nothing about resolution
 - GIVEN the 53-row replay of the launch retailer
@@ -308,6 +366,11 @@ and T-9 (filing). The runtime is built against them.
   page's 140 s of waiting, a job grows by under 41 minutes. The fetcher sets
   no timeout on a single request, so a request that hangs is outside this
   bound — as it already was.
+- **Best Buy's, B&H's and Costco's readers are calibrated on the pages their
+  investigations captured**, and on spliced variants named SYNTHETIC in the
+  tests where no capture shows a case. No Costco page selling several items was
+  captured, so its unreadable-offer rule is reasoned from the page's structure,
+  and B&H's MAP page is the M310's real page marked MAP.
 - **A read run keeps no journal.** A restarted container's counter starts again
   from zero, so `requests_spent` under-reports that case; T-7 serving only the
   unread listings bounds what it re-buys.

@@ -660,19 +660,27 @@ a digit count — ten or more — not "numeric".
 
 **Requirement:** The retailer is never named above the adapter seam
 **Surface:** `RetailerAdapter.slug`
-**Automated:** `test/adapter-newegg.spec.ts` — "names the retailer as data, not as a type"
+**Automated:** `test/adapter-newegg.spec.ts` — "names the retailer as data, not as a type"; `test/pages-at-once.spec.ts` — "names no retailer outside its own adapter and the slug map"
 
 **Do**
 
 ```bash
-grep -rn "newegg" src --include="*.ts" | grep -v "src/adapters/newegg.ts"
+grep -rnE "[\"'\`](newegg|amazon|bestbuy|bh|costco)[\"'\`]" src --include="*.ts" | grep -v "^src/adapters/"
+npx vitest run test/adapter-newegg.spec.ts test/pages-at-once.spec.ts -t "names the retailer as data|names no retailer outside its own adapter"
 ```
 
 **Expect**
 
-Only `src/main.ts`'s slug-to-adapter map. ⚠️ **A grep, and it is the weakest
-check here** — it proves no other file mentions the name, not that no other file
-behaves differently per retailer. The handover's seam typed the retailer as
+The grep prints nothing: none of the five slugs appears as a string anywhere
+outside `src/adapters/`, where each adapter states its own, once, as its `slug`.
+`src/main.ts` maps the slugs to adapters by each adapter's own `slug` field, so
+it names none. The spec does the same over every source file outside
+`src/adapters/`, and also refuses any comparison against a slug, either way
+round. A line comparing `slug === "costco"` added to `src/resolve.ts` turns it red. ⚠️
+**Still the weakest check here** — it proves no other file names a retailer,
+not that no other file behaves differently per retailer. A prose mention in a
+comment (Costco's page sizes beside the response ceiling, say) is not a string
+literal and passes, which is intended. The handover's seam typed the retailer as
 `"autozone" | "newegg"`; a union is a code path per retailer, and the compiler
 pointing at every `switch` that narrows on it feels like safety while being the
 coupling the seam exists to remove.
@@ -966,20 +974,26 @@ Answer every attempt with a 5xx and record the sleeps.
 every retry slow would satisfy the throttle check and make every transient error
 cost fifteen seconds.
 
-### Check: resolution-recovered-throttle-costs-one-request
+### Check: resolution-recovered-throttle-counts-every-attempt
 
-**Requirement:** A throttle that yields is charged once
+**Requirement:** A throttle that yields is counted as every attempt it took
 **Surface:** `LiveFetcher.fetch`
-**Automated:** test/throttle-backoff.spec.ts
+**Automated:** `test/throttle-backoff.spec.ts` — "recovers when a later attempt answers, and is charged for both attempts"
 
 **Do**
 
-Answer the first attempt empty and the second with a real page.
+```bash
+npx vitest run test/throttle-backoff.spec.ts -t "charged for both attempts"
+```
 
 **Expect**
 
-The page is returned, `liveRequestCount` is 1, `throttleCount` is 0, and exactly
-one throttle backoff was waited.
+The page is returned, `liveRequestCount` is 2, the result's `attempts` is 2,
+`pagesDelivered` is 1, `throttleCount` is 0, and exactly one throttle backoff
+was waited. ⚠️ This check was `resolution-recovered-throttle-costs-one-request`
+and asserted a count of 1 until 2026-11-11, when every attempt sent began to
+count (`resolution-counts-every-attempt`). The empty 200 was a request the
+vendor was asked for.
 
 ### Check: resolution-throttles-counted-apart
 
@@ -1218,3 +1232,1336 @@ Assuming first-party turns it red. That a guessed brand never decides a pairing
 is `resolution-floor-alone-is-insufficient`: brand, first-party and stock
 together reach the reporting floor and are still refused without part-number
 evidence.
+
+## Best Buy, B&H and Costco
+
+Added 2026-11-11. Every automated check below runs against the committed
+Best Buy, B&H and Costco pages in `test/raw/` and the 20-row corpora in
+`test/corpus/`, or a fake retailer, so none needs a key, a network or a card.
+Pages marked SYNTHETIC in a test name are real pages with one value spliced in,
+for a case no capture shows; the test says so.
+
+🔑 **The three Manual checks are the live half of the investigation's
+reproduction**: the same 20 rows through the real gateway, queue and runtime
+container on the local stack, against Bright Data. They cost real requests, and
+each run is capped. The offline checks prove the pipeline reproduces the
+investigation on the pages it captured; only the live run proves the
+competitor still answers the way those pages say.
+
+---
+
+### Check: resolution-bestbuy-reproduces-the-investigation
+
+**Requirement:** The platform reproduces the investigation
+**Surface:** `resolveItem` with the Best Buy adapter over `ReplayFetcher`
+**Automated:** `test/exit-criterion-bestbuy-20-rows.spec.ts`
+
+**Do**
+
+```bash
+npx vitest run test/exit-criterion-bestbuy-20-rows.spec.ts
+```
+
+**Expect**
+
+25 tests pass, and the summary line reads `verified 11 vs the investigation's
+11`. Each of the 11 rows the investigation verified is verified on the same
+Best Buy SKU, row by row. Each of the other 9 is replayed as far as its barcode
+search, which Best Buy answered with nothing, and must then ask for the
+identity lookup and nothing else, for the named reason that no identity page
+for those barcodes was captured. No row is verified without a barcode that
+agrees, every page of the corpus is used, and nothing is spent. 🔴 Any other
+disagreement fails the row's own test.
+
+---
+
+### Check: resolution-bh-reproduces-the-investigation
+
+**Requirement:** The platform reproduces the investigation
+**Surface:** `resolveItem` with the B&H adapter over `ReplayFetcher`
+**Automated:** `test/exit-criterion-bh-20-rows.spec.ts`
+
+**Do**
+
+```bash
+npx vitest run test/exit-criterion-bh-20-rows.spec.ts
+```
+
+**Expect**
+
+28 tests pass, and the summary line reads `verified 8 vs the investigation's
+8`. Each row reaches the outcome the investigation recorded: 8 verified by UPC,
+3 discontinued listings to a person, 9 not found. 🔴 The CONTROL replays the
+same rows with barcode search switched off and reproduces none of them, so the
+pass is the barcode-first rule's, not the corpus's.
+
+---
+
+### Check: resolution-costco-reproduces-the-investigation
+
+**Requirement:** The platform reproduces the investigation
+**Surface:** `runList` and `resolveItem` with the Costco adapter over `ReplayFetcher`
+**Automated:** `test/exit-criterion-costco-20-rows.spec.ts`
+
+**Do**
+
+```bash
+npx vitest run test/exit-criterion-costco-20-rows.spec.ts
+```
+
+**Expect**
+
+30 tests pass. Each of the 20 rows is not found, looked up in the product list
+by its brand, with 0 failures, as the investigation found. The 21st row, the
+AirPods, is verified on `195949689604` at `$99.97`, stock unknown, sold by
+Costco. Costco's search is never asked. Run as one list at four pages at once,
+the product index is read once and every row gets its outcome. 🔴 The CONTROL,
+which takes candidates only from names that lead with the brand, never finds
+the AirPods, so the product-line rule is what finds them.
+
+---
+
+### Check: resolution-bestbuy-reproduces-the-investigation-live
+
+**Requirement:** The platform reproduces the investigation
+**Surface:** the gateway, the local queue and the runtime container, against Best Buy through Bright Data
+**Automated:** Manual
+
+**Do**
+
+Follow [the local end-to-end playbook](aeo-backend:/playbooks/competitor-insights-end-to-end-locally.md),
+tier 4, on the `docker-desktop` context. Upload the 20 shared Micro Center rows
+as a list against Best Buy, start a run, and delete its Job if it passes 200
+requests. Then run a 1-row list holding Kensington `K72337US`
+(`085896723370`), with its part number and brand.
+
+**Expect**
+
+On the 20-row list, 10 rows are verified, and every other row is in review,
+not found, or failed with a reason. The investigation's 11th, Kensington
+`K72337US`, is verified in the 1-row run once the client's part number reaches
+the runtime. Without it the runtime derives `KMW72337` from elsewhere and does
+not find the listing. That is the row
+`resolution-client-part-number-asked-first` pins offline. Logs show at most 4
+pages in flight.
+
+---
+
+### Check: resolution-bh-reproduces-the-investigation-live
+
+**Requirement:** The platform reproduces the investigation
+**Surface:** the gateway, the local queue and the runtime container, against B&H through Bright Data
+**Automated:** Manual
+
+**Do**
+
+Follow [the local end-to-end playbook](aeo-backend:/playbooks/competitor-insights-end-to-end-locally.md),
+tier 4, on the `docker-desktop` context. Upload the 20 shared Micro Center rows
+as a list against B&H, start a run, and delete its Job if it passes 150
+requests.
+
+**Expect**
+
+8 verified, 3 discontinued listings in review with the reason "discontinued at
+B&H, no UPC published", 8 not carried, and 1 failure on a search B&H did not
+answer. The failure is filed as an error, never as not carried. That matches
+the investigation's 8 verified and 3 discontinued, and the one failure is a
+search nobody answered, not a row the pipeline lost.
+
+---
+
+### Check: resolution-costco-reproduces-the-investigation-live
+
+**Requirement:** The platform reproduces the investigation
+**Surface:** the gateway, the local queue and the runtime container, against Costco through Bright Data
+**Automated:** Manual
+
+**Do**
+
+Follow [the local end-to-end playbook](aeo-backend:/playbooks/competitor-insights-end-to-end-locally.md),
+tier 4, on the `docker-desktop` context. Upload the 20 shared Micro Center rows
+plus the AirPods row (UPC `195949689604`, Micro Center SKU `757427`) as a list
+against Costco, start a run, and delete its Job if it passes 120 requests.
+
+**Expect**
+
+The target: the 20 shared rows are not carried, with 0 failures, and the
+AirPods row is verified on `195949689604` at `$99.97`, stock unknown. Costco's
+product list is read once for the run: its sitemap index, then each product
+file it names, one request each. No search page is requested. Logs show at most
+4 pages in flight.
+
+---
+
+### Check: resolution-bestbuy-proves-by-published-barcode
+
+**Requirement:** A pairing is proven by the competitor's own barcode
+**Surface:** `resolveItem` with the Best Buy adapter
+**Automated:** `test/adapter-bestbuy.spec.ts` — "verifies on the UPC the page publishes — M310, 097855066237 — in two requests"
+
+**Do**
+
+```bash
+npx vitest run test/adapter-bestbuy.spec.ts -t "verifies on the UPC the page publishes"
+```
+
+**Expect**
+
+`verified` on SKU `1297054`, with `retailerBarcode` `097855066237` as Best Buy
+published it, first party, sold by Best Buy, at `1699` cents. Exactly two pages
+are asked, the barcode search and the product page, and no identity is
+established, because the barcode search found the listing.
+
+---
+
+### Check: resolution-bh-proves-by-published-barcode
+
+**Requirement:** A pairing is proven by the competitor's own barcode
+**Surface:** `resolveItem` with the B&H adapter
+**Automated:** `test/adapter-bh.spec.ts` — "verifies the M310 on 097855066237: one search, one page, no identity bought"
+
+**Do**
+
+```bash
+npx vitest run test/adapter-bh.spec.ts -t "verifies the M310 on 097855066237"
+```
+
+**Expect**
+
+`verified`, with the barcode as B&H published it, after one search and one
+product page, and no identity lookup bought.
+
+---
+
+### Check: resolution-costco-proves-by-published-barcode
+
+**Requirement:** A pairing is proven by the competitor's own barcode
+**Surface:** `resolveItem` with the Costco adapter over the AirPods row
+**Automated:** `test/exit-criterion-costco-20-rows.spec.ts` — "verifies the AirPods at $99.97 by its UPC, stock unknown, sold by Costco"
+
+**Do**
+
+```bash
+npx vitest run test/exit-criterion-costco-20-rows.spec.ts -t "verifies the AirPods at"
+```
+
+**Expect**
+
+`verified`, with `retailerBarcode` `195949689604` as Costco's page states it,
+price `9997`, `inStock` `null`, sold by Costco.
+
+---
+
+### Check: resolution-bestbuy-several-barcodes-verify
+
+**Requirement:** A page publishing several barcodes still proves the pairing
+**Surface:** the Best Buy adapter's `parseProductPage`, and `resolveItem`
+**Automated:** `test/adapter-bestbuy.spec.ts` — "several barcodes: every value of a field, the first as barcode (spliced, not seen live)", "several barcodes verify on the value that agrees (spliced, not seen live)"
+
+**Do**
+
+```bash
+npx vitest run test/adapter-bestbuy.spec.ts -t "several barcodes"
+```
+
+**Expect**
+
+Both pass: the parse publishes every value of the field, the first as
+`barcode` and the rest as `additionalBarcodes`, and the item verifies on the
+value that agrees, not the first. ⚠️ **Best Buy has no multi-barcode page in
+the captures**; the page is a real one with a second value spliced in, and the
+test names say so.
+
+---
+
+### Check: resolution-bh-several-barcodes-verify
+
+**Requirement:** A page publishing several barcodes still proves the pairing
+**Surface:** the B&H adapter's `parseProductPage`, and `resolveItem`
+**Automated:** `test/adapter-bh.spec.ts` — "publishes every UPC it states for its own item (SYNTHETIC: a second value)", "verifies on any of several UPCs the page states (SYNTHETIC: a second value)"
+
+**Do**
+
+```bash
+npx vitest run test/adapter-bh.spec.ts -t "a second value"
+```
+
+**Expect**
+
+Both pass: every UPC the page states for its own item is published, once each,
+and the item verifies on whichever one agrees. A kit's component UPCs are not
+among them (`resolution-bh-component-upc-never-matches`).
+
+---
+
+### Check: resolution-costco-several-barcodes-verify
+
+**Requirement:** A page publishing several barcodes still proves the pairing
+**Surface:** the Costco adapter's `parseProductPage`, and `resolveItem`'s probe loop
+**Automated:** `test/adapter-costco.spec.ts` — "SYNTHETIC: every item's UPC, items first, the parent's last"; `test/resolve-outcomes.spec.ts` — "verified — the agreeing barcode is the SECOND value in the field"
+
+**Do**
+
+```bash
+npx vitest run test/adapter-costco.spec.ts test/resolve-outcomes.spec.ts -t "every item's UPC, items first|SECOND value"
+```
+
+**Expect**
+
+Both pass: a Costco page selling several items publishes every item's UPC,
+the items' first and the parent's last, and the probe loop verifies on a value
+that is not the first. 🔴 The parent's UPC is last because it can be one of
+Costco's own numbers, which never verify (`resolution-costco-own-numbers-never-verify`).
+
+---
+
+### Check: resolution-bestbuy-refusal-is-a-failure
+
+**Requirement:** A refused search is a failure, not a miss
+**Surface:** the Best Buy adapter's `parseSearchResults`, and `resolveItem`
+**Automated:** `test/adapter-bestbuy.spec.ts` — "a vendor refusal is a failure, not a miss", "an empty body is a failure, not a miss", "an empty body, a vendor refusal or a product page is not a results page"
+
+**Do**
+
+```bash
+npx vitest run test/adapter-bestbuy.spec.ts -t "is a failure, not a miss|is not a results page"
+```
+
+**Expect**
+
+Three pass. A vendor refusal, an empty body and a product page each parse to
+`null`, never `[]`. Resolved, a refused or empty search leaves the item
+`not-found` with a non-null `failure` and the unanswered search counted, which
+the gateway records as an error, never as not carried.
+
+---
+
+### Check: resolution-bh-refusal-is-a-failure
+
+**Requirement:** A refused search is a failure, not a miss
+**Surface:** the B&H adapter's `parseSearchResults`, and `resolveItem`
+**Automated:** `test/adapter-bh.spec.ts` — "a refused search is a failure, never a miss", "a body that is not a results page is null, never []", "a card whose fields moved is null, not an empty answer"
+
+**Do**
+
+```bash
+npx vitest run test/adapter-bh.spec.ts -t "refused search is a failure|not a results page is null|fields moved is null"
+```
+
+**Expect**
+
+Three pass. A body that is not a results page, and a results page whose cards
+can no longer be read, both parse to `null`. Resolved, a refused search leaves
+a non-null `failure`, never a clean miss.
+
+---
+
+### Check: resolution-costco-refusal-is-a-failure
+
+**Requirement:** A refused search is a failure, not a miss
+**Surface:** `IndexCache` and `resolveItem` with a product index; the Costco adapter's `parseSearchResults`
+**Automated:** `test/product-index.spec.ts` — "a failed fetch of the list fails every item, with the reason", "a failed product file fails every item too"; `test/adapter-costco.spec.ts` — "a search page is a shell: nobody answered, never 'not carried'"
+
+**Do**
+
+```bash
+npx vitest run test/product-index.spec.ts test/adapter-costco.spec.ts -t "fails every item|search page is a shell"
+```
+
+**Expect**
+
+Three pass. A product list that could not be fetched, at the list or at any of
+its product files, makes every item a failure with the reason, never a miss.
+Costco's search page, an empty shell, parses to `null`, an answer nobody gave.
+
+---
+
+### Check: resolution-bestbuy-no-results-is-a-miss
+
+**Requirement:** A search the competitor answers with nothing is a miss
+**Surface:** the Best Buy adapter's `parseSearchResults`, and `resolveItem`
+**Automated:** `test/adapter-bestbuy.spec.ts` — "search-empty-63005 is a miss: an answered page with nothing on it", "search-empty-63005 is a miss: every search answered with nothing"
+
+**Do**
+
+```bash
+npx vitest run test/adapter-bestbuy.spec.ts -t "search-empty-63005"
+```
+
+**Expect**
+
+Two pass. Best Buy's real no-results page parses to `[]`, and an item every
+search of which was answered that way is `not-found` with no `failure`, its
+searches listed.
+
+---
+
+### Check: resolution-bh-no-results-is-a-miss
+
+**Requirement:** A search the competitor answers with nothing is a miss
+**Surface:** the B&H adapter's `parseSearchResults`, and `resolveItem`
+**Automated:** `test/adapter-bh.spec.ts` — "an explicit no-results page is [] — answered, with nothing on it", "search-no-results-cf-08lb is a miss: every search answered, nothing carried"
+
+**Do**
+
+```bash
+npx vitest run test/adapter-bh.spec.ts -t "explicit no-results page|search-no-results-cf-08lb"
+```
+
+**Expect**
+
+Two pass. B&H's real no-results page parses to `[]`, and an item whose every
+search was answered that way is `not-found` with no `failure`.
+
+---
+
+### Check: resolution-costco-no-results-is-a-miss
+
+**Requirement:** A search the competitor answers with nothing is a miss
+**Surface:** `resolveItem` with a product index
+**Automated:** `test/product-index.spec.ts` — "an item whose brand the index does not carry is a clean miss"; `test/exit-criterion-costco-20-rows.spec.ts` — "0 failures: every miss is a lookup the index answered"
+
+**Do**
+
+```bash
+npx vitest run test/product-index.spec.ts test/exit-criterion-costco-20-rows.spec.ts -t "does not carry is a clean miss|every miss is a lookup the index answered"
+```
+
+**Expect**
+
+Two pass. An item whose brand the product list does not carry is `not-found`
+with no `failure`, its lookup recorded as `index:<brand>`; and on the 20 real
+rows every miss is such a lookup, with 0 failures.
+
+---
+
+### Check: resolution-bestbuy-no-barcode-goes-to-a-person
+
+**Requirement:** A candidate without a barcode match goes to a person
+**Surface:** `resolveItem` with the Best Buy adapter
+**Automated:** `test/adapter-bestbuy.spec.ts` — "removing the UPC makes it unverifiable, never verified or a mismatch"
+
+**Do**
+
+```bash
+npx vitest run test/adapter-bestbuy.spec.ts -t "removing the UPC makes it unverifiable"
+```
+
+**Expect**
+
+The M310's real page with its UPC removed from all three places makes the item
+`unverifiable` on SKU `1297054`, with no retailer barcode: in review, never
+verified and never a mismatch.
+
+---
+
+### Check: resolution-bh-no-barcode-goes-to-a-person
+
+**Requirement:** A candidate without a barcode match goes to a person
+**Surface:** `resolveItem` with the B&H adapter over the 20-row corpus
+**Automated:** `test/exit-criterion-bh-20-rows.spec.ts` — "the 3 discontinued listings go to a person, with the reason"
+
+**Do**
+
+```bash
+npx vitest run test/exit-criterion-bh-20-rows.spec.ts -t "3 discontinued listings go to a person"
+```
+
+**Expect**
+
+The three real rows whose B&H listing has the right MFR # and brand and
+publishes no UPC (Sabrent `CRW-UINB`, Kensington `K72337US`, Logitech
+`980-000402`) are each `unverifiable` with the discontinued reason, and none is
+verified or not found.
+
+---
+
+### Check: resolution-costco-no-barcode-goes-to-a-person
+
+**Requirement:** A candidate without a barcode match goes to a person
+**Surface:** `resolveItem` with a product index
+**Automated:** `test/index-candidate-goes-to-a-person.spec.ts`
+
+**Do**
+
+```bash
+npx vitest run test/index-candidate-goes-to-a-person.spec.ts
+```
+
+**Expect**
+
+Four pass. A Costco candidate matched by its name whose page publishes no UPC
+goes to a person as `unverifiable`, never `not-found`. 🔴 A candidate whose page
+states a UPC that disagrees is never `unconfirmed`: an index match carries no
+model, so a disagreeing barcode means another product, not a lead. The CONTROL
+verifies the same candidate once its UPC is on the page.
+
+---
+
+### Check: resolution-barcode-searched-first-where-answered
+
+**Requirement:** A competitor that answers a barcode search is asked the barcode first
+**Surface:** `planQueries`, `barcodeQuery`, and each adapter's `querySupport`
+**Automated:** `test/barcode-first.spec.ts` — "true puts the barcode first, then the plan it always had", "pads the core to 12 digits", "pads to 13 when the core is longer than 12"; `test/adapter-bestbuy.spec.ts`, `test/adapter-bh.spec.ts` — "asks the barcode first, and …"
+
+**Do**
+
+```bash
+npx vitest run test/barcode-first.spec.ts test/adapter-bestbuy.spec.ts test/adapter-bh.spec.ts -t "puts the barcode first|asks the barcode first, and|pads"
+```
+
+**Expect**
+
+Five pass. With `barcodeIsSearchable` true the plan's first query is the
+barcode, its core zero-padded to 12 digits, or to 13 when the core is longer,
+followed by the plan it always had. Best Buy and B&H both state true, and no
+digit cap refuses the barcode at either.
+
+---
+
+### Check: resolution-barcode-hit-buys-no-identity
+
+**Requirement:** A competitor that answers a barcode search is asked the barcode first
+**Surface:** `resolveItem`'s barcode stage
+**Automated:** `test/barcode-first.spec.ts` — "a hit fetches no identity page"; `test/barcode-stage-allowance.spec.ts` — "CONTROL: a barcode hit still verifies in the barcode stage, before identity"
+
+**Do**
+
+```bash
+npx vitest run test/barcode-first.spec.ts test/barcode-stage-allowance.spec.ts -t "a hit fetches no identity page|barcode hit still verifies"
+```
+
+**Expect**
+
+Two pass. A barcode search whose result verifies settles the item with no
+client-catalogue page and no search-engine lookup asked, and `identity` is
+`null`.
+
+---
+
+### Check: resolution-barcode-lookalike-is-never-opened
+
+**Requirement:** A competitor that answers a barcode search is asked the barcode first
+**Surface:** `resolveItem`'s barcode stage
+**Automated:** `test/barcode-stage-allowance.spec.ts` — "never opens a result the retailer marked as a look-alike of the barcode", "opens at most two of the barcode's results, and leaves the item its whole budget", "is two probes"
+
+**Do**
+
+```bash
+npx vitest run test/barcode-stage-allowance.spec.ts -t "look-alike of the barcode|opens at most two|is two probes"
+```
+
+**Expect**
+
+Three pass. A barcode result the competitor marks as only partly matching is
+never opened, and the barcode stage opens at most two results from its own
+allowance, leaving the item every probe of its own. Measured at B&H: a barcode
+it matches nothing of comes back as 28 screen kits marked partial.
+
+---
+
+### Check: resolution-barcode-miss-carries-on
+
+**Requirement:** A competitor that answers a barcode search is asked the barcode first
+**Surface:** `resolveItem`, `planQueries`
+**Automated:** `test/barcode-first.spec.ts` — "a miss carries its pool and probes into the normal path, buying nothing twice", "the barcode takes none of the plan's six slots (review finding 11)", "the barcode stage spends its own two probes, never the item's"
+
+**Do**
+
+```bash
+npx vitest run test/barcode-first.spec.ts -t "carries its pool and probes|takes none of the plan's six slots|spends its own two probes"
+```
+
+**Expect**
+
+Three pass. After a barcode search that verifies nothing, its candidates and
+its answered or unanswered tally carry into the part-number path, the barcode
+is not asked again, no page it already read is bought twice, and the part-number
+plan keeps all six of its queries.
+
+---
+
+### Check: resolution-barcode-not-searched-where-unanswered
+
+**Requirement:** The retailer is never named above the adapter seam
+**Surface:** `planQueries`, `barcodeQuery`, `resolveItem`
+**Automated:** `test/barcode-first.spec.ts` — "false never asks the barcode", "is null where the retailer cannot search a barcode", "CONTROL: with the switch off, the barcode is never asked and identity is bought"
+
+**Do**
+
+```bash
+npx vitest run test/barcode-first.spec.ts -t "false never asks the barcode|cannot search a barcode|with the switch off"
+```
+
+**Expect**
+
+Three pass. Where `barcodeIsSearchable` is false, as at Newegg, Amazon and
+Costco, no plan contains a barcode form and resolution buys an identity first,
+exactly as before. The 53-row Newegg replay staying row-for-row identical is
+the end-to-end form of this (`resolution-replays-53-rows-offline`).
+
+---
+
+### Check: resolution-pages-at-once-per-competitor
+
+**Requirement:** A competitor is never read more pages at once than its own limit, and never more than 4
+**Surface:** `runList`, `pagesAtOnce`
+**Automated:** `test/pages-at-once.spec.ts` — "holds 3 pages in flight for an adapter whose limit is 3", "holds 4 …", "is 3 for Newegg and Amazon, as before the registry carried it"
+
+**Do**
+
+```bash
+npx vitest run test/pages-at-once.spec.ts -t "pages in flight for an adapter|is 3 for Newegg and Amazon"
+```
+
+**Expect**
+
+Three pass. A gated fetcher over 12 items records the most pages ever in
+flight at once, and it equals the competitor's limit exactly, at 3 and at 4:
+not less, which a run that worked one item at a time would show, and not more.
+Newegg and Amazon state 3, as they ran before.
+
+---
+
+### Check: resolution-pages-at-once-job-wins
+
+**Requirement:** A competitor is never read more pages at once than its own limit, and never more than 4
+**Surface:** `runDispatchedJob`, `parseJob`
+**Automated:** `test/pages-at-once.spec.ts` — "the job's figure wins over the adapter's", "CONTROL: with no figure from the job, the adapter's applies", "is null when an older gateway sends none", "refuses a figure that is two builds disagreeing"
+
+**Do**
+
+```bash
+npx vitest run test/pages-at-once.spec.ts -t "figure wins over the adapter's|with no figure from the job|older gateway sends none|two builds disagreeing"
+```
+
+**Expect**
+
+Four pass. A dispatched run
+whose job says 4 for an adapter stating 3 holds 4 in flight, and one whose job
+says 3 for an adapter stating 4 holds 3. A job with no figure holds the
+adapter's. A job carrying a figure that is not a whole number of at least 1 is refused,
+since it means the gateway and this build disagree.
+
+---
+
+### Check: resolution-pages-at-once-never-above-four
+
+**Requirement:** A competitor is never read more pages at once than its own limit, and never more than 4
+**Surface:** `pagesAtOnce`, `MAX_PAGES_AT_ONCE`
+**Automated:** `test/pages-at-once.spec.ts` — "a job asking for 12 runs at 4", "never exceeds the ceiling, whoever asks", "never falls below one"
+
+**Do**
+
+```bash
+npx vitest run test/pages-at-once.spec.ts -t "asking for 12 runs at 4|never exceeds the ceiling|never falls below one"
+```
+
+**Expect**
+
+Three pass. A dispatched job asking for 12 holds 4 in flight, and no figure
+from the job or the adapter yields more than 4 or fewer than 1. 🔴 The ceiling
+is Jody's politeness rule, which the lead kept for slow competitors too: a
+mistyped registry row cannot turn a run into a burst.
+
+---
+
+### Check: resolution-product-page-shell-is-not-no-barcode
+
+**Requirement:** A product page that is not one is not a listing without a barcode
+**Surface:** `resolveItem`'s probe loop, each adapter's `parseProductPage`
+**Automated:** `test/product-page-not-a-product.spec.ts` — "is not a listing that publishes no barcode", "is recorded as nothing learned, never as an absent barcode", "teaches the run's memory nothing", "still spends the probe it cost"; `test/adapter-bh.spec.ts` — "a replacement page is a probe nobody answered, not a listing without a barcode"
+
+**Do**
+
+```bash
+npx vitest run test/product-page-not-a-product.spec.ts test/adapter-bh.spec.ts -t "is not a listing that publishes no barcode|nothing learned|teaches the run's memory nothing|still spends the probe|replacement page is a probe nobody answered"
+```
+
+**Expect**
+
+Five pass. A probed page that parses to `null` never makes the item
+`unverifiable`, is recorded as nothing learned, leaves the run's memory of
+listings untouched, and still counts as the probe it cost. B&H's real
+replacement page is such a page.
+
+---
+
+### Check: resolution-real-page-without-barcode-is-unverifiable
+
+**Requirement:** A product page that is not one is not a listing without a barcode
+**Surface:** `resolveItem`'s probe loop
+**Automated:** `test/product-page-not-a-product.spec.ts` — "CONTROL: a real page publishing no barcode IS unverifiable"
+
+**Do**
+
+```bash
+npx vitest run test/product-page-not-a-product.spec.ts -t "a real page publishing no barcode IS unverifiable"
+```
+
+**Expect**
+
+`unverifiable`. 🔑 The control that keeps the rule above from swallowing a real
+answer: treating every page without a barcode as unanswered would pass the
+check above and lose every genuine `unverifiable`.
+
+---
+
+### Check: resolution-price-from-probed-page
+
+**Requirement:** The price comes from the page that proved the pairing when the card shows none
+**Surface:** `resolveItem`'s evidence
+**Automated:** `test/evidence-from-the-page.spec.ts` — "takes the page's price and stock over the search result's", "an unverifiable listing's price comes from its page too"
+
+**Do**
+
+```bash
+npx vitest run test/evidence-from-the-page.spec.ts -t "takes the page's price and stock|unverifiable listing's price comes from its page"
+```
+
+**Expect**
+
+Two pass. The pairing's price and stock are the page's, where the search
+result shows another price or none, and that holds for an `unverifiable`
+pairing too.
+
+---
+
+### Check: resolution-price-falls-back-to-the-card
+
+**Requirement:** The price comes from the page that proved the pairing when the card shows none
+**Surface:** `resolveItem`'s evidence
+**Automated:** `test/evidence-from-the-page.spec.ts` — "falls back to the search result where the page states neither", "CONTROL: a pairing proven from the run's memory, with no page read, keeps the search result's", "Newegg's page parse states no price and no stock on any committed product page", "Amazon's page parse states no price and no stock on its committed product page"
+
+**Do**
+
+```bash
+npx vitest run test/evidence-from-the-page.spec.ts -t "falls back to the search result|run's memory, with no page read|page parse states no price and no stock"
+```
+
+**Expect**
+
+Four pass. Where the page states no price or stock, the search result's are
+kept. Newegg's and Amazon's page parses state neither on any committed product
+page, so their pairings keep the search result's price exactly as before.
+
+---
+
+### Check: resolution-unknown-stock-is-unknown
+
+**Requirement:** The price comes from the page that proved the pairing when the card shows none
+**Surface:** `resolveItem`'s evidence, `GatewayClient.reportResolutions`
+**Automated:** `test/evidence-from-the-page.spec.ts` — "is unknown, not guessed, where neither states the stock", "is sent as null, not dropped and not false"
+
+**Do**
+
+```bash
+npx vitest run test/evidence-from-the-page.spec.ts -t "is unknown, not guessed|is sent as null"
+```
+
+**Expect**
+
+Two pass. Where neither the page nor the card states the stock, `inStock` is
+`null`, and the posted body carries `"inStock":null`, never `false` and never
+omitted. The gateway stores it as `unknown`; that half is
+`insights-observation-stock-unknown` in `aeo-backend`.
+
+---
+
+### Check: resolution-client-part-number-asked-first
+
+**Requirement:** The client's own part number and brand are searched before anything derived
+**Surface:** `planQueries`, `establishIdentity`
+**Automated:** `test/client-part-number-and-brand.spec.ts` — "Kensington K72337US: the client's part number is asked first"
+
+**Do**
+
+```bash
+npx vitest run test/client-part-number-and-brand.spec.ts -t "Kensington K72337US"
+```
+
+**Expect**
+
+Four pass. `K72337US` is queried right after the barcode, before any derived
+form, with provenance `client`, outranking the barcode's derived `72337`. The
+derived forms are still asked after it. 🔴 The CONTROL, without the client's
+part number, guesses `KMW72337` exactly as the live run did.
+
+---
+
+### Check: resolution-client-brand-wins
+
+**Requirement:** The client's own part number and brand are searched before anything derived
+**Surface:** `establishIdentity`, `planQueries`
+**Automated:** `test/client-part-number-and-brand.spec.ts` — "772269: the client's brand overrides a derived 'WIRELESS'", "B&H: the client's brand is the brand a part number needs"
+
+**Do**
+
+```bash
+npx vitest run test/client-part-number-and-brand.spec.ts -t "WIRELESS|brand is the brand a part number needs"
+```
+
+**Expect**
+
+Five pass. With the client's brand, the item's brand is the client's and no
+query is scoped to `WIRELESS`, and a catalogue brand that disagrees does not
+replace it. At B&H the client's brand finds the wrist rest and no cable is
+probed. The CONTROLs, without the client's brand, derive `WIRELESS` and probe
+cables.
+
+---
+
+### Check: resolution-costco-looked-up-by-client-brand
+
+**Requirement:** The client's own part number and brand are searched before anything derived
+**Surface:** `resolveItem` with a product index
+**Automated:** `test/client-part-number-and-brand.spec.ts` — "Costco: the product index is looked up by the client's brand"
+
+**Do**
+
+```bash
+npx vitest run test/client-part-number-and-brand.spec.ts -t "product index is looked up by the client's brand"
+```
+
+**Expect**
+
+Two pass. With the client's brand and part number the product list is asked by
+them and the AirPods verify. Without them the identity cannot be fetched and
+no brand reaches the list.
+
+---
+
+### Check: resolution-client-fields-absent-run-as-before
+
+**Requirement:** The client's own part number and brand are searched before anything derived
+**Surface:** `parseJob`
+**Automated:** `test/client-part-number-and-brand.spec.ts` — "reads them ABSENT or null as not supplied, so an older gateway still runs", "reads both from the gateway's job, trimmed of nothing and typed", "hands both to the run: the queue's mapping is where productName was once lost"
+
+**Do**
+
+```bash
+npx vitest run test/client-part-number-and-brand.spec.ts -t "ABSENT or null as not supplied|reads both from the gateway's job|hands both to the run"
+```
+
+**Expect**
+
+Three pass. A job item with neither field, or with either `null`, reads as not
+supplied and runs as before. A job carrying both hands both to the run, which
+is where `productName` was once lost.
+
+---
+
+### Check: resolution-client-fields-refused-when-malformed
+
+**Requirement:** The client's own part number and brand are searched before anything derived
+**Surface:** `parseJob`, `readJobEnvelope`
+**Automated:** `test/client-part-number-and-brand.spec.ts` — "refuses one that is not a string: two builds disagreeing", "refuses one past the gateway's own limit: 128 for a part number, 160 for a brand", "reads both from a job file, and refuses a wrong type there too"
+
+**Do**
+
+```bash
+npx vitest run test/client-part-number-and-brand.spec.ts -t "not a string|past the gateway's own limit|wrong type there too"
+```
+
+**Expect**
+
+Three pass. A part number or brand that is not a string, or longer than the
+gateway's own limits of 128 and 160 characters, refuses the job before anything
+is bought, from the gateway and from a job file alike.
+
+---
+
+### Check: resolution-unread-product-page-is-a-failure
+
+**Requirement:** A product page that could not be read is a failure, never "not carried", and the best candidate is never proposed unread
+**Surface:** `resolveItem`
+**Automated:** `test/unanswered-probes.spec.ts` — "a searched retailer: a miss with an unread product page is a failure", "Newegg's real adapter, every product page failing", "the 53-row Newegg replay"
+
+**Do**
+
+```bash
+npx vitest run test/unanswered-probes.spec.ts -t "a searched retailer|Newegg's real adapter|53-row Newegg replay"
+```
+
+**Expect**
+
+Seven pass. An item whose answered searches leave a candidate page unread,
+because it failed to fetch or was not a product page, is `not-found` with a
+`failure` counting the unread pages, never a clean miss; every product page
+read, a weak miss stays clean. On Newegg's real adapter no row that probed
+anything ends a clean miss when every page fails. 🔴 Replayed, every one of the
+53 rows whose probes all answered has exactly the outcome, failure and listing
+it had before the rule.
+
+---
+
+### Check: resolution-costco-unread-pages-are-a-failure
+
+**Requirement:** A product page that could not be read is a failure, never "not carried", and the best candidate is never proposed unread
+**Surface:** `resolveItem` with the Costco adapter
+**Automated:** `test/unanswered-probes.spec.ts` — "Costco: the AirPods row with no product page read"
+
+**Do**
+
+```bash
+npx vitest run test/unanswered-probes.spec.ts -t "Costco: the AirPods row"
+```
+
+**Expect**
+
+Three pass. The AirPods row with every product page failing to fetch, or every
+one coming back as Costco's empty product shell, is a failure, never a clean
+miss. The CONTROL, with its pages read, verifies with no failure.
+
+---
+
+### Check: resolution-unread-best-never-proposed
+
+**Requirement:** A product page that could not be read is a failure, never "not carried", and the best candidate is never proposed unread
+**Surface:** `resolveItem`'s choice of finding
+**Automated:** `test/unread-best-candidate.spec.ts` — "is a failure — never proposed — when no read listing clears the floor", "is a failure for a page that parsed to nothing, as for one that failed", "CONTROL: on the last attempt the same sibling, UNREAD, is not proposed", "CONTROL: its barcode disagrees → unconfirmed on it, as before"
+
+**Do**
+
+```bash
+npx vitest run test/unread-best-candidate.spec.ts -t "never proposed|parsed to nothing|UNREAD, is not proposed|its barcode disagrees"
+```
+
+**Expect**
+
+Four pass. A best candidate whose page was never read is never the proposed
+match: the item is a failure, whether the page failed or parsed to nothing, and
+an unread sibling is not proposed either. The CONTROL, with the best's page
+read and its barcode disagreeing, is `unconfirmed` on it as before.
+
+---
+
+### Check: resolution-unread-best-retried-first
+
+**Requirement:** A product page that could not be read is a failure, never "not carried", and the best candidate is never proposed unread
+**Surface:** `resolveItem`, `runList`'s retry after the run
+**Automated:** `test/unread-best-candidate.spec.ts` — "on a first attempt is a failure, even with a read lower listing that qualifies", "the unread best goes to the after-run retry, and the retry can verify it", "the live Kensington shape: unread at the barcode stage, read on the second try"
+
+**Do**
+
+```bash
+npx vitest run test/unread-best-candidate.spec.ts -t "on a first attempt is a failure|goes to the after-run retry|live Kensington shape"
+```
+
+**Expect**
+
+Three pass. On the first pass an unread best is a failure even when a lower
+listing was read and qualifies, so the item goes to the retry after the run,
+where the best can be read and verify. That is the live Kensington row's shape.
+
+---
+
+### Check: resolution-unread-best-sibling-on-retry
+
+**Requirement:** A product page that could not be read is a failure, never "not carried", and the best candidate is never proposed unread
+**Surface:** `resolveItem` on its last attempt
+**Automated:** `test/unread-best-candidate.spec.ts` — "on the last attempt, a lower listing read and naming the part number is proposed", "the best never answering: the retry proposes the read sibling", "the best answering in the retry: the retry settles on it"
+
+**Do**
+
+```bash
+npx vitest run test/unread-best-candidate.spec.ts -t "lower listing read and naming the part number|proposes the read sibling|best answering in the retry"
+```
+
+**Expect**
+
+Three pass. Only on the last attempt is a lower listing that was read and names
+the part number proposed in the unread best's place; where the best answers
+in the retry, the retry settles on it instead.
+
+---
+
+### Check: resolution-counts-every-attempt
+
+**Requirement:** Every request the vendor was asked for is counted
+**Surface:** `LiveFetcher`
+**Automated:** `test/counts-every-request.spec.ts` — "a fetch that fails 3 times counts 3", "a short 200 counts 1", "a dropped connection counts, because the request was sent", "a page that arrives on its second attempt is 2 sent and 1 delivered", "a screenshot counts every attempt too"
+
+**Do**
+
+```bash
+npx vitest run test/counts-every-request.spec.ts -t "fails 3 times counts 3|a short 200 counts 1|dropped connection counts|2 sent and 1 delivered|screenshot counts every attempt"
+```
+
+**Expect**
+
+Five pass. `liveRequestCount` is 3 for a fetch that fails three times, 1 for a
+200 too short to be a page, and counts a dropped connection. A page arriving on
+its second attempt is 2 sent and 1 delivered, and a screenshot counts each of
+its attempts the same way.
+
+---
+
+### Check: resolution-disk-cache-counts-nothing
+
+**Requirement:** Every request the vendor was asked for is counted
+**Surface:** `LiveFetcher`
+**Automated:** `test/counts-every-request.spec.ts` — "CONTROL: a page served from the disk cache counts nothing"
+
+**Do**
+
+```bash
+npx vitest run test/counts-every-request.spec.ts -t "served from the disk cache counts nothing"
+```
+
+**Expect**
+
+`liveRequestCount` and `pagesDelivered` are both 0 for a page served from the
+disk cache. 🔑 The control: counting every call instead of every attempt sent
+would pass the check above and charge a resumed run for pages it never bought.
+
+---
+
+### Check: resolution-bestbuy-seller-class-recorded
+
+**Requirement:** A Best Buy marketplace listing is recorded as one, with its seller
+**Surface:** the Best Buy adapter's `parseSearchResults` and `parseProductPage`, and `resolveItem`
+**Automated:** `test/adapter-bestbuy.spec.ts` — "3P is a marketplace match with the seller's name, its price and its stock from the page", "1P is first party, sold by Best Buy", "3P is a marketplace listing, and the card does not name its seller", "names a marketplace listing's seller from the page"
+
+**Do**
+
+```bash
+npx vitest run test/adapter-bestbuy.spec.ts -t "3P is a marketplace|1P is first party|names a marketplace listing's seller"
+```
+
+**Expect**
+
+Four pass. A `3P` listing is verified as a marketplace match, `isFirstParty`
+`false`, seller `IPC-STORE`, at `12310` cents and out of stock, all from its
+page, because the card names no marketplace seller. A `1P` card is first party,
+sold by Best Buy.
+
+---
+
+### Check: resolution-bestbuy-page-decides-the-seller-class
+
+**Requirement:** A Best Buy marketplace listing is recorded as one, with its seller
+**Surface:** `resolveItem`'s evidence
+**Automated:** `test/first-party-from-the-page.spec.ts` — "an unhydrated card whose page says 1P is first party, sold by Best Buy", "an unhydrated card whose page says 3P is a marketplace listing, with its seller", "Best Buy reads its page's seller classification"
+
+**Do**
+
+```bash
+npx vitest run test/first-party-from-the-page.spec.ts -t "unhydrated card|Best Buy reads its page's seller classification"
+```
+
+**Expect**
+
+Three pass. Best Buy hydrates only its first few search cards, so a card with
+a SKU and no seller is unknown; its page's classification decides, `1P` first
+party sold by Best Buy and `3P` a marketplace listing with the seller's name.
+🔴 Kept unknown, the gateway would store a first-party listing as a marketplace
+one and weaken a barcode agreement that is in fact authoritative.
+
+---
+
+### Check: resolution-bestbuy-first-party-probed-first
+
+**Requirement:** A Best Buy marketplace listing is recorded as one, with its seller
+**Surface:** `probeOrder` with Best Buy candidates
+**Automated:** `test/adapter-bestbuy.spec.ts` — "at equal score the 1P listing is probed first"
+
+**Do**
+
+```bash
+npx vitest run test/adapter-bestbuy.spec.ts -t "1P listing is probed first"
+```
+
+**Expect**
+
+The probe order is `1297054` (first party) before `11521676` (marketplace).
+
+---
+
+### Check: resolution-bestbuy-lookalike-page-is-not-a-match
+
+**Requirement:** A Best Buy page of look-alikes is not a match
+**Surface:** the Best Buy adapter's `parseSearchResults`, and `resolveItem`
+**Automated:** `test/adapter-bestbuy.spec.ts` — "the 18 air-filter look-alike page is not a match: dvsOnly answers []", "CONTROL: the same look-alike page read as a hybrid page would offer the filters", "the air-filter look-alike page is not-found, never unconfirmed", "drops what Best Buy marks isTermMatch false, keeps the exact part number first"
+
+**Do**
+
+```bash
+npx vitest run test/adapter-bestbuy.spec.ts -t "air-filter look-alike|same look-alike page|isTermMatch false"
+```
+
+**Expect**
+
+Four pass. Best Buy's real page answering a part number with 18 air filters it
+marks as look-alikes parses to `[]`, and the item is `not-found` with no match
+and no failure, never `unconfirmed`. The CONTROL reads the same page as a
+hybrid page would and offers the filters, so the pass is the look-alike rule's.
+
+---
+
+### Check: resolution-bh-discontinued-goes-to-review
+
+**Requirement:** A discontinued B&H listing goes to a person, with its reason
+**Surface:** the B&H adapter's `parseProductPage`, and `resolveItem`
+**Automated:** `test/adapter-bh.spec.ts` — "the discontinued Z623 is unverifiable, for a person, with its reason", "says why a discontinued listing publishes no barcode", "a discontinued item has no current price and, here, no UPC"
+
+**Do**
+
+```bash
+npx vitest run test/adapter-bh.spec.ts -t "discontinued Z623|says why a discontinued listing|discontinued item has no current price"
+```
+
+**Expect**
+
+Three pass. The real discontinued Z623 page parses with no barcode, no price,
+and the reason "discontinued at B&H, no UPC published". Resolved, the item is
+`unverifiable` on `736288` with model `980-000402` and brand Logitech, with no
+`failure`, so it is never filed as not carried. One probe is spent: the Z313,
+Z625 and Z533 share Logitech's `980-00` prefix and are not opened.
+
+---
+
+### Check: resolution-bh-discontinued-after-a-lookalike-barcode-answer
+
+**Requirement:** A discontinued B&H listing goes to a person, with its reason
+**Surface:** `resolveItem`'s barcode stage and part-number path
+**Automated:** `test/barcode-stage-allowance.spec.ts` — "B&H: a barcode answered with look-alikes, then the MFR # finding a discontinued item"
+
+**Do**
+
+```bash
+npx vitest run test/barcode-stage-allowance.spec.ts -t "barcode answered with look-alikes"
+```
+
+**Expect**
+
+Two pass. A barcode B&H answers only with look-alikes, followed by an MFR #
+search that finds the discontinued item, still ends `unverifiable` with the
+discontinued reason; the look-alikes never take its place.
+
+---
+
+### Check: resolution-bh-component-upc-never-matches
+
+**Requirement:** A B&H kit's component barcodes are never the kit's
+**Surface:** the B&H adapter's `parseProductPage`, and `resolveItem`
+**Automated:** `test/adapter-bh.spec.ts` — "a kit's components' UPCs are never the kit's", "a UPC equal only to a kit component's is never verified (SYNTHETIC search)"
+
+**Do**
+
+```bash
+npx vitest run test/adapter-bh.spec.ts -t "components' UPCs are never the kit's|equal only to a kit component's"
+```
+
+**Expect**
+
+Two pass. A real kit page's component UPCs are never among its published
+barcodes, and an item whose barcode equals only a component's is never
+verified on the kit.
+
+---
+
+### Check: resolution-bh-another-brands-part-number-is-not-a-candidate
+
+**Requirement:** At B&H a part number names a product only with its brand
+**Surface:** `resolveItem` with `partNumberNeedsBrand`
+**Automated:** `test/adapter-bh.spec.ts` — "another brand's item under the same bare part number is not a candidate"; `test/part-number-needs-brand.spec.ts` — "never probes or proposes another brand's item with the same part number", "CONTROL: with the switch off, the same cable is probed and proposed", "still finds the item's own listing among other brands'"
+
+**Do**
+
+```bash
+npx vitest run test/adapter-bh.spec.ts test/part-number-needs-brand.spec.ts -t "under the same bare part number|another brand's item with the same part number|the same cable is probed|own listing among other brands'"
+```
+
+**Expect**
+
+Four pass. Where the item's brand is known, a listing with the item's part
+number under another brand is never probed or proposed, and the item's own
+listing among them is still found. The CONTROL, with the rule switched off,
+probes and proposes the same cable. Measured at B&H: four of the
+investigation's not-carried rows had their MFR # on another brand's item there.
+
+---
+
+### Check: resolution-bh-unknown-brand-goes-to-a-person
+
+**Requirement:** At B&H a part number names a product only with its brand
+**Surface:** `resolveItem` with `partNumberNeedsBrand`
+**Automated:** `test/part-number-needs-brand.spec.ts` — "another brand's listing under the same part number goes to a person — never verified"
+
+**Do**
+
+```bash
+npx vitest run test/part-number-needs-brand.spec.ts -t "goes to a person"
+```
+
+**Expect**
+
+Where the item's brand is unknown, another brand's listing under the same part
+number is not refused, since nothing refutes it, but it goes to a person and is
+never verified.
+
+---
+
+### Check: resolution-costco-index-read-once-per-run
+
+**Requirement:** Costco's product list is read once per run, not once per item
+**Surface:** `IndexCache`, `runList`
+**Automated:** `test/product-index.spec.ts` — "20 items at 4 workers make exactly 1 fetch of each of its files", "reads the list first, with its own minimum size, and the competitor's profile"; `test/exit-criterion-costco-20-rows.spec.ts` — "reads the product index once, and gives every row its outcome"
+
+**Do**
+
+```bash
+npx vitest run test/product-index.spec.ts test/exit-criterion-costco-20-rows.spec.ts -t "exactly 1 fetch of each of its files|reads the list first|reads the product index once"
+```
+
+**Expect**
+
+Three pass. 20 items at 4 workers fetch the list and each of its two product
+files exactly once, and every item verifies. The list is fetched first, with
+its own minimum body size and the competitor's fetch profile. Over the real
+Costco corpus, one run of 21 rows reads the index once.
+
+---
+
+### Check: resolution-costco-index-charged-once
+
+**Requirement:** Costco's product list is read once per run, not once per item
+**Surface:** `IndexCache`, `RequestMeter`
+**Automated:** `test/product-index.spec.ts` — "charges the read to one item only, so the run's spend is counted once"
+
+**Do**
+
+```bash
+npx vitest run test/product-index.spec.ts -t "charges the read to one item only"
+```
+
+**Expect**
+
+The index's requests are charged to one item, and the per-item figures sum to
+the fetcher's total, so a run's spend counts the list once.
+
+---
+
+### Check: resolution-costco-index-reread-on-retry
+
+**Requirement:** Costco's product list is read once per run, not once per item
+**Surface:** `IndexCache`, `runList`'s retry after the run
+**Automated:** `test/product-index.spec.ts` — "a failure is dropped before the second pass, which refetches once and resolves", "a cache keeps a failure until told to forget it", "a failed index read buys nothing else: no identity page, on either pass"
+
+**Do**
+
+```bash
+npx vitest run test/product-index.spec.ts -t "dropped before the second pass|keeps a failure until told|buys nothing else"
+```
+
+**Expect**
+
+Three pass. A list read that failed is dropped before the retry after the run,
+which fetches it once more and resolves; within one pass the failure is kept,
+so it is not fetched again per item. A failed index read buys nothing else for
+the item on either pass.
+
+---
+
+### Check: resolution-costco-never-searched
+
+**Requirement:** A Costco product is found in its product list, never by search
+**Surface:** the Costco adapter's configuration, `resolveItem` with a product index
+**Automated:** `test/adapter-costco.spec.ts` — "never searches: a product index, and neither barcode nor part number searchable", "never reaches Costco's internal catalogue API, only its website"; `test/exit-criterion-costco-20-rows.spec.ts` — "never searches Costco"; `test/product-index.spec.ts` — "records the lookup as `index:<brand>` and never searches"
+
+**Do**
+
+```bash
+npx vitest run test/adapter-costco.spec.ts test/exit-criterion-costco-20-rows.spec.ts test/product-index.spec.ts -t "never searches|catalogue API|records the lookup as"
+```
+
+**Expect**
+
+Four pass. Costco states a product index and neither barcode nor part number searchable;
+over the real corpus no search url is ever asked; each lookup is recorded as
+`index:<brand>`; and the adapter never names Costco's internal catalogue
+service, only its website.
+
+---
+
+### Check: resolution-costco-finds-by-product-line
+
+**Requirement:** A Costco product is found in its product list, never by search
+**Surface:** the Costco adapter's `productIndex.candidates`
+**Automated:** `test/adapter-costco.spec.ts` — "finds AirPods, whose name has no 'apple', first — and sets no brand on it", "leads with the brand, and shares a word of what the product is", "puts a name that spells the part number first"; `test/exit-criterion-costco-20-rows.spec.ts` — "the AirPods row is never found, so the product-line rule is what finds it"
+
+**Do**
+
+```bash
+npx vitest run test/adapter-costco.spec.ts test/exit-criterion-costco-20-rows.spec.ts -t "finds AirPods|leads with the brand, and shares|spells the part number first|product-line rule is what finds it"
+```
+
+**Expect**
+
+Four pass. The AirPods, whose name in the list has no "apple", are found first
+by the product-line word of the client's name, with no brand invented for them.
+A name leading with the brand and sharing a word of what the product is, and a
+name spelling the part number, are candidates, the latter first. The CONTROL
+shows the AirPods are never found by brand alone.
+
+---
+
+### Check: resolution-costco-other-products-are-not-candidates
+
+**Requirement:** A Costco product is found in its product list, never by search
+**Surface:** the Costco adapter's `productIndex.candidates`
+**Automated:** `test/adapter-costco.spec.ts` — "a brand's product of another kind is not a candidate", "another brand's product sharing words is not a candidate", "with neither a brand nor a name, finds nothing"
+
+**Do**
+
+```bash
+npx vitest run test/adapter-costco.spec.ts -t "of another kind is not a candidate|another brand's product sharing words|finds nothing"
+```
+
+**Expect**
+
+Three pass. The brand's product of another kind, and another brand's product
+sharing words with the item, are not candidates, and an item with neither a
+brand nor a name finds nothing.
+
+---
+
+### Check: resolution-costco-own-numbers-never-verify
+
+**Requirement:** Costco's own item numbers never prove a pairing
+**Surface:** the Costco adapter's `parseProductPage`
+**Automated:** `test/adapter-costco.spec.ts` — "a Costco-internal parent UPC is never published as a barcode", "are `4` and one of the page's item numbers, or a 49999… value", "on a page stating no item numbers, a 4000001… or 4000002… value is Costco's own (review finding 13)", "a parent-only page's 4000001… UPC is never published as its barcode"
+
+**Do**
+
+```bash
+npx vitest run test/adapter-costco.spec.ts -t "Costco-internal parent UPC|one of the page's item numbers|is Costco's own|parent-only page"
+```
+
+**Expect**
+
+Four pass. Costco's internal values, `4` followed by one of the page's item
+numbers, or a `49999…` value, or a `4000001…` / `4000002…` value on a page
+stating no item numbers, are never published as a barcode, so they can never
+verify anything.
+
+---
+
+### Check: resolution-costco-real-barcode-still-read
+
+**Requirement:** Costco's own item numbers never prove a pairing
+**Surface:** the Costco adapter's `parseProductPage`
+**Automated:** `test/adapter-costco.spec.ts` — "never swallow a real barcode", "CONTROL: a real 400… EAN-13 is still a barcode, item numbers or none"
+
+**Do**
+
+```bash
+npx vitest run test/adapter-costco.spec.ts -t "never swallow a real barcode|EAN-13 is still a barcode"
+```
+
+**Expect**
+
+Two pass. A genuine EAN-13 beginning `400`, and every real barcode on the
+committed pages, is still published. 🔑 The control: refusing every value
+beginning `4` would pass the check above and lose real European barcodes.

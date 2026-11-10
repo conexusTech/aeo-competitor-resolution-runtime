@@ -8,6 +8,7 @@ owners:
 tags:
   - competitor-insights
   - phase-ci-1
+  - phase-ci-2
   - runtime
   - queue-dispatched
 timestamp: 2026-09-10
@@ -93,6 +94,106 @@ receiver is the only pair that cannot lose data.
 replay that is the previous change's exit criterion — runs through it, with no
 queue, no gateway and no network.
 
+## Five competitors behind one seam — since 2026-11-11
+
+Newegg and Amazon were joined on 2026-11-11 by Best Buy, B&H and Costco
+(`insights-bestbuy-competitor`, `insights-bh-competitor`,
+`insights-costco-competitor`). Each competitor is one adapter in
+`src/adapters/`, registered by its own `slug` in `src/main.ts`; a job naming a
+slug the image does not carry is refused before anything is bought. Behaviour:
+[competitor-resolution](/capabilities/competitor-resolution.md) and
+[listing-reads](/capabilities/listing-reads.md).
+
+| Slug | Found by | Barcode search | Pages at once (fallback) | Country | One attempt | Probes per item | Hosts |
+|---|---|---|---|---|---|---|---|
+| `newegg` | search | no | 3 | vendor's | vendor's | run default, 8 | `newegg.com`, `www.newegg.com` |
+| `amazon` | search | no | 3 | vendor's | vendor's | run default, 8 | `amazon.com`, `www.amazon.com` |
+| `bestbuy` | search, barcode first | yes | 4 | `us` | 150 s | 3 | `bestbuy.com`, `www.bestbuy.com` |
+| `bh` | search, barcode first; a part number needs its brand | yes | 4 | `us` | 150 s | 3 | `www.bhphotovideo.com` |
+| `costco` | its product index | no | 4 | `us` | 280 s | 3 | `www.costco.com` |
+
+🔑 **Every field of the seam is required**, so the next adapter must state an
+answer rather than inherit one: `querySupport` (including
+`barcodeIsSearchable` and `partNumberNeedsBrand`), `pacing`, `hosts`,
+`fetchProfile`, `maxProbes` and `productIndex`, and on the product page
+`sellerName`, `isFirstParty` and `unverifiableReason`.
+`parseProductPage` may return `null`, meaning the body is not a product page;
+that is a probe nobody answered, never a listing without a barcode.
+
+**Barcode first.** Where `barcodeIsSearchable` is true, the barcode is asked
+before anything is bought to identify the item: its core zero-padded to 12
+digits, or 13 when longer. The barcode stage opens at most two of its results,
+from its own allowance, and never one the competitor marks as only a partial
+match. A miss carries its candidates and its answered or unanswered tally into
+the ordinary part-number path, and the barcode is not asked twice. Where false,
+every plan is byte-identical to before.
+
+**The product-index seam.** A competitor that cannot be searched states a
+`ProductIndex`: the urls of its index (Costco's sitemap index), the least body
+that list may be, the fewest products and the most files a whole index may
+hold, and pure functions that parse the list, parse each product file, and pick
+candidates for an item. The index is read through a run-scoped, single-flight
+`IndexCache` (`src/product-index.ts`): one fetch of each file per run, awaited
+by every worker and charged to one item. A failed or short read fails every
+item with the reason, never a miss; the failure is dropped before the retry
+after the run, which reads it once more. A lookup is recorded as
+`index:<brand>`, and Costco's `parseSearchResults` is never called.
+
+**Pages at once comes from the job.** The gateway sends the competitor's
+`pagesAtOnce` from its retailer registry, on the resolution job and on the read
+job, so it can be retuned without a rebuild and a re-pin. The adapter's
+`pacing.pagesAtOnce` applies only when an older gateway sends none. Either is
+clamped to `MAX_PAGES_AT_ONCE`, 4, and to at least 1, by one function used by
+both run kinds. Pages within one item are fetched one after another, so pages
+at once is the number of items (or listings) worked at once. Each worker still
+waits 0.5–1.5 s after each page.
+
+**The fetch profile.** `Fetcher.fetch(url, profile?)` takes the competitor's
+`fetchProfile`: a `country` the live fetcher adds to the vendor's request body
+(a request parameter, not a zone setting) and a client `timeoutMs` after which
+an attempt is abandoned and retried as an ordinary failure. An optional
+`minBodyBytes` lowers the shortest accepted body for one request, used only for
+Costco's 1,547-byte sitemap index. Resolution passes the profile on the
+competitor's own pages only (searches, probes, the index), never on the
+client's catalogue or the search engine; a read run and a capture pass the
+reader's. Newegg's and Amazon's requests are byte for byte what they were.
+
+**The client's part number and brand are on the job.** Each job item may carry
+`partNumber` and `brand` from the client's own list. They are the item's
+identity ahead of anything derived: the part number is asked right after the
+barcode, and the brand is the brand, including the brand a B&H part number
+needs and the brand Costco's index is asked by. Absent or `null` means not
+supplied, so an older gateway's job runs exactly as before. A value that is not
+a string, or is longer than the gateway's own 128 (part number) or 160 (brand)
+characters, refuses the job.
+
+**Every attempt is a request.** The meter counts each attempt sent to the
+vendor, retries, short bodies, timeouts and failures included, and reports
+`requests_spent` as attempts with `pages_delivered` beside it. See
+[resolution-request-attribution](/capabilities/resolution-request-attribution.md).
+
+### The wire limits, in one place
+
+🔴 **A value past one of the gateway's limits costs a whole batch.** The
+gateway validates every finding in a resolutions event, and one string too long
+answers the event with a 400 the runtime never retries. So every limit the
+runtime posts against lives in `src/wire-limits.ts`, each the gateway's own
+`@MaxLength`, rather than beside each use, where two spellings of one limit
+drift:
+
+| Limit | Characters | Held by |
+|---|---|---|
+| a resolution's `failure` | 512 | cut, ending "…" |
+| the evidence's `title`, `sellerName`, `brand`, `model`, `itemId` | 512, 255, 160, 128, 128 | `withinEvidenceLimits`, on the chosen listing and every alternative |
+| one query in a finding's trail | 500 | cut |
+| `unverifiableReason` | 200 | every adapter's reasons are held to it in a test; a longer one is sent as `null` and logged |
+
+A job item's `partNumber` and `brand` are checked on the way in against the
+gateway's own 128 and 160. Two ceilings guard the way in from the vendor: a
+response larger than 12 MB is refused while it streams (Costco's product pages,
+the largest, are 2.8–3.8 MB), and a product index naming more files than its
+`maxFiles` is refused before any is fetched.
+
 ## The strategy, and why it is not the obvious one
 
 The obvious design is to walk the retailer's categories into a local corpus and
@@ -176,7 +277,11 @@ src/gtin.ts          the comparison key — pure
 src/identity/        search results -> candidate identities — pure
 src/ranking.ts       candidate scoring — pure
 src/resolve.ts       the three-step pipeline, adapter-agnostic
-src/adapters/        the seam; every retailer specific lives behind it (newegg, amazon)
+src/adapters/        the seam; every retailer specific lives behind it (newegg, amazon, bestbuy, bh, costco)
+src/query-plan.ts    which searches to ask, in what order, barcode first where answered
+src/product-index.ts the run-scoped, single-flight read of a competitor's product index
+src/own-hosts.ts     the gateway's rule for a competitor's own urls
+src/wire-limits.ts   the gateway's limits on what a run posts, in one place
 src/fetcher/         the live fetcher, and the offline replay behind one interface
 src/run.ts           journal, resume, concurrency, cost meter
 src/queue/           the task record — the queue's by-reference handover

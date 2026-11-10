@@ -188,9 +188,9 @@ them changes answer; the replay reproduces every row exactly.
 - WHEN queries are planned
 - THEN the refusal is read from configuration, not from a branch on the retailer's name
 - AND a short numeric part number is still asked for
-- AND no barcode form is ever asked for
+- AND where the retailer refuses barcode searches, no barcode form is ever asked for
 
-**Checked by:** resolution-query-limits-are-configuration, resolution-short-numeric-still-asked, resolution-retailer-is-data-not-a-type
+**Checked by:** resolution-query-limits-are-configuration, resolution-short-numeric-still-asked, resolution-retailer-is-data-not-a-type, resolution-barcode-not-searched-where-unanswered
 
 #### Scenario: A first-party listing is probed before a marketplace one
 
@@ -263,12 +263,12 @@ disagreements were items nobody looked up.
 
 **Checked by:** resolution-ordinary-failure-keeps-short-backoff
 
-#### Scenario: A throttle that yields is charged once
+#### Scenario: A throttle that yields is counted as every attempt it took
 - GIVEN a fetch throttled once and answered on the next attempt
 - WHEN it succeeds
-- THEN one request is counted and no throttle is recorded
+- THEN both attempts are counted as requests sent, one page is counted as delivered, and no throttle is recorded
 
-**Checked by:** resolution-recovered-throttle-costs-one-request
+**Checked by:** resolution-recovered-throttle-counts-every-attempt
 
 #### Scenario: A run says how many of its failures were throttles
 - GIVEN a run whose failures were the vendor answering with nothing
@@ -377,3 +377,259 @@ state stays unknown, and the barcode is the only thing that decides a pairing.
 - AND a brand guessed from the title never decides a pairing
 
 **Checked by:** resolution-amazon-claims-no-model-or-seller, resolution-floor-alone-is-insufficient
+
+## Best Buy, B&H and Costco: what each build meets
+
+**Added 2026-11-11** by `insights-bestbuy-competitor`, `insights-bh-competitor`
+and `insights-costco-competitor`, which were planned and built together. Each
+competitor was worked out first in the Meriwether data scraper, and its
+investigation's code was the specification, not code copied in. Each adapter
+sits behind the same seam as Newegg's and Amazon's.
+
+The brief gives the three builds one set of scenarios: "each build meets every
+scenario below for its own competitor". So each scenario appears here once, in
+the brief's words, and is checked once per competitor. Their competitor-specific
+rules follow in the sections below.
+
+🔑 **Two of the brief's build scenarios are the gateway's, not this runtime's.**
+*The estimate uses the competitor's measured cost* is the retailer registry's,
+in [insights-retailer-registry](aeo-backend:/capabilities/insights-retailer-registry.md).
+*The competitor's monitoring follows its measured numbers* is the shared listing
+reads', in
+[insights-shared-listing-readings](aeo-backend:/capabilities/insights-shared-listing-readings.md).
+*A member-only price is not a missing price (Costco)* is a property of reading a
+listing, so it is in [listing-reads](/capabilities/listing-reads.md).
+
+#### Scenario: The platform reproduces the investigation
+- GIVEN the investigation's 20-row result
+- WHEN the same 20 rows run in Meriwether against the competitor
+- THEN at least as many rows are verified, or the difference is explained row by row
+
+**Checked by:** resolution-bestbuy-reproduces-the-investigation, resolution-bh-reproduces-the-investigation, resolution-costco-reproduces-the-investigation, resolution-bestbuy-reproduces-the-investigation-live, resolution-bh-reproduces-the-investigation-live, resolution-costco-reproduces-the-investigation-live
+
+#### Scenario: A pairing is proven by the competitor's own barcode
+- GIVEN a client product whose barcode the competitor publishes
+- WHEN a run resolves it
+- THEN the item is verified, and the evidence shows the barcode as the competitor published it
+
+**Checked by:** resolution-bestbuy-proves-by-published-barcode, resolution-bh-proves-by-published-barcode, resolution-costco-proves-by-published-barcode
+
+#### Scenario: A page publishing several barcodes still proves the pairing
+- GIVEN a product page that lists two barcodes in one place, one of them the client's
+- WHEN a run resolves the item
+- THEN the item is verified, not reported as a barcode that disagrees
+
+**Checked by:** resolution-bestbuy-several-barcodes-verify, resolution-bh-several-barcodes-verify, resolution-costco-several-barcodes-verify
+
+#### Scenario: A refused search is a failure, not a miss
+- GIVEN the competitor answers a search with a robot check, an error or an empty response
+- WHEN a run resolves the item
+- THEN the item is reported as a failed lookup with its reason
+- AND it is never reported as not carried
+
+**Checked by:** resolution-bestbuy-refusal-is-a-failure, resolution-bh-refusal-is-a-failure, resolution-costco-refusal-is-a-failure
+
+#### Scenario: A search the competitor answers with nothing is a miss
+- GIVEN the competitor answers a part-number search with its normal no-results answer
+- WHEN a run resolves the item
+- THEN the item is reported as not found, with the searches that were tried
+
+**Checked by:** resolution-bestbuy-no-results-is-a-miss, resolution-bh-no-results-is-a-miss, resolution-costco-no-results-is-a-miss
+
+#### Scenario: A candidate without a barcode match goes to a person
+- GIVEN a listing whose part number and brand agree with the client's but which publishes no barcode
+- WHEN a run resolves the item
+- THEN the item goes to review, and is never shown as a match
+
+**Checked by:** resolution-bestbuy-no-barcode-goes-to-a-person, resolution-bh-no-barcode-goes-to-a-person, resolution-costco-no-barcode-goes-to-a-person
+
+⚠️ **Costco has no search, so its two search scenarios are met by its product
+list.** Costco's search and category pages arrive empty through our Bright Data
+setup, so an item is looked up in Costco's published product list instead. A
+list that could not be read is Costco's refused search, and a brand the list
+does not carry is its no-results answer. Costco's search page is still
+recognised as an answer nobody gave, should anything ever ask it.
+
+⚠️ **Costco reproduces a 20-row result of nothing.** The investigation found
+none of the 20 shared Micro Center rows at Costco, and none of 78 in a random
+sample of Micro Center's list; Costco was built anyway, so it is ready when a
+customer's list overlaps it (the lead). Its proof of a pairing is a 21st row,
+the AirPods the investigation verified by barcode.
+
+## Rules every competitor follows
+
+**Approved by the lead on 2026-11-10, from Jody Holmes's rules** in the brief.
+Each holds for every competitor through the seam: a competitor states its
+answer as data, and nothing above the seam names it.
+
+#### Scenario: A competitor that answers a barcode search is asked the barcode first
+- GIVEN a competitor whose search answers a barcode
+- WHEN an item is resolved
+- THEN the barcode is the first search asked, before anything is bought to identify the item
+- AND a listing that search finds and proves costs no identification lookup at all
+- AND a result the competitor marks as only partly matching the barcode is never opened
+- AND a barcode search that finds nothing is carried into the part-number search, and the barcode is not asked twice
+
+**Checked by:** resolution-barcode-searched-first-where-answered, resolution-barcode-hit-buys-no-identity, resolution-barcode-lookalike-is-never-opened, resolution-barcode-miss-carries-on
+
+#### Scenario: A competitor is never read more pages at once than its own limit, and never more than 4
+- GIVEN a competitor whose limit comes with the job, or is the competitor's own where the job states none
+- WHEN a resolution run works its list
+- THEN no more pages are in flight at once than that limit
+- AND the job's figure wins over the competitor's own
+- AND a job asking for more than 4 is read 4 at a time
+
+**Checked by:** resolution-pages-at-once-per-competitor, resolution-pages-at-once-job-wins, resolution-pages-at-once-never-above-four
+
+#### Scenario: A product page that is not one is not a listing without a barcode
+- GIVEN a probed page that is not a product page: an empty product shell, a replacement page, a page with no product data
+- WHEN the item is resolved
+- THEN the probe counts as one nobody answered
+- AND the item is never unverifiable on the strength of it
+- AND a real product page that publishes no barcode still makes the item unverifiable
+
+**Checked by:** resolution-product-page-shell-is-not-no-barcode, resolution-real-page-without-barcode-is-unverifiable
+
+#### Scenario: The price comes from the page that proved the pairing when the card shows none
+- GIVEN a pairing proven on a product page that states a price and stock, found from a search result that shows neither
+- WHEN the finding is reported
+- THEN its price and stock are the page's
+- AND where both state a price, the page's is reported
+- AND where the page states neither, the search result's are kept
+- AND a stock neither states is reported as unknown, never as in or out of stock
+
+**Checked by:** resolution-price-from-probed-page, resolution-price-falls-back-to-the-card, resolution-unknown-stock-is-unknown
+
+#### Scenario: The client's own part number and brand are searched before anything derived
+- GIVEN a row of the client's list that states the product's part number and brand
+- WHEN the item is resolved
+- THEN the client's part number is searched right after the barcode, ahead of any part number derived from elsewhere
+- AND the client's brand is the item's brand, even where a derived one disagrees
+- AND at Costco the product list is looked up by the client's brand
+- AND a row stating neither resolves exactly as it did before
+- AND a part number or brand that is not text, or is longer than the gateway accepts, refuses the job
+
+**Checked by:** resolution-client-part-number-asked-first, resolution-client-brand-wins, resolution-costco-looked-up-by-client-brand, resolution-client-fields-absent-run-as-before, resolution-client-fields-refused-when-malformed
+
+#### Scenario: A product page that could not be read is a failure, never "not carried", and the best candidate is never proposed unread
+- GIVEN an item whose candidate product pages could not all be read, because a fetch failed or the page was not a product page
+- WHEN no page that was read settles the item
+- THEN the item is a failure with its reason, which the gateway records as an error, never as not carried
+- AND the best candidate is never proposed as a match while its page is unread
+- AND on the run's first pass an unread best is a failure even when a lower listing was read and qualifies, so the retry after the run reads it again
+- AND only on that retry is a lower listing, read and naming the part number, proposed in its place
+
+**Checked by:** resolution-unread-product-page-is-a-failure, resolution-costco-unread-pages-are-a-failure, resolution-unread-best-never-proposed, resolution-unread-best-retried-first, resolution-unread-best-sibling-on-retry
+
+#### Scenario: Every request the vendor was asked for is counted
+- GIVEN a run whose fetches are sometimes retried, sometimes answered with a body too short to be a page, and sometimes refused on every attempt
+- WHEN the run reports what it spent
+- THEN every attempt sent to the vendor is counted, retries and failures included
+- AND a page served from the run's own disk cache counts nothing
+
+**Checked by:** resolution-counts-every-attempt, resolution-disk-cache-counts-nothing
+
+🔴 **Until 2026-11-11 a run counted delivered pages only**, so Best Buy's 166
+requests sent for 110 pages delivered read as 110, and a page that failed three
+times counted nothing. Retries, short bodies and timeouts are all requests the
+vendor was asked for. Which of them Bright Data bills is unconfirmed until an
+invoice, and counting every attempt is the figure that is safe either way. How
+each attempt is charged to its item, and the pages delivered reported beside
+the spend, are in
+[resolution-request-attribution](/capabilities/resolution-request-attribution.md).
+
+⚠️ **Pages at once is the registry's, and the rest of how a competitor is
+fetched is the adapter's.** Best Buy's page time measured 20 s one day and one
+to three minutes the day before, so how many pages are read at once must change
+without a rebuild: it arrives with the job, from the gateway's retailer
+registry. The country a page is fetched from, how long one attempt may take and
+how many product pages one item may open are facts about the competitor's
+website, so they stay with the adapter. Newegg and Amazon read 3 pages at once,
+fetched exactly as before.
+
+## Best Buy
+
+Best Buy answers a barcode search, so it is asked the barcode first: the
+investigation proved 11 of its 20 rows that way, and its part-number searches
+proved none of the other 9. Its
+product page states every barcode it publishes, the price, the stock and who
+sells the offer. It is read through its website, never its developer API, whose
+terms forbid this use.
+
+#### Scenario: A Best Buy marketplace listing is recorded as one, with its seller
+- GIVEN a Best Buy listing whose page says it is sold by a marketplace seller
+- WHEN a run pairs it
+- THEN the pairing is recorded as a marketplace listing with the seller's name, and its price and stock from the page
+- AND a listing Best Buy sells itself is recorded as first party, sold by Best Buy, even where its search card did not say
+- AND at equal evidence Best Buy's own listing is opened first
+
+**Checked by:** resolution-bestbuy-seller-class-recorded, resolution-bestbuy-page-decides-the-seller-class, resolution-bestbuy-first-party-probed-first
+
+#### Scenario: A Best Buy page of look-alikes is not a match
+- GIVEN a Best Buy search that answers a part number only with products that resemble it
+- WHEN a run resolves the item
+- THEN the item is not found, and never unconfirmed on a look-alike
+
+**Checked by:** resolution-bestbuy-lookalike-page-is-not-a-match
+
+## B&H
+
+B&H answers a barcode search and states every barcode on its product page. Its
+catalogue spans photo, video, audio and computing, so a bare part number often
+belongs to another brand's product there.
+
+#### Scenario: A discontinued B&H listing goes to a person, with its reason
+- GIVEN a B&H listing with the item's part number and brand, which B&H says is discontinued, with no barcode and no price
+- WHEN a run resolves the item
+- THEN the item goes to review as unverifiable, with the reason that it is discontinued at B&H and publishes no barcode
+- AND it is never verified and never filed as not carried
+
+**Checked by:** resolution-bh-discontinued-goes-to-review, resolution-bh-discontinued-after-a-lookalike-barcode-answer
+
+#### Scenario: A B&H kit's component barcodes are never the kit's
+- GIVEN a B&H kit whose page lists the barcodes of the products it contains
+- WHEN a run resolves an item whose barcode is one of those components'
+- THEN the kit is never verified as the item
+
+**Checked by:** resolution-bh-component-upc-never-matches
+
+#### Scenario: At B&H a part number names a product only with its brand
+- GIVEN a B&H listing whose part number equals the item's but whose brand is another's
+- WHEN a run resolves the item
+- THEN that listing is never opened and never proposed
+- AND where the item's brand is unknown, such a listing goes to a person and is never verified
+
+**Checked by:** resolution-bh-another-brands-part-number-is-not-a-candidate, resolution-bh-unknown-brand-goes-to-a-person
+
+## Costco
+
+Costco is found through its published product list, about 18,000 products in
+its sitemap, then proven by the barcode on its product page. Its product pages
+are the slowest any competitor serves, about one to one and a half minutes, and
+the largest, about 3 MB.
+
+#### Scenario: Costco's product list is read once per run, not once per item
+- GIVEN a run over many items at Costco, several worked at once
+- WHEN each item is looked up in Costco's product list
+- THEN each file of the list is fetched once for the whole run, and charged once
+- AND the list's own index is read first, so a product file Costco adds is not missed
+- AND the retry after the run reads a list that failed once more
+
+**Checked by:** resolution-costco-index-read-once-per-run, resolution-costco-index-charged-once, resolution-costco-index-reread-on-retry
+
+#### Scenario: A Costco product is found in its product list, never by search
+- GIVEN an item at Costco
+- WHEN a run resolves it
+- THEN Costco's search is never asked
+- AND its candidates are the products whose names lead with the item's brand, or with a product-line word of the client's name for it
+- AND another brand's product sharing words, or the brand's product of another kind, is not a candidate
+
+**Checked by:** resolution-costco-never-searched, resolution-costco-finds-by-product-line, resolution-costco-other-products-are-not-candidates
+
+#### Scenario: Costco's own item numbers never prove a pairing
+- GIVEN a Costco page that states Costco's internal numbers beside the barcodes of the items it sells
+- WHEN it is read for a pairing
+- THEN only the items' barcodes are compared, and Costco's own numbers never verify anything
+- AND a genuine barcode that happens to begin like one of Costco's numbers is still a barcode
+
+**Checked by:** resolution-costco-own-numbers-never-verify, resolution-costco-real-barcode-still-read

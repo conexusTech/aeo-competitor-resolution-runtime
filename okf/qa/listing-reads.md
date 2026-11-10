@@ -697,7 +697,7 @@ Run four listings on one worker, batches of two, the fourth page failing.
 
 **Expect**
 
-Events are `readings` (2, spent 2), `readings` (2, spent 3), `completed` (spent 3). 🔴 Mutations: 0 on a batch, 0 on completion each turn this red.
+Events are `readings` (2, spent 2), `readings` (2, spent 3), `completed` (spent 3). 🔴 Mutations: 0 on a batch, 0 on completion each turn this red. ⚠️ The test's fetcher charges nothing for the page it fails; that a real failed fetch's attempts are counted is `listing-reads-counts-every-attempt`.
 
 ### Check: listing-read-undelivered-ends-in-error
 
@@ -894,3 +894,334 @@ Run the 53-row replay before and after this change, and dump every resolution to
 **Expect**
 
 The 12 checks pass and the two dumps are byte-identical (sha256 `99818116…cdeb0` on 2026-10-23: 19 verified, 4 unverifiable, 1 unconfirmed, 16 not found, 13 not in the corpus).
+
+## Best Buy, B&H and Costco
+
+Added 2026-11-11 by `insights-bestbuy-competitor`, `insights-bh-competitor` and
+`insights-costco-competitor`. Every check below is automated and offline,
+against the committed pages in `test/raw/` or a stubbed vendor.
+
+### Check: listing-reads-counts-every-attempt
+
+**Requirement:** Every event carries what the container bought
+**Surface:** `runReadJob`, `ReadRunClient`
+**Automated:** `test/counts-every-request.spec.ts` — "on every read-run event"; `test/counts-every-request.spec.ts` — "a fetch that fails 3 times counts 3"
+
+**Do**
+
+```bash
+npx vitest run test/counts-every-request.spec.ts -t "on every read-run event|fails 3 times counts 3"
+```
+
+**Expect**
+
+Two pass. A read run's events carry `requests_spent` as every attempt sent and
+`pages_delivered` beside it (5 sent and 4 delivered in the test's run), and the
+live fetcher counts a fetch that fails three times as three. 🔴 This replaced
+the rule that a failed fetch is not counted as bought, on 2026-11-11.
+
+### Check: listing-reads-costco-member-only-price
+
+**Requirement:** A member-only price is not a missing price (Costco)
+**Surface:** the Costco adapter's `readListingPage`
+**Automated:** `test/adapter-costco.spec.ts` — "a member-only price is the page's answer: a page with no price, not a failure", "a member-only item has no price, though its source holds one"
+
+**Do**
+
+```bash
+npx vitest run test/adapter-costco.spec.ts -t "member-only"
+```
+
+**Expect**
+
+Two pass. The real member-only gold bar page is read as `kind: "page"` with
+`priceCents` `null`, never `0` and never `unreadable-offer`. 🔴 The page's
+source holds `4089.99`, and it is never used: the brief rules that nothing
+signs in to a competitor, so a hidden price is not a price.
+
+### Check: listing-reads-bh-map-price
+
+**Requirement:** A price withheld until the cart is not a missing price (B&H)
+**Surface:** the B&H adapter's `readListingPage` and `parseSearchResults`
+**Automated:** `test/adapter-bh.spec.ts` — "a MAP price is a page with no price, not an unreadable offer", "a MAP card's withheld price is null — never 0", "a MAP item's price is null (SYNTHETIC: the M310's page, MAP)"
+
+**Do**
+
+```bash
+npx vitest run test/adapter-bh.spec.ts -t "MAP"
+```
+
+**Expect**
+
+Three pass. A page B&H marks as a MAP item with its price hidden reads as
+`kind: "page"` with `priceCents` `null` and its stock still stated, never `0`
+and never a failure; a MAP search card's price is `null` too. ⚠️ No MAP product
+page was captured; the page is the M310's real one with B&H's MAP flags set,
+and the test name says so.
+
+### Check: listing-reads-bh-shown-price-unread-is-unreadable
+
+**Requirement:** A price withheld until the cart is not a missing price (B&H)
+**Surface:** the B&H adapter's `readListingPage`
+**Automated:** `test/adapter-bh.spec.ts` — "CONTROL: a price B&H shows and this build cannot read is unreadable"
+
+**Do**
+
+```bash
+npx vitest run test/adapter-bh.spec.ts -t "a price B&H shows and this build cannot read"
+```
+
+**Expect**
+
+`kind: "unreadable-offer"` for the M310's page with its price moved to a field
+this build does not read. 🔑 The control for the MAP rule: reading every page
+without a readable price as MAP would pass the check above and file a parse
+failure as "no price".
+
+### Check: listing-reads-bestbuy-reads-its-page
+
+**Requirement:** A Best Buy, B&H or Costco listing page is read for what it says
+**Surface:** the Best Buy adapter's `readListingPage`
+**Automated:** `test/adapter-bestbuy.spec.ts` — "readListingPage"
+
+**Do**
+
+```bash
+npx vitest run test/adapter-bestbuy.spec.ts -t "readListingPage"
+```
+
+**Expect**
+
+Six pass. The M310's real page reads as its SKU, its UPC, its price and in
+stock; a sold-out listing still shows its price; an empty UPC field stays `""`.
+In stock with no readable price is `unreadable-offer`, not a free item. A
+search page, an empty body and a refusal are `not-a-product-page`.
+
+### Check: listing-reads-bh-reads-its-page
+
+**Requirement:** A Best Buy, B&H or Costco listing page is read for what it says
+**Surface:** the B&H adapter's `readListingPage`
+**Automated:** `test/adapter-bh.spec.ts` — "reads its page: the listing, its UPC, price and stock", "a discontinued listing is a page: no price, not in stock, an empty UPC field", "refuses what is not a product page"
+
+**Do**
+
+```bash
+npx vitest run test/adapter-bh.spec.ts -t "reads its page: the listing|discontinued listing is a page|refuses what is not a product page"
+```
+
+**Expect**
+
+Three pass. The M310's real page reads as its listing, UPC, price and stock. The
+discontinued Z623 is a page with no price, not in stock and an empty UPC field.
+A replacement page, a refusal and a search page are `not-a-product-page`.
+
+### Check: listing-reads-costco-reads-its-page
+
+**Requirement:** A Best Buy, B&H or Costco listing page is read for what it says
+**Surface:** the Costco adapter's `readListingPage` and `parseProductPage`
+**Automated:** `test/adapter-costco.spec.ts` — "reads the page's product id, barcode and price", "refuses a shell and a search as not a product page", "states no stock, whatever its JSON-LD availability says"
+
+**Do**
+
+```bash
+npx vitest run test/adapter-costco.spec.ts -t "product id, barcode and price|refuses a shell and a search|states no stock"
+```
+
+**Expect**
+
+Three pass. A real Costco page reads as its product id, barcode and price. Its
+stock is `null` whatever its JSON-LD availability claims, because the page does
+not state it for the item read. The empty product shell and a search page are
+`not-a-product-page`.
+
+### Check: listing-reads-costco-several-prices-are-unreadable
+
+**Requirement:** A Best Buy, B&H or Costco listing page is read for what it says
+**Surface:** the Costco adapter's `readListingPage`
+**Automated:** `test/adapter-costco.spec.ts` — "SYNTHETIC: several items at different prices is an unreadable offer", "… whose other prices are not stated is unreadable too", "… all at one price show that price", "… a product page with no price anywhere is an unreadable offer"
+
+**Do**
+
+```bash
+npx vitest run test/adapter-costco.spec.ts -t "several items|no price anywhere"
+```
+
+**Expect**
+
+Four pass. A page selling several items at different prices, or several whose
+other prices are not stated, is `unreadable-offer`, never one of the prices.
+Several items at one price show that price. A product page with no price
+anywhere is `unreadable-offer`. All four pages are SYNTHETIC, and say so.
+
+### Check: listing-reads-bestbuy-own-hosts
+
+**Requirement:** A competitor's pages are fetched only on its own hosts
+**Surface:** the Best Buy adapter's `hosts`
+**Automated:** `test/adapter-bestbuy.spec.ts` — "is sent only to Best Buy's own hosts"
+
+**Do**
+
+```bash
+npx vitest run test/adapter-bestbuy.spec.ts -t "own hosts"
+```
+
+**Expect**
+
+Best Buy's hosts are exactly `bestbuy.com` and `www.bestbuy.com`, the gateway's
+list for it.
+
+### Check: listing-reads-bh-own-hosts
+
+**Requirement:** A competitor's pages are fetched only on its own hosts
+**Surface:** the B&H adapter's `hosts`
+**Automated:** `test/adapter-bh.spec.ts` — "searches the website, and reads only its own host"
+
+**Do**
+
+```bash
+npx vitest run test/adapter-bh.spec.ts -t "reads only its own host"
+```
+
+**Expect**
+
+B&H's hosts are exactly `www.bhphotovideo.com`, the gateway's list for it.
+
+### Check: listing-reads-costco-own-hosts
+
+**Requirement:** A competitor's pages are fetched only on its own hosts
+**Surface:** the Costco adapter's `hosts`
+**Automated:** `test/adapter-costco.spec.ts` — "is read four pages at once, from the us, with a 280 s timeout and three probes"
+
+**Do**
+
+```bash
+npx vitest run test/adapter-costco.spec.ts -t "is read four pages at once"
+```
+
+**Expect**
+
+Costco's hosts are exactly `www.costco.com`, the gateway's list for it.
+
+### Check: listing-reads-own-host-rule
+
+**Requirement:** A competitor's pages are fetched only on its own hosts
+**Surface:** `isOwnHostUrl`, used by `runReadJob`, `resolveItem` and the capturer
+**Automated:** `test/own-hosts.spec.ts` — "isOwnHostUrl"; `test/read-run.spec.ts` — "refuses a listing on another host before buying anything"
+
+**Do**
+
+```bash
+npx vitest run test/own-hosts.spec.ts test/read-run.spec.ts -t "isOwnHostUrl|refuses a listing on another host"
+```
+
+**Expect**
+
+Three pass. A url is accepted only when it is `https:`, has no userinfo and no
+port, and its host is exactly one of the competitor's; `http:`, `user@`, a
+port and a look-alike host are each refused. A read job naming one such url is
+refused before any page is bought.
+
+### Check: listing-reads-resolution-keeps-to-own-hosts
+
+**Requirement:** A competitor's pages are fetched only on its own hosts
+**Surface:** `resolveItem`'s probe loop
+**Automated:** `test/own-hosts.spec.ts` — "resolution never probes, or proposes, a listing off the competitor's hosts"
+
+**Do**
+
+```bash
+npx vitest run test/own-hosts.spec.ts -t "resolution never probes"
+```
+
+**Expect**
+
+Two pass. Candidates whose urls are off the competitor's hosts are never
+fetched and never become the match. The CONTROL, an own-host listing beside
+them, is probed and verifies.
+
+### Check: listing-reads-pages-at-once-per-competitor
+
+**Requirement:** A read run is never read more pages at once than its limit
+**Surface:** `runReadJob`, `pagesAtOnce`
+**Automated:** `test/pages-at-once.spec.ts` — "a read run is never read more pages at once than its limit"
+
+**Do**
+
+```bash
+npx vitest run test/pages-at-once.spec.ts -t "holds the reader's own limit|figure wins over the reader's"
+```
+
+**Expect**
+
+Two pass. Over 12 listings a gated fetcher records the most pages in flight:
+the reader's own limit, 3 or 4, when the job states none, and the job's figure
+over the reader's when it does.
+
+### Check: listing-reads-pages-at-once-never-above-four
+
+**Requirement:** A read run is never read more pages at once than its limit
+**Surface:** `runReadJob`, `pagesAtOnce`
+**Automated:** `test/pages-at-once.spec.ts` — "a job asking for 12 reads at 4"
+
+**Do**
+
+```bash
+npx vitest run test/pages-at-once.spec.ts -t "asking for 12 reads at 4"
+```
+
+**Expect**
+
+A read job asking for 12 holds 4 pages in flight.
+
+### Check: listing-reads-fetch-profile-on-every-read
+
+**Requirement:** A competitor's listing pages are fetched the way its website must be fetched
+**Surface:** `runReadJob`, `LiveFetcher`
+**Automated:** `test/fetch-profile.spec.ts` — "on every listing it reads", "adds the country when the profile sets one"
+
+**Do**
+
+```bash
+npx vitest run test/fetch-profile.spec.ts -t "on every listing it reads|adds the country"
+```
+
+**Expect**
+
+Three pass. A read run hands the reader's fetch profile to every page it
+fetches, and the live fetcher adds the profile's `country` to the vendor's
+request body, for a page and for a screenshot alike.
+
+### Check: listing-reads-timeout-is-a-failed-attempt
+
+**Requirement:** A competitor's listing pages are fetched the way its website must be fetched
+**Surface:** `LiveFetcher`
+**Automated:** `test/fetch-profile.spec.ts` — "abandons an attempt after the profile's timeout, as a failed attempt", "retries a timed-out attempt like any other failure"
+
+**Do**
+
+```bash
+npx vitest run test/fetch-profile.spec.ts -t "abandons an attempt after the profile's timeout|retries a timed-out attempt"
+```
+
+**Expect**
+
+Two pass. An attempt still unanswered at the profile's timeout is abandoned as
+a failed attempt, counted as sent, and retried like any other failure.
+
+### Check: listing-reads-newegg-amazon-requests-unchanged
+
+**Requirement:** A competitor's listing pages are fetched the way its website must be fetched
+**Surface:** `LiveFetcher`
+**Automated:** `test/fetch-profile.spec.ts` — "sends newegg's request byte for byte as before profiles", "sends amazon's …", "states the vendor's defaults for Newegg and Amazon"
+
+**Do**
+
+```bash
+npx vitest run test/fetch-profile.spec.ts -t "byte for byte as before profiles|vendor's defaults for Newegg and Amazon"
+```
+
+**Expect**
+
+The request bodies for Newegg and Amazon, fetched and as screenshots, are
+byte for byte what they were before fetch profiles: no `country`, no client
+timeout. Both state the vendor's defaults.
