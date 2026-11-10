@@ -141,6 +141,7 @@ const listing = (itemId: string, model: string | null): ParsedCandidate => ({
   isFirstParty: true,
   sellerName: null,
   imageUrl: null,
+  partialMatch: false,
 });
 
 /**
@@ -400,7 +401,10 @@ describe("resolveItem asks the barcode first", () => {
     expect(a?.retailerBarcode).toBe("036000291452");
   });
 
-  it("the barcode stage spends from the item's one probe budget", async () => {
+  // 🔴 Reversed by review finding 5: counted against the item's budget, a
+  // barcode answered with look-alikes left the part-number search nothing
+  // to open. See `barcode-stage-allowance.spec.ts`.
+  it("the barcode stage spends its own two probes, never the item's", async () => {
     const fetcher = new Scripted({
       [SEARCH(BARCODE)]: "RESULTS B,C,D",
       "https://r.test/p/B": "UPC 036000291452",
@@ -415,7 +419,9 @@ describe("resolveItem asks the barcode first", () => {
       ...OPTIONS,
       maxProbes: 3,
     });
-    expect(r.probes).toBe(3);
-    expect(fetcher.asked).not.toContain("https://r.test/p/E");
+    // B and C in the barcode stage; D and E from the item's own three.
+    expect(r.probes).toBe(4);
+    expect(fetcher.asked).toContain("https://r.test/p/D");
+    expect(fetcher.asked).toContain("https://r.test/p/E");
   });
 });

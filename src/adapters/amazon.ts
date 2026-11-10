@@ -250,6 +250,8 @@ export function parseSearchResults(html: string): ParsedCandidate[] | null {
       isFirstParty: null,
       sellerName: null,
       imageUrl: safeImageUrl(IMAGE.exec(cell)?.[1] ?? null),
+      // Amazon marks no result as a partial answer.
+      partialMatch: false,
     });
   }
 

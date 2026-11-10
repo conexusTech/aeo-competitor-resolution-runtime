@@ -217,6 +217,17 @@ export interface ResolveOptions {
   readonly searchEngineUrlTemplate: string;
 }
 
+/**
+ * Product pages the barcode stage may open, outside the item's `maxProbes`.
+ *
+ * 🔴 **Its own allowance, because the barcode stage runs first.** Counted
+ * against the item's budget, a barcode answered with look-alikes spent every
+ * probe before identity was even known, and the part-number search after it
+ * found the real listing with nothing left to open it. Two: a barcode names
+ * one product, so a retailer answering it well puts that product first.
+ */
+export const BARCODE_STAGE_PROBES = 2;
+
 export const DEFAULT_OPTIONS: ResolveOptions = {
   maxProbes: 8,
   candidateFlood: 15,
@@ -659,8 +670,13 @@ async function resolveCounted(
           ]),
         );
       }
+      let stageProbes = 0;
       for (const entry of stageRanked) {
-        if (probes >= maxProbes) break;
+        if (stageProbes >= BARCODE_STAGE_PROBES) break;
+        // 🔴 A result the retailer marked as a partial or look-alike answer
+        // to the barcode is not the barcode's product: never opened here.
+        if (entry.candidate.partialMatch) continue;
+        stageProbes++;
         const published = await probe(entry.candidate);
         const agreeing = published === null ? null : agreeingIn(published);
         if (agreeing !== null) return proven(entry, agreeing, probeOutcomes);
@@ -1001,12 +1017,15 @@ async function resolveCounted(
     };
   }
 
+  /** Probes after identity: the item's `maxProbes`, the barcode stage's apart. */
+  let itemProbes = 0;
   for (const entry of ranked) {
     // 🔑 A listing the barcode stage already opened costs nothing here: its
     // answer is reused, never bought again, and it spends no probe.
     let published = probed.get(entry.candidate.url);
     if (published === undefined) {
-      if (probes >= maxProbes) continue;
+      if (itemProbes >= maxProbes) continue;
+      itemProbes++;
       published = await probe(entry.candidate);
     }
     if (published === null) continue;

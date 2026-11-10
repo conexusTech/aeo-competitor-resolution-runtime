@@ -41,6 +41,7 @@ const candidate = (over: Partial<ParsedCandidate> = {}): ParsedCandidate => ({
   isFirstParty: true,
   sellerName: null,
   imageUrl: null,
+  partialMatch: false,
   ...over,
 });
 

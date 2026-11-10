@@ -247,6 +247,7 @@ describe("resolve sends the competitor's profile on competitor pages only", () =
         isFirstParty: true,
         sellerName: null,
         imageUrl: null,
+        partialMatch: false,
       },
     ],
     parseProductPage: () => ({

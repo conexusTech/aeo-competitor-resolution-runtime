@@ -38,6 +38,7 @@ const candidate = (id: string): ParsedCandidate => ({
   isFirstParty: true,
   sellerName: null,
   imageUrl: null,
+  partialMatch: false,
 });
 
 const NO_BARCODE: ParsedProduct = {

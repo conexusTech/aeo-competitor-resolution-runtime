@@ -212,6 +212,7 @@ describe("parseSearchResults", () => {
       sellerName: "B&H Photo",
       imageUrl:
         "https://static.bhphoto.com/images/images345x345/1519230103_731610.jpg",
+      partialMatch: false,
     });
   });
 
@@ -260,6 +261,11 @@ describe("parseSearchResults", () => {
 
   it("keeps a partial match's look-alikes for the pipeline to judge", () => {
     expect(candidatesOn(PARTIAL)).toHaveLength(28);
+    // 🔴 Each says it is a partial answer, so a barcode query never opens it.
+    expect(candidatesOn(PARTIAL).every((c) => c.partialMatch)).toBe(true);
+    expect(candidatesOn(SEARCH_UPC_M310).every((c) => !c.partialMatch)).toBe(
+      true,
+    );
   });
 
   it("🔴 a MAP card's withheld price is null — never 0", () => {

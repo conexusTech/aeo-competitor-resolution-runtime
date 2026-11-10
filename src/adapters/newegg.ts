@@ -157,6 +157,8 @@ export function parseSearchResults(html: string): ParsedCandidate[] | null {
     out.push({
       itemId,
       imageUrl,
+      // Newegg marks no result as a partial answer.
+      partialMatch: false,
       url:
         urlKeywords === null
           ? `https://www.newegg.com/p/${itemId}`

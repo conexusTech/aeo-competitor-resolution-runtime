@@ -84,6 +84,7 @@ const FAKE_INDEX: ProductIndex = {
         isFirstParty: true,
         sellerName: "R",
         imageUrl: null,
+        partialMatch: false,
       }));
   },
 };

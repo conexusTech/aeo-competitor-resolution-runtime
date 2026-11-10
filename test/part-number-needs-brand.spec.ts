@@ -50,6 +50,7 @@ const card = (over: Partial<ParsedCandidate> = {}): ParsedCandidate => ({
   isFirstParty: true,
   sellerName: "Retailer",
   imageUrl: null,
+  partialMatch: false,
   ...over,
 });
 

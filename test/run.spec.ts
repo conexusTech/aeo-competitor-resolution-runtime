@@ -39,6 +39,7 @@ const candidate: ParsedCandidate = {
   isFirstParty: true,
   sellerName: null,
   imageUrl: null,
+  partialMatch: false,
 };
 
 const adapter: RetailerAdapter = {

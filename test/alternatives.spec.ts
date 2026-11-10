@@ -25,6 +25,7 @@ const candidate = (over: Partial<ParsedCandidate> = {}): ParsedCandidate => ({
   itemId: "N82E00000001",
   url: "https://retailer.test/p/1",
   imageUrl: null,
+  partialMatch: false,
   title: "ACME Widget K72337US 12-pack",
   brand: "ACME",
   model: "K72337US",

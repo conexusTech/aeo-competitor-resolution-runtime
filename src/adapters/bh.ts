@@ -216,7 +216,11 @@ function imageOf(item: Json): string | null {
  */
 const SELLER = "B&H Photo";
 
-function toCandidate(item: Json): ParsedCandidate | null {
+function toCandidate(
+  item: Json,
+  /** The page this card is on says it matched only part of the query. */
+  partialMatch: boolean,
+): ParsedCandidate | null {
   const itemId = idAt(obj(item, "itemKey"), "skuNo");
   const core = obj(item, "core");
   const url = absolute(strAt(core, "detailsUrl"));
@@ -238,7 +242,19 @@ function toCandidate(item: Json): ParsedCandidate | null {
     isFirstParty: true,
     sellerName: SELLER,
     imageUrl: imageOf(item),
+    partialMatch,
   };
+}
+
+/**
+ * Whether B&H answered with a partial match — `PARTIAL_SEARCH` in the
+ * listing's `infoMessages`: nothing matched every word, so it filled the page
+ * with items matching some of them.
+ */
+function isPartialSearch(data: Json): boolean {
+  return arr(data, "infoMessages").some(
+    (m) => strAt(m, "type") === "PARTIAL_SEARCH",
+  );
 }
 
 /** The listing response of a search or category page, or `null`. */
@@ -269,11 +285,12 @@ export function parseSearchResults(html: string): ParsedCandidate[] | null {
   if (data === null) return null;
 
   const items = arr(data, "items");
+  const partial = isPartialSearch(data);
   const out: ParsedCandidate[] = [];
   const seen = new Set<string>();
   for (const item of items) {
     if (!isObj(item)) continue;
-    const candidate = toCandidate(item);
+    const candidate = toCandidate(item, partial);
     if (candidate === null || seen.has(candidate.itemId)) continue;
     seen.add(candidate.itemId);
     out.push(candidate);

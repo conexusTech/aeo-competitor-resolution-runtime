@@ -611,6 +611,8 @@ export function indexCandidates(
       isFirstParty: true,
       sellerName: SELLER,
       imageUrl: null,
+      // The index lists products; it answers no query, partially or not.
+      partialMatch: false,
     }));
 }
 

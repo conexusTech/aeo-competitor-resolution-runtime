@@ -82,6 +82,21 @@ export interface ParsedCandidate {
    * `javascript:`, a `data:` or a relative path.
    */
   readonly imageUrl: string | null;
+  /**
+   * The retailer says this result matched only part of what was asked — a
+   * partial or look-alike answer, not a match for the query.
+   *
+   * 🔴 **Never opened for a barcode query.** A barcode names exactly one
+   * product, so a result the retailer itself marks as not matching it is a
+   * look-alike, and probing it spends a page on a product that is not the
+   * item. Measured at B&H: a query it matches nothing of comes back as
+   * `PARTIAL_SEARCH` with 28 screen kits. Kept in the pool for the ranking to
+   * judge, since a partial page answering a part number can hold the item.
+   *
+   * Required, so the next adapter states its answer; `false` for a retailer
+   * that says nothing, or drops its look-alikes itself.
+   */
+  readonly partialMatch: boolean;
 }
 
 /** What a product page yields. */

@@ -62,6 +62,7 @@ function adapter(): RetailerAdapter {
               isFirstParty: true,
               sellerName: null,
               imageUrl: null,
+              partialMatch: false,
             },
           ]
         : [],

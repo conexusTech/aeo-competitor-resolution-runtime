@@ -245,6 +245,9 @@ function toCandidate(
     // pairing supplies it.
     sellerName: isFirstParty === true ? "Best Buy" : null,
     imageUrl: safeImageUrl(strAt(image, "piscesHref") ?? strAt(image, "href")),
+    // 🔑 Best Buy's look-alikes never reach here: a `dvsOnly` page answers
+    // `[]` and an `isTermMatch: false` document is dropped.
+    partialMatch: false,
   };
 }
 
