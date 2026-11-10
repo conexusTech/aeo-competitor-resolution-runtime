@@ -354,39 +354,49 @@ export class GatewayClient {
           `answers a larger batch with a non-retryable 400`,
       );
     }
-    // 🔴 Refused here, loudly, rather than truncated: the gateway validates the
-    // reason at `MAX_UNVERIFIABLE_REASON_LENGTH` and answers a longer one by
-    // refusing the WHOLE batch with a 400 it never asks again for. A cut
-    // reason would be words no adapter wrote, so it is not cut either.
-    for (const resolution of resolutions) {
-      const reason = resolution.match?.unverifiableReason ?? null;
-      if (reason !== null && reason.length > MAX_UNVERIFIABLE_REASON_LENGTH) {
-        throw new Error(
-          `item ${resolution.clientSku}'s unverifiableReason is ` +
-            `${reason.length} characters, over the gateway's ` +
-            `${MAX_UNVERIFIABLE_REASON_LENGTH}: it would refuse this whole ` +
-            `batch, so it is not sent`,
-        );
-      }
-    }
     return this.postEvent({
       type: "resolutions",
-      // 🔴 Held to the gateway's limit here, the one place every finding
-      // passes before it is posted: a failure past `MAX_FAILURE_LENGTH`
-      // would refuse the whole batch. A failure is the runtime's own words,
-      // and a cut one is still a failure, which is what the gateway files.
-      resolutions: resolutions.map((resolution) =>
-        resolution.failure === null ||
-        resolution.failure.length <= MAX_FAILURE_LENGTH
-          ? resolution
-          : {
-              ...resolution,
-              failure: boundText(resolution.failure, MAX_FAILURE_LENGTH),
-            },
-      ),
+      resolutions: resolutions.map((resolution) => this.forTheWire(resolution)),
       ...(requestsSpent === undefined ? {} : { requests_spent: requestsSpent }),
       ...delivered(pagesDelivered),
     });
+  }
+
+  /**
+   * One finding held to the gateway's limits, so no one field refuses the
+   * batch it rides in. Everything else is sent as it is.
+   *
+   * - 🔴 **A failure past `MAX_FAILURE_LENGTH` is cut**, ending "…". It is the
+   *   runtime's own words, and a cut failure is still a failure, which is the
+   *   fact the gateway files.
+   * - 🔴 **An unverifiable reason past `MAX_UNVERIFIABLE_REASON_LENGTH` is sent
+   *   as `null`, and logged as an error naming the item.** Never cut: a cut
+   *   reason is words no adapter wrote. And never refused: refusing it here
+   *   lost the whole batch, exactly as the gateway's 400 would have. Without
+   *   the reason the finding still goes to a person, under the gateway's own
+   *   note. Every adapter's reasons are held to the limit in a test, so this
+   *   is a defect's last line, not a path a run takes.
+   */
+  private forTheWire(resolution: Resolution): Resolution {
+    let held = resolution;
+    if (held.failure !== null && held.failure.length > MAX_FAILURE_LENGTH) {
+      held = { ...held, failure: boundText(held.failure, MAX_FAILURE_LENGTH) };
+    }
+    const reason = held.match?.unverifiableReason ?? null;
+    if (
+      held.match !== null &&
+      reason !== null &&
+      reason.length > MAX_UNVERIFIABLE_REASON_LENGTH
+    ) {
+      this.log(
+        `error: item ${held.clientSku}'s unverifiableReason is ` +
+          `${reason.length} characters, over the gateway's ` +
+          `${MAX_UNVERIFIABLE_REASON_LENGTH}: it is sent as null so the ` +
+          `batch is not refused`,
+      );
+      held = { ...held, match: { ...held.match, unverifiableReason: null } };
+    }
+    return held;
   }
 
   /**

@@ -103,7 +103,7 @@ export interface ResolutionEvidence {
    * 🔑 **Jody's rule: a candidate without a barcode match goes to a person**,
    * and this is what that person reads beside it ("discontinued at B&H, no
    * UPC published"). Never longer than `MAX_UNVERIFIABLE_REASON_LENGTH`: the
-   * gateway client refuses to send one that is.
+   * gateway client sends one that is as `null`, and logs it as an error.
    */
   readonly unverifiableReason: string | null;
 }

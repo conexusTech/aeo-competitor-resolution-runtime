@@ -507,16 +507,38 @@ describe("the batch cap is a cross-repo contract", () => {
     expect(calls).toHaveLength(1);
   });
 
-  it("🔴 refuses, loudly, a reason past the gateway's limit — never truncates it", async () => {
-    const { client: c, calls } = client([ok()]);
+  // 🔴 Review finding 8: refusing the batch here lost every finding in it,
+  // exactly as the gateway's 400 would have. One field is dropped instead.
+  it("🔴 sends the batch with a reason past the gateway's limit as null — never truncated, never the batch lost", async () => {
+    const lines: string[] = [];
+    const { client: c, calls } = client([ok()], (m) => lines.push(m));
     const over = "x".repeat(MAX_UNVERIFIABLE_REASON_LENGTH + 1);
-    await expect(
-      c.reportResolutions([resolution("SKU-001"), unverifiable(over)]),
-    ).rejects.toThrow(
-      /SKU-Z623's unverifiableReason is 201 characters, over the gateway's 200/,
+    const outcome = await c.reportResolutions([
+      resolution("SKU-001"),
+      unverifiable(over),
+    ]);
+    expect(outcome.kind).toBe("applied");
+    expect(calls).toHaveLength(1);
+    const body = bodyOf(calls[0]) as {
+      resolutions: {
+        clientSku: string;
+        outcome: string;
+        match: Record<string, unknown> | null;
+      }[];
+    };
+    expect(body.resolutions.map((r) => r.clientSku)).toEqual([
+      "SKU-001",
+      "SKU-Z623",
+    ]);
+    // The finding itself is intact; only the one field is gone.
+    const z623 = body.resolutions[1];
+    expect(z623?.outcome).toBe("unverifiable");
+    expect(z623?.match?.["unverifiableReason"]).toBeNull();
+    expect(z623?.match?.["itemId"]).toBe("1234");
+    // Logged as an error naming the item and the length.
+    expect(lines.join("\n")).toMatch(
+      /error: item SKU-Z623's unverifiableReason is 201 characters, over the gateway's 200/,
     );
-    // Nothing was sent: neither a cut reason nor the rest of the batch.
-    expect(calls).toHaveLength(0);
   });
 
   it("refuses an over-cap batch here rather than sending it to be 400'd", async () => {

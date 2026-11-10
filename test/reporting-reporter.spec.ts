@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import type { ReportOutcome } from "../src/gateway/client.js";
+import { GatewayClient, type ReportOutcome } from "../src/gateway/client.js";
 import {
   FLUSH_AT,
   GatewayReporter,
@@ -350,5 +350,77 @@ describe("the reporter", () => {
     await reporter.offer(resolution("A"));
     await reporter.reportError("boom");
     expect(gateway.events).not.toContain("error");
+  });
+});
+
+describe("🔴 an over-limit unverifiable reason never loses a batch (review finding 8)", () => {
+  let dir = "";
+  beforeEach(async () => {
+    dir = await mkdtemp(path.join(tmpdir(), "resolution-reporter-"));
+  });
+  afterEach(async () => {
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it("is sent and acknowledged with every other finding beside it", async () => {
+    const posted: unknown[] = [];
+    const lines: string[] = [];
+    const client = new GatewayClient(
+      { baseUrl: "https://gateway.test", user: "u", password: "p" },
+      { tenantId: "t", organizationId: "o", runId: "r" },
+      {
+        fetch: (_url, init) => {
+          const sent = init?.body;
+          if (typeof sent !== "string") throw new Error("no JSON body");
+          posted.push(JSON.parse(sent));
+          return Promise.resolve(new Response("{}", { status: 200 }));
+        },
+        log: (m) => lines.push(m),
+        sleep: async () => {},
+      },
+    );
+    const reporter = new GatewayReporter(client, {
+      runDir: dir,
+      flushAt: 2,
+      log: (m) => lines.push(m),
+    });
+    await reporter.load();
+    const finding = (clientSku: string, reason: string | null): Resolution => ({
+      barcode: "097855066466",
+      clientSku,
+      outcome: "unverifiable",
+      identity: null,
+      queriesTried: [],
+      candidatesSeen: 1,
+      probes: 1,
+      requests: 1,
+      match: {
+        itemId: "1234",
+        url: "https://www.bhphotovideo.com/c/product/1234-REG/x.html",
+        title: "Logitech Z623",
+        brand: "Logitech",
+        model: "980-000402",
+        priceCents: null,
+        inStock: false,
+        isFirstParty: true,
+        sellerName: "B&H Photo",
+        imageUrl: null,
+        retailerBarcode: null,
+        score: 26,
+        unverifiableReason: reason,
+      },
+      alternatives: [],
+      failure: null,
+      searchesUnfetched: 0,
+      searchesNotResultsPage: 0,
+      probesUnanswered: 0,
+    });
+    await reporter.offer(finding("SKU-A", "discontinued at B&H"));
+    await reporter.offer(finding("SKU-B", "y".repeat(201)));
+    expect(posted).toHaveLength(1);
+    expect(reporter.wasReported("SKU-A")).toBe(true);
+    expect(reporter.wasReported("SKU-B")).toBe(true);
+    expect(lines.join("\n")).toContain("SKU-B");
+    expect(lines.join("\n")).not.toMatch(/could not report/);
   });
 });

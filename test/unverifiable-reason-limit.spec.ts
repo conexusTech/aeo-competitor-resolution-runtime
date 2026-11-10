@@ -18,10 +18,11 @@ import {
  * No adapter states an unverifiable reason the gateway would refuse.
  *
  * 🔴 **A reason past `MAX_UNVERIFIABLE_REASON_LENGTH` costs a whole batch**:
- * the gateway answers it with a 400 that is never retried. The client refuses
- * to send one (see `gateway-client.spec.ts`), which keeps the batch from being
- * lost but still fails the run — so every reason an adapter can state is held
- * to the limit here, on every real page committed to this repo.
+ * the gateway answers it with a 400 that is never retried. The client sends
+ * one as `null` and logs an error (see `gateway-client.spec.ts`), which keeps
+ * the batch but loses the reason a person would have read — so every reason
+ * an adapter can state is held to the limit here, on every real page
+ * committed to this repo.
  */
 
 const ADAPTERS: readonly RetailerAdapter[] = [

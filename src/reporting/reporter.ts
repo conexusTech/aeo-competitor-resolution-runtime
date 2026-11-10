@@ -207,6 +207,8 @@ export class GatewayReporter {
     } catch (error) {
       // A throw here is a programming error rather than a network one — the
       // client only throws on an over-cap batch, which this cannot produce.
+      // 🔴 An over-long field is never a throw: the client sends it held to
+      // the gateway's limit, so one item's string cannot lose this batch.
       // Logged and swallowed regardless: a reporting defect must not end a run.
       this.log(
         `could not report ${batch.length} finding(s): ` +

@@ -182,8 +182,9 @@ export interface ParsedProduct {
  * the field at 200 characters (`aeo-backend` `MAX_UNVERIFIABLE_REASON_LENGTH`),
  * and a value past it fails the whole resolutions event with a 400 the
  * runtime never retries — every finding in it lost. Every adapter's reasons
- * are held to this in a test, and the gateway client refuses to send a longer
- * one rather than truncating it into something nobody wrote.
+ * are held to this in a test, and the gateway client sends a longer one as
+ * `null`, logged as an error, rather than truncating it into something nobody
+ * wrote or losing the batch.
  */
 export const MAX_UNVERIFIABLE_REASON_LENGTH = 200;
 
