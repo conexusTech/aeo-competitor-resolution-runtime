@@ -1070,7 +1070,21 @@ async function resolveCounted(
     ...rankInput,
     candidate: best.candidate,
   });
-  if (best.score < MIN_EVIDENCE_TO_REPORT || !bestHasEvidence) {
+  /**
+   * 🔴 **Jody's rule: a candidate without a barcode match goes to a person.**
+   * A product index states no model, so an index candidate can never show
+   * part-number evidence, and one whose page published no barcode would
+   * otherwise be filed as not carried. Every index candidate matched the item
+   * by its lead word — its brand, or its product line (`ProductIndex.
+   * candidates`) — and that match is the floor for `unverifiable` ONLY: a
+   * page whose barcode disagrees is another product, never `unconfirmed`, and
+   * nothing but an agreeing barcode verifies.
+   */
+  const leadWordFloor = productIndex !== null && noBarcodeFound !== null;
+  if (
+    !leadWordFloor &&
+    (best.score < MIN_EVIDENCE_TO_REPORT || !bestHasEvidence)
+  ) {
     return {
       ...counted,
       outcome: "not-found",

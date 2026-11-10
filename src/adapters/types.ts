@@ -325,6 +325,13 @@ export interface ProductIndex {
   /**
    * The entries worth probing for an item, best first.
    *
+   * 🔴 **Every candidate returned matched the item by the word its name leads
+   * with** — the item's brand, or a product-line word of the client's name
+   * for it. Resolution leans on that: an index states no model, so this match
+   * is the floor that sends a candidate whose page publishes no barcode to a
+   * person as `unverifiable` (Jody's rule). It is never the floor for
+   * `unconfirmed`, and never for `verified`.
+   *
    * 🔴 A candidate's `brand` is set only where the entry's name leads with
    * the item's brand — never invented from a name that does not say it.
    */
