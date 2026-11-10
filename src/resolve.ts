@@ -88,7 +88,7 @@ export interface ResolutionEvidence {
   readonly inStock: boolean | null;
   readonly isFirstParty: boolean | null;
   readonly sellerName: string | null;
-  /** The retailer's own product photo, absolute http(s) URL, or `null`. */
+  /** The retailer's own product photo, absolute https URL, or `null`. */
   readonly imageUrl: string | null;
   /** The barcode the retailer published, verbatim. `null` if it published none. */
   readonly retailerBarcode: string | null;

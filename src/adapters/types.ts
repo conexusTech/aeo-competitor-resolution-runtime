@@ -30,7 +30,8 @@ import type { FetchProfile } from "../fetcher/types.js";
 export function safeImageUrl(raw: string | null | undefined): string | null {
   if (raw === null || raw === undefined) return null;
   const value = raw.trim();
-  if (!/^https?:\/\//i.test(value)) return null;
+  // 🔴 https only: an `http:` image is mixed content on the https portal.
+  if (!/^https:\/\//i.test(value)) return null;
   return value.length > 1000 ? null : value;
 }
 
@@ -64,7 +65,7 @@ export interface ParsedCandidate {
   readonly isFirstParty: boolean | null;
   readonly sellerName: string | null;
   /**
-   * The retailer's own product photo, absolute http(s) URL, or `null`.
+   * The retailer's own product photo, absolute https URL, or `null`.
    *
    * 🔴 **Required, not optional, for the same reason `additionalBarcodes` is.**
    * `insights_listings.image_url` has existed since the table did and the
@@ -76,7 +77,7 @@ export interface ParsedCandidate {
    * runtime deliberately does not have — see `capture/types.ts`. This is an
    * attribute in HTML the run has already bought.
    *
-   * 🔴 **Only http(s).** The value is persisted by the gateway and rendered
+   * 🔴 **Only https.** The value is persisted by the gateway and rendered
    * into an `<img src>` by the portal, and it comes from a page a competitor
    * controls. An adapter returns `null` rather than passing on a
    * `javascript:`, a `data:` or a relative path.
