@@ -56,6 +56,43 @@ export const GATEWAY_PASSWORD_ENV = "RESOLUTION_GATEWAY_PASSWORD";
  */
 export const MAX_RESOLUTIONS_PER_EVENT = 250;
 
+/**
+ * The longest part number and brand a job item may carry — the gateway's own
+ * limits for those columns (`aeo-backend` `dfa90cd`). A longer one is two
+ * builds disagreeing, and refused like a value of the wrong type.
+ */
+export const MAX_PART_NUMBER_LENGTH = 128;
+export const MAX_BRAND_LENGTH = 160;
+
+/**
+ * An optional text field of a job item: `null` where absent or null, the
+ * string where it is one within `max`, and an error naming the field
+ * otherwise.
+ *
+ * ⚠️ Tolerant of absence, strict about type and length — the rule
+ * `productName` and `capture` follow: a missing value is a gateway that
+ * predates the field, while a wrong one is two builds disagreeing and must
+ * not be read as "not supplied".
+ */
+export function optionalItemText(
+  item: Readonly<Record<string, unknown>>,
+  key: string,
+  max: number,
+  where: string,
+): string | null {
+  const value = item[key];
+  if (value === undefined || value === null) return null;
+  if (typeof value !== "string") {
+    throw new Error(`${where} has a non-string '${key}'`);
+  }
+  if (value.length > max) {
+    throw new Error(
+      `${where} has a '${key}' longer than ${max} characters (${value.length})`,
+    );
+  }
+  return value;
+}
+
 /** Attempts per request, including the first. */
 const ATTEMPTS = 4;
 const BACKOFF_BASE_MS = 500;
@@ -77,6 +114,15 @@ export interface JobItem {
    * field must still run, resolving exactly as it did before.
    */
   readonly productName: string | null;
+  /**
+   * The manufacturer part number and brand the client's list states.
+   *
+   * 🔑 **The client's word, ahead of anything the runtime derives** — see
+   * `ResolveRequest.partNumber`. ⚠️ Absent means not supplied, as for
+   * `productName`: a gateway that predates the fields sends neither.
+   */
+  readonly partNumber: string | null;
+  readonly brand: string | null;
   /**
    * Whether this item's page is worth keeping.
    *
@@ -757,10 +803,20 @@ export function parseJob(body: unknown, runId: string): ResolutionJob {
         `item ${index} of run ${runId} has a non-boolean 'capture' flag`,
       );
     }
+    const where = `item ${index} of run ${runId}`;
+    const partNumber = optionalItemText(
+      item,
+      "partNumber",
+      MAX_PART_NUMBER_LENGTH,
+      where,
+    );
+    const brand = optionalItemText(item, "brand", MAX_BRAND_LENGTH, where);
     parsed.push({
       barcode,
       clientSku,
       productName: productName ?? null,
+      partNumber,
+      brand,
       capture: capture === true,
     });
   }

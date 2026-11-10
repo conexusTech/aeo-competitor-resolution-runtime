@@ -26,6 +26,14 @@
  * the coupling there.
  */
 export type IdentityProvenance =
+  /**
+   * The client's own list states it — the part number and brand the gateway
+   * sends on each item. The most authoritative: it is what the client says
+   * the product is, at no cost, and it was never used until 2026-11-11 (a
+   * live Best Buy run searched a guessed `KMW72337` for Micro Center's
+   * `K72337US`, which its list stated outright).
+   */
+  | "client"
   /** The client's own catalogue states it. Authoritative. */
   | "client-catalogue"
   /** Derived from the barcode's manufacturer item reference. Free, no request. */
@@ -35,6 +43,7 @@ export type IdentityProvenance =
 
 /** Authority order, highest first. The pipeline tries sources in this order. */
 export const PROVENANCE_BY_AUTHORITY: readonly IdentityProvenance[] = [
+  "client",
   "client-catalogue",
   "barcode-derived",
   "search-inference",

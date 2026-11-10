@@ -191,20 +191,7 @@ export async function replay(name: ReplayName): Promise<ReplayedRow[]> {
       );
     case "costco-20": {
       const rows = [...costco.rows, costco.airpods];
-      const pages = corpus("./corpus/costco-20.json.gz");
-      const retailer = new ReplayFetcher({
-        entries: [
-          {
-            url: SITEMAP_INDEX,
-            body: gunzip("./raw/costco-sitemap-index.xml.gz"),
-          },
-          {
-            url: "https://www.costco.com/sitemap_lw_p_mod_001.xml",
-            body: gunzip("./raw/costco-sitemap-p-mod-full.xml.gz"),
-          },
-          ...pages.entries,
-        ],
-      });
+      const retailer = new ReplayFetcher(costcoCorpus());
       const productIndex = costcoAdapter.productIndex;
       if (productIndex === null) throw new Error("Costco has no index");
       return drive(
@@ -221,6 +208,21 @@ export async function replay(name: ReplayName): Promise<ReplayedRow[]> {
       );
     }
   }
+}
+
+/** Costco's real sitemap index, its product sitemap and the probed pages. */
+export function costcoCorpus(): Corpus {
+  const pages = corpus("./corpus/costco-20.json.gz");
+  return {
+    entries: [
+      { url: SITEMAP_INDEX, body: gunzip("./raw/costco-sitemap-index.xml.gz") },
+      {
+        url: "https://www.costco.com/sitemap_lw_p_mod_001.xml",
+        body: gunzip("./raw/costco-sitemap-p-mod-full.xml.gz"),
+      },
+      ...pages.entries,
+    ],
+  };
 }
 
 /** Where a replay's record lives. */

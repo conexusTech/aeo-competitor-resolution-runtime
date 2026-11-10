@@ -14,6 +14,11 @@
 
 import { readFile } from "node:fs/promises";
 
+import {
+  MAX_BRAND_LENGTH,
+  MAX_PART_NUMBER_LENGTH,
+  optionalItemText,
+} from "./gateway/client.js";
 import type { ResolveRequest } from "./resolve.js";
 
 export const JOB_FILE_ENV = "RESOLUTION_JOB_FILE";
@@ -57,6 +62,17 @@ export async function readJobEnvelope(
       `${path} must carry a retailerSlug and an items array; got ` +
         `${Object.keys(envelope).join(", ") || "nothing"}`,
     );
+  }
+  // 🔑 The client's part number and brand are held to the job's own rule —
+  // absent is fine, a wrong type or length is refused — and an item without
+  // them is passed on exactly as written, so an older file resolves as it
+  // always did.
+  for (const [index, item] of envelope.items.entries()) {
+    if (item === null || typeof item !== "object") continue;
+    const where = `${path}: item ${index}`;
+    const raw = item as unknown as Readonly<Record<string, unknown>>;
+    optionalItemText(raw, "partNumber", MAX_PART_NUMBER_LENGTH, where);
+    optionalItemText(raw, "brand", MAX_BRAND_LENGTH, where);
   }
   return {
     retailerSlug: envelope.retailerSlug,

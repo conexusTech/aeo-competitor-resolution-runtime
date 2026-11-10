@@ -23,6 +23,21 @@ const found = (
   );
 
 describe("mergeIdentities", () => {
+  it("🔴 the client's own part number and brand outrank every derived one", () => {
+    // Kensington K72337US: the barcode derives `72337`, a search engine reads
+    // `WIRELESS` off a seller's title. Neither replaces what the list states.
+    const merged = mergeIdentities(
+      found([
+        ["barcode-derived", { partNumber: "72337" }],
+        ["search-inference", { partNumber: "KMW72337", brand: "WIRELESS" }],
+        ["client", { partNumber: "K72337US", brand: "Kensington" }],
+      ]),
+    );
+    expect(merged?.partNumber).toBe("K72337US");
+    expect(merged?.brand).toBe("Kensington");
+    expect(merged?.provenance).toBe("client");
+  });
+
   it("prefers the authoritative source over the free one", () => {
     // 🔴 The case that forbids "free, so use it first". The barcode derives
     // `01043`; the client's catalogue publishes `63005`. Both are 5-digit
@@ -134,7 +149,10 @@ describe("mergeIdentities", () => {
   });
 
   it("pins the authority order, because everything above depends on it", () => {
+    // "client" added 2026-11-11: the part number and brand the client's own
+    // list states, which outrank everything the runtime can derive.
     expect([...PROVENANCE_BY_AUTHORITY]).toEqual([
+      "client",
       "client-catalogue",
       "barcode-derived",
       "search-inference",

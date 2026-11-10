@@ -257,7 +257,27 @@ export interface ResolveRequest {
    * in-flight run at intake rather than resolve it without a name.
    */
   readonly productName?: string | null;
+  /**
+   * The manufacturer part number the client's list states, and its brand.
+   *
+   * 🔑 **The client's word outranks anything derived** — provenance
+   * `"client"`, asked right after the barcode and ahead of the barcode's own
+   * item reference, and its brand is the brand a B&H part number is checked
+   * against and a product index is looked up by. A disagreeing brand from any
+   * other source never replaces it.
+   *
+   * ⚠️ **Optional, as `productName` is**, for the same reason: an older
+   * gateway sends neither, and with both absent every plan is what it was.
+   */
+  readonly partNumber?: string | null;
+  readonly brand?: string | null;
 }
+
+/** A supplied value worth using, or `null`: absent, null and blank are one. */
+const supplied = (value: string | null | undefined): string | null => {
+  const trimmed = value?.trim() ?? "";
+  return trimmed === "" ? null : trimmed;
+};
 
 /**
  * Fetch a page.
@@ -320,6 +340,22 @@ async function establishIdentity(
   let phrase: string | null = null;
   let fetchFailed = false;
 
+  // 🔑 The client's own word, first and free. With neither field supplied
+  // nothing is recorded, and every step below is what it always was.
+  const clientPartNumber = supplied(request.partNumber);
+  const clientBrand = supplied(request.brand);
+  if (clientPartNumber !== null || clientBrand !== null) {
+    found.set("client", {
+      partNumber: clientPartNumber,
+      brand: clientBrand,
+      title: null,
+    });
+    // First among the candidates, so the plan asks it before anything
+    // derived; and, being a part number, it spares the search-engine lookup
+    // below exactly as a catalogue's would.
+    if (clientPartNumber !== null) partNumbers.push(clientPartNumber);
+  }
+
   // Free, no request.
   const fromBarcode = identityFromBarcode(request);
   if (fromBarcode !== null) found.set("barcode-derived", fromBarcode);
@@ -340,7 +376,10 @@ async function establishIdentity(
       });
       if (fromCatalogue !== null) {
         found.set("client-catalogue", fromCatalogue);
-        if (fromCatalogue.partNumber !== null) {
+        if (
+          fromCatalogue.partNumber !== null &&
+          !partNumbers.includes(fromCatalogue.partNumber)
+        ) {
           partNumbers.push(fromCatalogue.partNumber);
         }
       }

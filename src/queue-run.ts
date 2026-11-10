@@ -150,6 +150,8 @@ export async function runDispatchedJob(
         barcode: item.barcode,
         clientSku: item.clientSku,
         productName: item.productName,
+        partNumber: item.partNumber,
+        brand: item.brand,
       })),
       adapter,
       deps.fetcher,
