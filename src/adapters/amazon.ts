@@ -293,6 +293,8 @@ export function parseProductPage(html: string): ParsedProduct {
     inStock: null,
     title: null,
     sellerName: null,
+    // Not read from the page: the search cell's answer stands.
+    isFirstParty: null,
     unverifiableReason: null,
   };
 }

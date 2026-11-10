@@ -1193,7 +1193,9 @@ function evidence(
     model: candidate.model,
     priceCents: page?.priceCents ?? candidate.priceCents,
     inStock: page?.inStock ?? candidate.inStock,
-    isFirstParty: candidate.isFirstParty,
+    // 🔑 The page's seller class first: a Best Buy card past the first few
+    // states none, and its page does.
+    isFirstParty: page?.isFirstParty ?? candidate.isFirstParty,
     sellerName: page?.sellerName ?? candidate.sellerName,
     imageUrl: candidate.imageUrl,
     retailerBarcode,

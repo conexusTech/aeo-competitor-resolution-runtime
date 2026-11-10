@@ -123,6 +123,7 @@ describe("parseProductPage", () => {
       title:
         "CyberPower 900VA/450W Simulated Sine Wave Slim UPS Battery Backup with Surge Protection",
       sellerName: "Costco",
+      isFirstParty: true,
       unverifiableReason: null,
     });
   });

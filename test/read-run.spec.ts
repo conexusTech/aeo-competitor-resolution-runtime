@@ -513,6 +513,7 @@ describe("the adapter reads a product page it already knows", () => {
       title: null,
       // Newegg's page names no seller; its evidence keeps the search's.
       sellerName: null,
+      isFirstParty: null,
       unverifiableReason: null,
     });
   });

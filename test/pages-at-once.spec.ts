@@ -92,6 +92,7 @@ function retailer(limit: number): RetailerAdapter {
       inStock: null,
       title: null,
       sellerName: null,
+      isFirstParty: null,
       unverifiableReason: null,
     }),
   };

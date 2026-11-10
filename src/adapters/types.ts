@@ -147,6 +147,19 @@ export interface ParsedProduct {
    */
   readonly sellerName: string | null;
   /**
+   * Whether the page's offer is the retailer's own, or a marketplace seller's
+   * — `null` where the page does not say.
+   *
+   * 🔴 **Required, because a search card may not say.** Best Buy hydrates
+   * only the first few cards of a search; the rest carry a SKU and no seller,
+   * so their `isFirstParty` is unknown while the product page states
+   * `seller.classification`. The pairing's evidence takes this before the
+   * card's, as it does the seller's name: an unknown is persisted as a
+   * marketplace listing, and a first-party one stored that way weakens a
+   * barcode agreement that is in fact authoritative.
+   */
+  readonly isFirstParty: boolean | null;
+  /**
    * Why this page publishes no barcode, where the page itself says — or
    * `null` where it says nothing, or publishes one.
    *

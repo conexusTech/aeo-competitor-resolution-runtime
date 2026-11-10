@@ -341,6 +341,9 @@ export function parseProductPage(html: string): ParsedProduct | null {
     inStock: null,
     title: page.title,
     sellerName: SELLER,
+    // 🔑 `true`, not `null`: Costco sells every item itself (see `SELLER`),
+    // so its page states that the offer is its own.
+    isFirstParty: true,
     // A Costco page says nothing about why it publishes no barcode.
     unverifiableReason: null,
   };

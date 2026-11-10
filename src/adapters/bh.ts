@@ -467,6 +467,9 @@ export function parseProductPage(html: string): ParsedProduct | null {
     inStock: page.inStock,
     title: page.title,
     sellerName: SELLER,
+    // 🔑 `true`, not `null`: B&H has no marketplace (see `SELLER`), so the
+    // page that names B&H as the seller states that the offer is its own.
+    isFirstParty: true,
     // A discontinued item's page says why it publishes no barcode.
     unverifiableReason:
       page.upcs.length === 0 && page.discontinued ? DISCONTINUED_NO_UPC : null,

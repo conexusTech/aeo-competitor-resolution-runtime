@@ -340,6 +340,8 @@ interface PageProduct {
   readonly inStock: boolean | null;
   readonly title: string | null;
   readonly sellerName: string | null;
+  /** `1P` Best Buy, `3P` a marketplace seller, `null` unstated. */
+  readonly isFirstParty: boolean | null;
 }
 
 const LD_JSON =
@@ -467,6 +469,7 @@ function pageProduct(html: string): PageProduct | null {
     sellerName:
       offerSeller ??
       (firstPartyOf(classification) === true ? "Best Buy" : null),
+    isFirstParty: firstPartyOf(classification),
   };
 }
 
@@ -489,6 +492,8 @@ export function parseProductPage(html: string): ParsedProduct | null {
     inStock: product.inStock,
     title: product.title,
     sellerName: product.sellerName,
+    // The page's `seller.classification`, which an unhydrated card lacks.
+    isFirstParty: product.isFirstParty,
     unverifiableReason: null,
   };
 }

@@ -75,6 +75,7 @@ function adapter(): RetailerAdapter {
       inStock: true,
       title: "Kingwin CF-08LB 80mm Fan",
       sellerName: null,
+      isFirstParty: null,
       unverifiableReason: null,
     }),
   };

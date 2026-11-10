@@ -255,6 +255,8 @@ describe("parseProductPage", () => {
       title:
         "Logitech - M310 Wireless Optical Ambidextrous Mouse - Wireless - Silver",
       sellerName: "Best Buy",
+      // The page's `seller.classification`: `1P`.
+      isFirstParty: true,
       unverifiableReason: null,
     });
   });
@@ -265,6 +267,8 @@ describe("parseProductPage", () => {
       priceCents: 12310,
       inStock: false,
       sellerName: "IPC-STORE",
+      // `3P`: a marketplace seller's offer.
+      isFirstParty: false,
     });
   });
 
