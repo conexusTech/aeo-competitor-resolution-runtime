@@ -172,6 +172,7 @@ function retailer(support: QuerySupport): RetailerAdapter {
       inStock: null,
       title: null,
       sellerName: null,
+      unverifiableReason: null,
     }),
   };
 }

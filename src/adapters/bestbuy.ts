@@ -486,6 +486,7 @@ export function parseProductPage(html: string): ParsedProduct | null {
     inStock: product.inStock,
     title: product.title,
     sellerName: product.sellerName,
+    unverifiableReason: null,
   };
 }
 

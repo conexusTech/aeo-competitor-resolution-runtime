@@ -34,6 +34,7 @@ import {
   type CaptureArtifact,
   type CapturePolicy,
 } from "../capture/types.js";
+import { MAX_UNVERIFIABLE_REASON_LENGTH } from "../adapters/types.js";
 import { buildVersion } from "../fetcher/select.js";
 import type { ListingReading } from "../read-run.js";
 import type { Resolution } from "../resolve.js";
@@ -351,6 +352,21 @@ export class GatewayClient {
           `findings and this one carries ${resolutions.length} — the gateway ` +
           `answers a larger batch with a non-retryable 400`,
       );
+    }
+    // 🔴 Refused here, loudly, rather than truncated: the gateway validates the
+    // reason at `MAX_UNVERIFIABLE_REASON_LENGTH` and answers a longer one by
+    // refusing the WHOLE batch with a 400 it never asks again for. A cut
+    // reason would be words no adapter wrote, so it is not cut either.
+    for (const resolution of resolutions) {
+      const reason = resolution.match?.unverifiableReason ?? null;
+      if (reason !== null && reason.length > MAX_UNVERIFIABLE_REASON_LENGTH) {
+        throw new Error(
+          `item ${resolution.clientSku}'s unverifiableReason is ` +
+            `${reason.length} characters, over the gateway's ` +
+            `${MAX_UNVERIFIABLE_REASON_LENGTH}: it would refuse this whole ` +
+            `batch, so it is not sent`,
+        );
+      }
     }
     return this.postEvent({
       type: "resolutions",

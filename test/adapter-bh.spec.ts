@@ -306,6 +306,7 @@ describe("parseProductPage", () => {
       inStock: true,
       title: "Logitech M310 Wireless Mouse (Silver)",
       sellerName: "B&H Photo",
+      unverifiableReason: null,
     });
   });
 
@@ -338,6 +339,8 @@ describe("parseProductPage", () => {
       inStock: false,
       title: "Logitech Z623 THX-Certified 2.1 Speaker System",
       sellerName: "B&H Photo",
+      // 🔑 Why it has no barcode, on the evidence a reviewer reads.
+      unverifiableReason: "discontinued at B&H, no UPC published",
     });
     expect(
       child(itemOf(extractPreloadedData(PDP_Z623) ?? {}), "priceInfo")["price"],

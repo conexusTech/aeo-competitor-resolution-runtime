@@ -12,6 +12,7 @@ import {
   parseJob,
 } from "../src/gateway/client.js";
 import type { JobItem } from "../src/gateway/client.js";
+import { MAX_UNVERIFIABLE_REASON_LENGTH } from "../src/adapters/types.js";
 import type { Resolution } from "../src/resolve.js";
 
 /**
@@ -449,6 +450,72 @@ describe("the batch cap is a cross-repo contract", () => {
     // number. Matching rather than guessing lower follows the precedent the
     // prospect scanner set for the scan-event cap.
     expect(MAX_RESOLUTIONS_PER_EVENT).toBe(250);
+  });
+
+  /** A resolution that went to a person, with the reason its page gave. */
+  const unverifiable = (reason: string | null): Resolution => ({
+    barcode: "097855066466",
+    clientSku: "SKU-Z623",
+    outcome: "unverifiable",
+    identity: null,
+    queriesTried: ["980-000402"],
+    candidatesSeen: 1,
+    probes: 1,
+    requests: 2,
+    match: {
+      itemId: "1234",
+      url: "https://www.bhphotovideo.com/c/product/1234-REG/x.html",
+      title: "Logitech Z623",
+      brand: "Logitech",
+      model: "980-000402",
+      priceCents: null,
+      inStock: false,
+      isFirstParty: true,
+      sellerName: "B&H Photo",
+      imageUrl: null,
+      retailerBarcode: null,
+      score: 26,
+      unverifiableReason: reason,
+    },
+    alternatives: [],
+    failure: null,
+    searchesUnfetched: 0,
+    searchesNotResultsPage: 0,
+  });
+
+  it("sends the unverifiable reason camelCase, on the evidence", async () => {
+    const { client: c, calls } = client([ok()]);
+    await c.reportResolutions([
+      unverifiable("discontinued at B&H, no UPC published"),
+    ]);
+    const body = bodyOf(calls[0]) as {
+      resolutions: { match: Record<string, unknown> }[];
+    };
+    expect(body.resolutions[0]?.match["unverifiableReason"]).toBe(
+      "discontinued at B&H, no UPC published",
+    );
+  });
+
+  it("sends a reason exactly at the gateway's limit", async () => {
+    expect(MAX_UNVERIFIABLE_REASON_LENGTH).toBe(200);
+    const { client: c, calls } = client([ok()]);
+    const at = "x".repeat(MAX_UNVERIFIABLE_REASON_LENGTH);
+    expect((await c.reportResolutions([unverifiable(at)])).kind).toBe(
+      "applied",
+    );
+    expect(calls).toHaveLength(1);
+  });
+
+  it("🔴 refuses, loudly, a reason past the gateway's limit — never truncates it", async () => {
+    const { client: c, calls } = client([ok()]);
+    const over = "x".repeat(MAX_UNVERIFIABLE_REASON_LENGTH + 1);
+    await expect(
+      c.reportResolutions([resolution("SKU-001"), unverifiable(over)]),
+    ).rejects.toThrow(
+      /SKU-Z623's unverifiableReason is 201 characters, over the gateway's 200/,
+    );
+    // Nothing was sent: neither a cut reason nor the rest of the batch.
+    expect(calls).toHaveLength(0);
   });
 
   it("refuses an over-cap batch here rather than sending it to be 400'd", async () => {

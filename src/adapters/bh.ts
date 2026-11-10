@@ -450,6 +450,9 @@ export function parseProductPage(html: string): ParsedProduct | null {
     inStock: page.inStock,
     title: page.title,
     sellerName: SELLER,
+    // A discontinued item's page says why it publishes no barcode.
+    unverifiableReason:
+      page.upcs.length === 0 && page.discontinued ? DISCONTINUED_NO_UPC : null,
   };
 }
 
@@ -463,16 +466,14 @@ export function parseProductPage(html: string): ParsedProduct | null {
  * against. Such a listing is `unverifiable`, never verified and never "not
  * carried", and this is the reason a reviewer needs beside it.
  *
- * ⚠️ **Stated here, not on the wire.** The evidence a run reports carries no
- * reason field — the gateway composes its own note from the outcome — so this
- * is the one statement of it until one exists.
+ * 🔑 **On the wire as the evidence's `unverifiableReason`**, through
+ * `parseProductPage`, which states it for exactly the page this function
+ * names it for.
  */
 export const DISCONTINUED_NO_UPC = "discontinued at B&H, no UPC published";
 
 export function noBarcodeReason(html: string): string | null {
-  const page = pageItem(html);
-  if (page === null || page.upcs.length > 0) return null;
-  return page.discontinued ? DISCONTINUED_NO_UPC : null;
+  return parseProductPage(html)?.unverifiableReason ?? null;
 }
 
 /** What a listing's own page says, for a read run. */

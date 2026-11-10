@@ -56,6 +56,7 @@ const page = (over: Partial<ParsedProduct> = {}): ParsedProduct => ({
   inStock: null,
   title: null,
   sellerName: null,
+  unverifiableReason: null,
   ...over,
 });
 

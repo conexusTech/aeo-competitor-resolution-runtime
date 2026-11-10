@@ -236,6 +236,7 @@ function disagreement(
       same(res.match?.priceCents, row.bhPriceCents, "price"),
       same(res.match?.inStock, STOCK[row.bhStock ?? ""], "stock"),
       same(res.match?.sellerName, "B&H Photo", "seller"),
+      same(res.match?.unverifiableReason, null, "unverifiable reason"),
       // Nothing bought to identify the item: one search, one product page.
       same(res.identity, null, "identity"),
       same(r.asked, [search(row.upc), res.match?.url], "pages asked"),
@@ -253,6 +254,8 @@ function disagreement(
         DISCONTINUED_NO_UPC,
         "reason",
       ),
+      // 🔑 And the reason reaches the wire, on the evidence the reviewer reads.
+      same(res.match?.unverifiableReason, DISCONTINUED_NO_UPC, "reason sent"),
     );
   } else {
     checks.push(
@@ -352,6 +355,9 @@ describe("20 B&H rows, replayed offline", () => {
       expect(r.resolution.failure).toBeNull();
       const url = r.resolution.match?.url ?? "";
       expect(noBarcodeReason(bodyAt(url))).toBe(
+        "discontinued at B&H, no UPC published",
+      );
+      expect(r.resolution.match?.unverifiableReason).toBe(
         "discontinued at B&H, no UPC published",
       );
     }

@@ -236,6 +236,18 @@ describe("53 rows, replayed offline", () => {
     }
   });
 
+  it("🔴 a Newegg pairing carries no unverifiable reason, unverifiable ones included", () => {
+    // Newegg's page says nothing about why its barcode field is empty, so
+    // the evidence must not claim to know: `null`, never a reason.
+    const matched = resolutions.filter((r) => r.resolution?.match != null);
+    expect(matched.some((r) => r.resolution?.outcome === "unverifiable")).toBe(
+      true,
+    );
+    for (const { resolution } of matched) {
+      expect(resolution?.match?.unverifiableReason).toBeNull();
+    }
+  });
+
   it("spends nothing", () => {
     expect(fetcher.liveRequestCount).toBe(0);
   });

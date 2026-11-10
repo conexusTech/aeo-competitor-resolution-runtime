@@ -90,6 +90,18 @@ export interface ResolutionEvidence {
   readonly retailerBarcode: string | null;
   /** Evidence score at the moment it was chosen. */
   readonly score: number;
+  /**
+   * Why the listing publishes no barcode, in the retailer page's own terms,
+   * where the adapter can say — and only on an `unverifiable` pairing, one
+   * that matched by part number (and brand, where the retailer needs it) and
+   * could not be proven. `null` everywhere else.
+   *
+   * 🔑 **Jody's rule: a candidate without a barcode match goes to a person**,
+   * and this is what that person reads beside it ("discontinued at B&H, no
+   * UPC published"). Never longer than `MAX_UNVERIFIABLE_REASON_LENGTH`: the
+   * gateway client refuses to send one that is.
+   */
+  readonly unverifiableReason: string | null;
 }
 
 export interface Resolution {
@@ -986,6 +998,7 @@ export async function resolveItem(
         noBarcodeFound.score,
         null,
         pages.get(noBarcodeFound.candidate.url),
+        true,
       ),
       alternatives: alternativesFor({
         ranked,
@@ -1035,6 +1048,8 @@ function evidence(
   score: number,
   retailerBarcode: string | null,
   page: ParsedProduct | undefined,
+  /** Whether this is an `unverifiable` pairing, the only one with a reason. */
+  unverifiable = false,
 ): ResolutionEvidence {
   return {
     itemId: candidate.itemId,
@@ -1049,5 +1064,8 @@ function evidence(
     imageUrl: candidate.imageUrl,
     retailerBarcode,
     score,
+    unverifiableReason: unverifiable
+      ? (page?.unverifiableReason ?? null)
+      : null,
   };
 }

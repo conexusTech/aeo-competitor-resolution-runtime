@@ -838,6 +838,7 @@ describe("a dispatched run's selection", () => {
       imageUrl: null,
       retailerBarcode: "649532609635",
       score: 7,
+      unverifiableReason: null,
     },
   });
 

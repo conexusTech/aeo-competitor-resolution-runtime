@@ -131,7 +131,33 @@ export interface ParsedProduct {
    * result's, as it does the price.
    */
   readonly sellerName: string | null;
+  /**
+   * Why this page publishes no barcode, where the page itself says — or
+   * `null` where it says nothing, or publishes one.
+   *
+   * 🔑 **Jody's rule: a candidate without a barcode match goes to a person**,
+   * and the person needs the reason. B&H's discontinued items are the first:
+   * the right MFR # and brand, no UPC, no price — "discontinued at B&H, no
+   * UPC published". It reaches the reviewer as the evidence's
+   * `unverifiableReason`, and only on an `unverifiable` pairing.
+   *
+   * ⚠️ **At most `MAX_UNVERIFIABLE_REASON_LENGTH` characters.** Required, so
+   * the next adapter states its answer.
+   */
+  readonly unverifiableReason: string | null;
 }
+
+/**
+ * The longest `unverifiableReason` the gateway accepts.
+ *
+ * 🔴 **One home, because a longer one costs a batch.** The gateway validates
+ * the field at 200 characters (`aeo-backend` `MAX_UNVERIFIABLE_REASON_LENGTH`),
+ * and a value past it fails the whole resolutions event with a 400 the
+ * runtime never retries — every finding in it lost. Every adapter's reasons
+ * are held to this in a test, and the gateway client refuses to send a longer
+ * one rather than truncating it into something nobody wrote.
+ */
+export const MAX_UNVERIFIABLE_REASON_LENGTH = 200;
 
 /**
  * Which query shapes a retailer can actually answer, as configuration.

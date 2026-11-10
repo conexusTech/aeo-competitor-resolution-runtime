@@ -256,6 +256,7 @@ describe("resolve sends the competitor's profile on competitor pages only", () =
       inStock: null,
       title: null,
       sellerName: null,
+      unverifiableReason: null,
     }),
   };
 

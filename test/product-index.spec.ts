@@ -116,6 +116,7 @@ const indexed: RetailerAdapter = {
           inStock: null,
           title: null,
           sellerName: "R",
+          unverifiableReason: null,
         };
   },
 };

@@ -291,6 +291,7 @@ export function parseProductPage(html: string): ParsedProduct {
     inStock: null,
     title: null,
     sellerName: null,
+    unverifiableReason: null,
   };
 }
 
