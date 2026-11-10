@@ -441,6 +441,215 @@
         "distilled": "Distilled by scripts/distil-bh.mjs: only the fields the adapter reads are kept (the preloaded state's listing response and single-item product entry, trimmed to the fields parsed; the JSON-LD Product's url, mpn and gtin fields; the rendered \"UPC:\" lines), and the adapter's parsers were proven to give identical output on the raw capture and on this file. Every session value the raw page carried — bhTraceId, ssrReqId and qasAuthToken in its state, Cloudflare's __CF$cv$params and challenge ray=, the watchdog beacon's reqId= — is gone by construction, and test/bh-fixtures.spec.ts checks that none remains."
       },
       "gzBytes": 2150
+    },
+    {
+      "name": "costco-sitemap-index",
+      "why": "robots.txt names one sitemap index; it lists 15 sitemaps, one of them the /p/-/ product sitemap, and is a real 1,547-byte file — below the 2,000 bytes a fetcher takes as the least a page can be",
+      "facts": {
+        "url": "https://www.costco.com/sitemap_lw_index.xml",
+        "bytes": 1547,
+        "sitemaps": 15,
+        "productFiles": ["https://www.costco.com/sitemap_lw_p_mod_001.xml"],
+        "source": "meriwether-data-scraper recon/captures/costco-upc/cache",
+        "capturedOn": "2026-11-10",
+        "capturedThrough": "the vendor, country us, by the Costco investigation (row investigate-costco-competitor)",
+        "distilled": "Distilled by scripts/distil-costco.mjs: a product page keeps only its app marker, the JSON-LD Product (name, sku, url, offers) and the flight data's productDetailsData trimmed to the fields parsed (product id and UPC, each item's id, UPC, member-only and price-in-cart flags and short description, the selected item's price); a product sitemap keeps each <url><loc> and nothing else; the sitemap index is kept byte for byte. The adapter's parsers were proven to give identical output on the raw capture and on this file, and test/costco-fixtures.spec.ts checks that no session value (the sign-in link's nonce= and client_id, the monitoring agent's dtTrId, the per-item clientId uuid) remains."
+      },
+      "gzBytes": 230
+    },
+    {
+      "name": "costco-sitemap-p-mod-excerpt",
+      "why": "40 <url> blocks of the product sitemap, as the investigation cut them: a test-sized index",
+      "facts": {
+        "url": "https://www.costco.com/sitemap_lw_p_mod_001.xml",
+        "entries": 40,
+        "first": {
+          "itemId": "4201021105",
+          "url": "https://www.costco.com/p/-/msi-27-gaming-qhd-qd-oled-240hz-003ms-nvidia-g-sync--amd-freesync-monitor/4201021105",
+          "name": "msi 27 gaming qhd qd oled 240hz 003ms nvidia g sync amd freesync monitor"
+        },
+        "source": "meriwether-data-scraper packages/scraper/test/fixtures (the investigation's own, its sign-in nonce blanked)",
+        "capturedOn": "2026-11-10",
+        "capturedThrough": "the vendor, country us, by the Costco investigation (row investigate-costco-competitor)",
+        "distilled": "Distilled by scripts/distil-costco.mjs: a product page keeps only its app marker, the JSON-LD Product (name, sku, url, offers) and the flight data's productDetailsData trimmed to the fields parsed (product id and UPC, each item's id, UPC, member-only and price-in-cart flags and short description, the selected item's price); a product sitemap keeps each <url><loc> and nothing else; the sitemap index is kept byte for byte. The adapter's parsers were proven to give identical output on the raw capture and on this file, and test/costco-fixtures.spec.ts checks that no session value (the sign-in link's nonce= and client_id, the monitoring agent's dtTrId, the per-item clientId uuid) remains."
+      },
+      "gzBytes": 1402
+    },
+    {
+      "name": "costco-sitemap-p-mod-full",
+      "why": "the whole product sitemap Costco served on 2026-11-10: every product it sells online, the index the 20-row replay looks each item up in",
+      "facts": {
+        "url": "https://www.costco.com/sitemap_lw_p_mod_001.xml",
+        "entries": 18180,
+        "first": {
+          "itemId": "4201021105",
+          "url": "https://www.costco.com/p/-/msi-27-gaming-qhd-qd-oled-240hz-003ms-nvidia-g-sync--amd-freesync-monitor/4201021105",
+          "name": "msi 27 gaming qhd qd oled 240hz 003ms nvidia g sync amd freesync monitor"
+        },
+        "source": "meriwether-data-scraper recon/captures/costco-upc/cache",
+        "capturedOn": "2026-11-10",
+        "capturedThrough": "the vendor, country us, by the Costco investigation (row investigate-costco-competitor)",
+        "distilled": "Distilled by scripts/distil-costco.mjs: a product page keeps only its app marker, the JSON-LD Product (name, sku, url, offers) and the flight data's productDetailsData trimmed to the fields parsed (product id and UPC, each item's id, UPC, member-only and price-in-cart flags and short description, the selected item's price); a product sitemap keeps each <url><loc> and nothing else; the sitemap index is kept byte for byte. The adapter's parsers were proven to give identical output on the raw capture and on this file, and test/costco-fixtures.spec.ts checks that no session value (the sign-in link's nonce= and client_id, the monitoring agent's dtTrId, the per-item clientId uuid) remains."
+      },
+      "gzBytes": 386315
+    },
+    {
+      "name": "costco-pdp-sl900uc",
+      "why": "an ordinary item, price shown ($69.97), its one item stating a real UPC",
+      "facts": {
+        "url": "https://www.costco.com/p/-/cyberpower-900va450w-simulated-sine-wave-slim-ups-battery-backup-with-surge-protection/4000193283",
+        "product": {
+          "barcode": "649532936564",
+          "additionalBarcodes": [],
+          "priceCents": 6997,
+          "inStock": null,
+          "title": "CyberPower 900VA/450W Simulated Sine Wave Slim UPS Battery Backup with Surge Protection",
+          "sellerName": "Costco",
+          "unverifiableReason": null
+        },
+        "reading": {
+          "kind": "page",
+          "page": {
+            "pageItemId": "4000193283",
+            "barcode": "649532936564",
+            "additionalBarcodes": [],
+            "priceCents": 6997,
+            "inStock": null
+          }
+        },
+        "source": "meriwether-data-scraper packages/scraper/test/fixtures (the investigation's own, its sign-in nonce blanked)",
+        "capturedOn": "2026-11-10",
+        "capturedThrough": "the vendor, country us, by the Costco investigation (row investigate-costco-competitor)",
+        "distilled": "Distilled by scripts/distil-costco.mjs: a product page keeps only its app marker, the JSON-LD Product (name, sku, url, offers) and the flight data's productDetailsData trimmed to the fields parsed (product id and UPC, each item's id, UPC, member-only and price-in-cart flags and short description, the selected item's price); a product sitemap keeps each <url><loc> and nothing else; the sitemap index is kept byte for byte. The adapter's parsers were proven to give identical output on the raw capture and on this file, and test/costco-fixtures.spec.ts checks that no session value (the sign-in link's nonce= and client_id, the monitoring agent's dtTrId, the per-item clientId uuid) remains."
+      },
+      "gzBytes": 639
+    },
+    {
+      "name": "costco-pdp-cst1500suc-internal-parent-upc",
+      "why": "the parent product states Costco's own 499995717503; the item states the real 649532935468",
+      "facts": {
+        "url": "https://www.costco.com/p/-/cyberpower-1500va--900-watts-true-sine-wave-uninterruptible-power-supply-ups/4000091462",
+        "product": {
+          "barcode": "649532935468",
+          "additionalBarcodes": [],
+          "priceCents": 20999,
+          "inStock": null,
+          "title": "CyberPower 1500VA / 900 Watts True Sine Wave Uninterruptible Power Supply (UPS)",
+          "sellerName": "Costco",
+          "unverifiableReason": null
+        },
+        "reading": {
+          "kind": "page",
+          "page": {
+            "pageItemId": "4000091462",
+            "barcode": "649532935468",
+            "additionalBarcodes": [],
+            "priceCents": 20999,
+            "inStock": null
+          }
+        },
+        "source": "meriwether-data-scraper packages/scraper/test/fixtures (the investigation's own, its sign-in nonce blanked)",
+        "capturedOn": "2026-11-10",
+        "capturedThrough": "the vendor, country us, by the Costco investigation (row investigate-costco-competitor)",
+        "distilled": "Distilled by scripts/distil-costco.mjs: a product page keeps only its app marker, the JSON-LD Product (name, sku, url, offers) and the flight data's productDetailsData trimmed to the fields parsed (product id and UPC, each item's id, UPC, member-only and price-in-cart flags and short description, the selected item's price); a product sitemap keeps each <url><loc> and nothing else; the sitemap index is kept byte for byte. The adapter's parsers were proven to give identical output on the raw capture and on this file, and test/costco-fixtures.spec.ts checks that no session value (the sign-in link's nonce= and client_id, the monitoring agent's dtTrId, the per-item clientId uuid) remains."
+      },
+      "gzBytes": 636
+    },
+    {
+      "name": "costco-pdp-gold-bar-member-only",
+      "why": "member-only and price in cart: \"Sign In for Price\" to a signed-out visitor, its source still holding $4,089.99; only an internal number (4000001814005), so no barcode",
+      "facts": {
+        "url": "https://www.costco.com/p/-/1-oz-gold-bar-pamp-american-buffalo-new-in-assay/4000284893",
+        "product": {
+          "barcode": null,
+          "additionalBarcodes": [],
+          "priceCents": null,
+          "inStock": null,
+          "title": "1 oz Gold Bar PAMP American Buffalo (New In Assay)",
+          "sellerName": "Costco",
+          "unverifiableReason": null
+        },
+        "reading": {
+          "kind": "page",
+          "page": {
+            "pageItemId": "4000284893",
+            "barcode": null,
+            "additionalBarcodes": [],
+            "priceCents": null,
+            "inStock": null
+          }
+        },
+        "source": "meriwether-data-scraper packages/scraper/test/fixtures (the investigation's own, its sign-in nonce blanked)",
+        "capturedOn": "2026-11-10",
+        "capturedThrough": "the vendor, country us, by the Costco investigation (row investigate-costco-competitor)",
+        "distilled": "Distilled by scripts/distil-costco.mjs: a product page keeps only its app marker, the JSON-LD Product (name, sku, url, offers) and the flight data's productDetailsData trimmed to the fields parsed (product id and UPC, each item's id, UPC, member-only and price-in-cart flags and short description, the selected item's price); a product sitemap keeps each <url><loc> and nothing else; the sitemap index is kept byte for byte. The adapter's parsers were proven to give identical output on the raw capture and on this file, and test/costco-fixtures.spec.ts checks that no session value (the sign-in link's nonce= and client_id, the monitoring agent's dtTrId, the per-item clientId uuid) remains."
+      },
+      "gzBytes": 592
+    },
+    {
+      "name": "costco-pdp-shell-no-slug",
+      "why": "the product app answering 200 with no product in it, for an id that is not a current product",
+      "facts": {
+        "url": "https://www.costco.com/.product.1823433.html",
+        "product": null,
+        "reading": {
+          "kind": "not-a-product-page",
+          "detail": "Costco's product app with no product in it"
+        },
+        "source": "meriwether-data-scraper packages/scraper/test/fixtures (the investigation's own, its sign-in nonce blanked)",
+        "capturedOn": "2026-11-10",
+        "capturedThrough": "the vendor, country us, by the Costco investigation (row investigate-costco-competitor)",
+        "distilled": "Distilled by scripts/distil-costco.mjs: a product page keeps only its app marker, the JSON-LD Product (name, sku, url, offers) and the flight data's productDetailsData trimmed to the fields parsed (product id and UPC, each item's id, UPC, member-only and price-in-cart flags and short description, the selected item's price); a product sitemap keeps each <url><loc> and nothing else; the sitemap index is kept byte for byte. The adapter's parsers were proven to give identical output on the raw capture and on this file, and test/costco-fixtures.spec.ts checks that no session value (the sign-in link's nonce= and client_id, the monitoring agent's dtTrId, the per-item clientId uuid) remains."
+      },
+      "gzBytes": 176
+    },
+    {
+      "name": "costco-pdp-airpods-4-anc",
+      "why": "AirPods 4 with ANC, item 1611943: the item states 195949689604, Micro Center SKU 757427's UPC, at $99.97 shown — the one pairing the investigation proved — and its name has no \"apple\" in it",
+      "facts": {
+        "url": "https://www.costco.com/airpods-4-with-active-noise-cancellation.product.4000308504.html",
+        "product": {
+          "barcode": "195949689604",
+          "additionalBarcodes": [],
+          "priceCents": 9997,
+          "inStock": null,
+          "title": "AirPods 4 with Active Noise Cancellation",
+          "sellerName": "Costco",
+          "unverifiableReason": null
+        },
+        "reading": {
+          "kind": "page",
+          "page": {
+            "pageItemId": "4000308504",
+            "barcode": "195949689604",
+            "additionalBarcodes": [],
+            "priceCents": 9997,
+            "inStock": null
+          }
+        },
+        "source": "meriwether-data-scraper recon/captures/costco-upc/cache",
+        "capturedOn": "2026-11-10",
+        "capturedThrough": "the vendor, country us, by the Costco investigation (row investigate-costco-competitor)",
+        "distilled": "Distilled by scripts/distil-costco.mjs: a product page keeps only its app marker, the JSON-LD Product (name, sku, url, offers) and the flight data's productDetailsData trimmed to the fields parsed (product id and UPC, each item's id, UPC, member-only and price-in-cart flags and short description, the selected item's price); a product sitemap keeps each <url><loc> and nothing else; the sitemap index is kept byte for byte. The adapter's parsers were proven to give identical output on the raw capture and on this file, and test/costco-fixtures.spec.ts checks that no session value (the sign-in link's nonce= and client_id, the monitoring agent's dtTrId, the per-item clientId uuid) remains."
+      },
+      "gzBytes": 581
+    },
+    {
+      "name": "costco-search-upc-649532936564",
+      "why": "a search for SL900UC's own UPC, which Costco sells: the search app's shell, no product in it — the same as a search for nonsense",
+      "facts": {
+        "url": "https://www.costco.com/s?keyword=649532936564",
+        "product": null,
+        "reading": {
+          "kind": "not-a-product-page",
+          "detail": "Costco's search app: a search or category shell"
+        },
+        "source": "meriwether-data-scraper packages/scraper/test/fixtures (the investigation's own, its sign-in nonce blanked)",
+        "capturedOn": "2026-11-10",
+        "capturedThrough": "the vendor, country us, by the Costco investigation (row investigate-costco-competitor)",
+        "distilled": "Distilled by scripts/distil-costco.mjs: a product page keeps only its app marker, the JSON-LD Product (name, sku, url, offers) and the flight data's productDetailsData trimmed to the fields parsed (product id and UPC, each item's id, UPC, member-only and price-in-cart flags and short description, the selected item's price); a product sitemap keeps each <url><loc> and nothing else; the sitemap index is kept byte for byte. The adapter's parsers were proven to give identical output on the raw capture and on this file, and test/costco-fixtures.spec.ts checks that no session value (the sign-in link's nonce= and client_id, the monitoring agent's dtTrId, the per-item clientId uuid) remains."
+      },
+      "gzBytes": 176
     }
   ]
 }
