@@ -636,3 +636,30 @@ describe("resolving at B&H", () => {
     expect(resolution.outcome).not.toBe("verified");
   });
 });
+
+describe("the entity decoder (security finding 8)", () => {
+  const preloaded = (encoded: string): string =>
+    `<div class="bh-preloaded-data" data-data="${encoded}"></div>`;
+
+  it("🔴 leaves an entity named after an Object property as it is", () => {
+    expect(
+      extractPreloadedData(
+        preloaded(
+          "{&quot;a&quot;:&quot;x &constructor; &toString; &__proto__; &hasOwnProperty; y&quot;}",
+        ),
+      ),
+    ).toEqual({
+      a: "x &constructor; &toString; &__proto__; &hasOwnProperty; y",
+    });
+  });
+
+  it("CONTROL: still decodes the entities it names", () => {
+    expect(
+      extractPreloadedData(
+        preloaded(
+          "{&quot;a&quot;:&quot;&lt;b&gt; &amp; &#39;&#x41;&apos;&quot;}",
+        ),
+      ),
+    ).toEqual({ a: "<b> & 'A'" });
+  });
+});

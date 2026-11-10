@@ -90,7 +90,9 @@ function decodeEntities(value: string): string {
           ? String.fromCodePoint(code)
           : whole;
       }
-      return named[entity] ?? whole;
+      // 🔴 Only the entities named above: a lookup by `entity` alone would
+      // answer `&constructor;` with Object's constructor function.
+      return Object.hasOwn(named, entity) ? (named[entity] ?? whole) : whole;
     },
   );
 }
