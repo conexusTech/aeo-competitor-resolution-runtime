@@ -295,6 +295,55 @@ describe("resolveItem asks the barcode first", () => {
     expect(fetcher.asked.filter((u) => u === SEARCH(BARCODE))).toHaveLength(1);
   });
 
+  /**
+   * 🔴 **A barcode answered with nothing, and nothing else asked because the
+   * item could not be identified, is not a clean miss.** A barcode search
+   * finds only a listing published under that barcode; the part-number route
+   * is the plan's answer for one published under another. When the source
+   * that would give a part number cannot be fetched, that route is never
+   * taken, and filing the item as "not carried" would rest on less than the
+   * plan meant to ask.
+   */
+  it("🔴 an empty barcode answer with the identity lookup unfetched is a failure, not a clean miss", async () => {
+    // The barcode is answered with nothing; the catalogue page and the search
+    // engine both fail, so no part number is known to search by.
+    const fetcher = new Scripted({ [SEARCH(BARCODE)]: "NOTHING" });
+    const r = await resolveItem(
+      request,
+      retailer(SEARCHABLE),
+      fetcher,
+      OPTIONS,
+    );
+
+    expect(r.outcome).toBe("not-found");
+    expect(r.queriesTried).toEqual([BARCODE]);
+    expect(r.searchesUnfetched).toBe(0);
+    expect(r.failure).toMatch(/could not establish what this item is/);
+  });
+
+  it("CONTROL: the same empty answer with the item identified, and every search answered, is clean", async () => {
+    // Identity fetched (the search engine names a part number) and every
+    // part-number search answered with nothing: a miss is a fact.
+    const fetcher = new Scripted({
+      [SEARCH(BARCODE)]: "NOTHING",
+      [`https://www.google.com/search?q=%22${BARCODE}%22`]: SERP,
+      [SEARCH("Kingwin CF-08LB")]: "NOTHING",
+      [SEARCH("CF-08LB")]: "NOTHING",
+      [SEARCH("Kingwin CF-08")]: "NOTHING",
+      [SEARCH("CF-08")]: "NOTHING",
+      [SEARCH("Kingwin 01054")]: "NOTHING",
+    });
+    const r = await resolveItem(
+      request,
+      retailer(SEARCHABLE),
+      fetcher,
+      // The catalogue is not consulted, so no identity source failed.
+      { ...OPTIONS, clientCatalogueUrlTemplate: null },
+    );
+    expect(r.outcome).toBe("not-found");
+    expect(r.failure).toBeNull();
+  });
+
   it("a page that is not a results page is unanswered too", async () => {
     const fetcher = new Scripted({
       [SEARCH(BARCODE)]: "BLOCK",

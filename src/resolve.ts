@@ -687,13 +687,29 @@ export async function resolveItem(
    * credential or wait out a block.
    */
   const unanswered = unfetched + notAResultsPage;
+  /**
+   * 🔴 **And a miss needs the item identified, where identifying it failed.**
+   * With no part number known because a source could not be FETCHED, the plan
+   * asks only what needs none — the barcode, the client's name — and every
+   * part-number search is skipped. Each of those can be answered and the miss
+   * still rest on less than the plan meant to ask: a barcode search finds
+   * only a listing published under that barcode, and the part-number route is
+   * the plan's answer for one published under another. Best Buy answers a
+   * barcode with nothing for 9 of the 20 sampled rows, and a run that then
+   * cannot identify the item would have filed all 9 as not carried.
+   */
+  const identityUnfetched = fetchFailed && partNumbers.length === 0;
   const missFailure =
-    unanswered === 0
-      ? null
-      : `${unanswered} of ${tried.length} searches went unanswered by the ` +
+    unanswered !== 0
+      ? `${unanswered} of ${tried.length} searches went unanswered by the ` +
         `retailer: ${unfetched} could not be fetched and ${notAResultsPage} ` +
         `came back as not a results page, so a miss here cannot be told from ` +
-        `a search nobody answered`;
+        `a search nobody answered`
+      : identityUnfetched
+        ? `could not establish what this item is: a source needed to ` +
+          `identify it could not be fetched, so it was searched only by ` +
+          `${tried.map((q) => `"${q}"`).join(", ")} and never by part number`
+        : null;
   const counted = {
     ...base,
     searchesUnfetched: unfetched,
