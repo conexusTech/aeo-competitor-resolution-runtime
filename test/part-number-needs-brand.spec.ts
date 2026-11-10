@@ -292,3 +292,34 @@ describe("resolveItem, where a part number needs the brand", () => {
     expect(resolution.probes).toBe(0);
   });
 });
+
+describe("where the item's brand is unknown (review finding 12, documented in the B&H adapter)", () => {
+  it("another brand's listing under the same part number goes to a person — never verified", async () => {
+    const { adapter } = retailer(
+      true,
+      { "29538": [C2G_CABLE] },
+      { [C2G_CABLE.url]: product("757120295381") },
+    );
+    // The catalogue states the MFR # and no brand.
+    const noBrand = new Pages({
+      "https://client.test/p/SKU-1": `<script type="application/ld+json">${JSON.stringify(
+        { "@type": "Product", sku: "SKU-1", mpn: "29538" },
+      )}</script>`,
+      "https://r.test/s?q=29538": "search:29538",
+      [C2G_CABLE.url]: `page:${C2G_CABLE.url}`,
+    });
+    const r = await resolveItem(
+      { barcode: ALLSOP_UPC, clientSku: "SKU-1" },
+      adapter,
+      noBrand,
+      OPTIONS,
+    );
+    expect(r.identity?.brand ?? null).toBeNull();
+    // Probed: nothing about the item's brand refutes the cable.
+    expect(noBrand.asked).toContain(C2G_CABLE.url);
+    // Its barcode disagrees: a proposal for a person, never a verification.
+    expect(r.outcome).toBe("unconfirmed");
+    expect(r.match?.itemId).toBe("C2G");
+    expect(r.match?.retailerBarcode).toBeNull();
+  });
+});

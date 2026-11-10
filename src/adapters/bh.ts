@@ -542,6 +542,17 @@ export function readListingPage(html: string): ListingPageResult {
  * every word, so the client's brand spelling narrows an exact part number to
  * nothing or to a partial match: brand-scoped queries found none of the items
  * in 9 asked, where the bare MFR # found all 11 B&H carries.
+ *
+ * ⚠️ **Where the item's brand is unknown, the brand half of that rule cannot
+ * run, and is left so deliberately** (review finding 12, the lead). Nothing
+ * refutes a listing's brand, so a listing with the item's part number is a
+ * candidate whatever brand it is — the C2G cable under Allsop's "29538"
+ * included. It is still never verified without a barcode that agrees (Jody's
+ * rule: never verify without the competitor's own barcode), so the worst it
+ * becomes is a proposal: `unconfirmed` where its page's UPC disagrees,
+ * `unverifiable` where it states none — and either goes to a person (Jody's
+ * rule: a candidate without a barcode match goes to a person), never filed as
+ * a match. Pinned in `part-number-needs-brand.spec.ts`.
  */
 const QUERY_SUPPORT: QuerySupport = {
   maxNumericQueryDigits: null,
