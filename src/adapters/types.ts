@@ -139,7 +139,15 @@ export interface QuerySupport {
    * A query of purely digits at or above this length is refused locally.
    */
   readonly maxNumericQueryDigits: number | null;
-  /** Whether a barcode can be searched directly. Measured false everywhere so far. */
+  /**
+   * Whether a barcode can be searched directly. Measured false at Newegg and
+   * Amazon. Where true, the barcode is asked first, before anything is bought
+   * to identify the item — see `barcodeQuery` and `resolveItem`.
+   *
+   * ⚠️ The barcode query is still subject to `maxNumericQueryDigits`: a
+   * retailer that answers barcodes must not also cap numeric queries below
+   * 12 digits, or the barcode is refused locally like any other.
+   */
   readonly barcodeIsSearchable: boolean;
 }
 

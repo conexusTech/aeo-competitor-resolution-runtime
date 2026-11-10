@@ -12,6 +12,7 @@
  */
 
 import { canQuery, type QuerySupport } from "./adapters/types.js";
+import { gtinCore } from "./gtin.js";
 import { manufacturerItemRef } from "./identity/from-barcode.js";
 import { partNumberStem } from "./identity/from-search-results.js";
 
@@ -32,6 +33,25 @@ export interface QueryPlanInput {
    * ("ASRock ASRock X870 Taichi") is a query no catalogue answers.
    */
   readonly productName: string | null;
+}
+
+/**
+ * The barcode, as a query, for a retailer that answers one — or `null`.
+ *
+ * 🔑 **Its core zero-padded to 12 digits, or to 13 when the core is longer**:
+ * the UPC-A form the retailers measured answer, and EAN-13 for a barcode that
+ * does not fit one. `null` when the retailer cannot search a barcode, or the
+ * value is not a barcode at all — `gtinCore` refuses a digit run outside a
+ * barcode width rather than mining digits out of a part number.
+ */
+export function barcodeQuery(
+  barcode: string,
+  support: QuerySupport,
+): string | null {
+  if (!support.barcodeIsSearchable) return null;
+  const core = gtinCore(barcode);
+  if (core === "") return null;
+  return core.padStart(core.length > 12 ? 13 : 12, "0");
 }
 
 /** How many attempts are worth making before a query is just noise. */
@@ -64,6 +84,15 @@ export function planQueries(
     if (!canQuery(support, trimmed)) return;
     if (!attempts.includes(trimmed)) attempts.push(trimmed);
   };
+
+  /**
+   * 🔑 **The barcode first, where the retailer answers one.** It is the one key
+   * that names exactly this product, so a hit is proven by the same value that
+   * found it, and the identity lookup is never bought. ⚠️ Read from the
+   * retailer's configuration, never from its name; where the switch is off,
+   * nothing is pushed and every plan is what it always was.
+   */
+  push(barcodeQuery(input.barcode, support));
 
   const { brand } = input;
   const itemRef = manufacturerItemRef(input.barcode);

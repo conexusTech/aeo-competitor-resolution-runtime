@@ -27,7 +27,7 @@ import {
   type IdentityProvenance,
   type ProductIdentity,
 } from "./identity/types.js";
-import { planQueries } from "./query-plan.js";
+import { barcodeQuery, planQueries } from "./query-plan.js";
 import {
   hasConclusiveCandidate,
   hasPartNumberEvidence,
@@ -356,6 +356,225 @@ export async function resolveItem(
     searchesNotResultsPage: 0,
   };
 
+  // Gather across every attempt into one pool, then rank globally.
+  //
+  // Ranking per attempt burned the probe budget on a weak early query's top
+  // hits while a later, better query never got probed at all — the handover
+  // records that as a real defect it had to fix.
+  const pool = new Map<string, ParsedCandidate>();
+  const tried: string[] = [];
+  let candidatesSeen = 0;
+  /**
+   * 🔴 **How many searches the retailer did NOT answer, and why.** A miss is a
+   * fact about the retailer only when the retailer answered every search the
+   * item asked. On 2026-10-22 an expired proxy credential made a production
+   * run fetch nothing: every search here was dropped with a bare `continue`,
+   * the empty pool returned a clean `not-found`, and the gateway filed all 227
+   * items `not_carried` — "the retailer does not stock this", on the strength
+   * of zero pages. `establishIdentity` already kept this rule; the search step
+   * did not.
+   */
+  let unfetched = 0;
+  let notAResultsPage = 0;
+
+  /**
+   * Ask the retailer one query, adding what it answers to the pool.
+   *
+   * Returns whether it answered with a results page. A fetch that failed and
+   * a body that is not a results page are both tallied as unanswered.
+   */
+  const search = async (query: string): Promise<boolean> => {
+    tried.push(query);
+    const { body } = await tryFetch(
+      fetcher,
+      adapter.buildSearchUrl(query),
+      adapter.fetchProfile,
+    );
+    if (body === null) {
+      unfetched++;
+      return false;
+    }
+
+    const candidates = adapter.parseSearchResults(body);
+    // A robot check or an error page is no more an answer than a failed
+    // fetch. The adapter says which it got; it never guesses `[]`.
+    if (candidates === null) {
+      notAResultsPage++;
+      return false;
+    }
+    candidatesSeen += candidates.length;
+    for (const candidate of candidates) {
+      if (!pool.has(candidate.itemId)) pool.set(candidate.itemId, candidate);
+    }
+    return true;
+  };
+
+  let probes = 0;
+  /**
+   * What each probe learned, keyed by url.
+   *
+   * 🔑 Recorded as the loop goes rather than reconstructed afterwards: an
+   * alternative nobody opened and one opened to find no barcode are
+   * different facts, and only the loop knows which is which. Reconstructing
+   * it from `probes` and the ranking order would be a guess that looks like
+   * a record.
+   */
+  const probeOutcomes = new Map<string, ProbeOutcome>();
+  /**
+   * Every url probed for this item, and every barcode it published — `null`
+   * where the page could not be had. 🔑 So a listing the barcode stage
+   * already opened is never bought again by the probes after identity.
+   */
+  const probed = new Map<string, readonly string[] | null>();
+
+  /** Buy one listing's page and read every barcode it publishes. */
+  const probe = async (
+    candidate: ParsedCandidate,
+  ): Promise<readonly string[] | null> => {
+    const { body } = await tryFetch(
+      fetcher,
+      candidate.url,
+      adapter.fetchProfile,
+    );
+    probes++;
+    if (body === null) {
+      probed.set(candidate.url, null);
+      return null;
+    }
+
+    const product = adapter.parseProductPage(body);
+    probeOutcomes.set(candidate.url, {
+      retailerBarcode: product.barcode,
+    });
+
+    // 🔑 Every barcode the field published, not only the first. One real
+    // product page returns two space-separated values in one field and the
+    // client's was one of them — see `additionalBarcodes`. Checking only the
+    // primary would lose a verified pairing and, worse, report the reason as
+    // a disagreement rather than as nothing to compare.
+    const published = [
+      ...(product.barcode === null ? [] : [product.barcode]),
+      ...product.additionalBarcodes,
+    ];
+    // Learned once, available to every later item in this run.
+    memory?.remember(candidate.itemId, published);
+    probed.set(candidate.url, published);
+    return published;
+  };
+
+  const agreeingIn = (published: readonly string[]): string | null =>
+    published.find((value) => gtinMatches(request.barcode, value)) ?? null;
+
+  /**
+   * What this run already read off a listing in `ranked` that agrees with the
+   * client's barcode — the first such listing, or `null`.
+   *
+   * 🔑 **Before spending anything: has this run already read a barcode off one
+   * of these listings?** A probe made for an earlier item answers this one for
+   * free, and it answers it with the retailer's own published value rather
+   * than with a guess about ranking.
+   *
+   * ⚠️ **The whole pool, not the probe budget.** The budget is exactly what
+   * went wrong — the verifying listing sat outside it — so consulting only the
+   * first `maxProbes` entries would reproduce the defect in the fix.
+   *
+   * 🔴 Only an AGREEING value returns. A remembered barcode that disagrees is
+   * left to the probe loop, which will re-read the page and report it as the
+   * disagreement it is; promoting it here would turn one item's evidence into
+   * another item's false pairing.
+   */
+  const rememberedAgreement = (
+    ranked: readonly { candidate: ParsedCandidate; score: number }[],
+  ): {
+    entry: { candidate: ParsedCandidate; score: number };
+    known: string;
+  } | null => {
+    for (const entry of ranked) {
+      const remembered = memory?.get(entry.candidate.itemId);
+      if (remembered === undefined) continue;
+      const known = agreeingIn(remembered);
+      if (known !== null) return { entry, known };
+    }
+    return null;
+  };
+
+  // ── The barcode first, where the retailer answers one ─────────────────
+  //
+  // 🔑 **Before identity, because a hit makes identity unnecessary.** The
+  // barcode names exactly this product, so a listing found by it and
+  // publishing it is proven by the value that found it — and the client
+  // catalogue page or search-engine lookup identity costs is never bought.
+  //
+  // ⚠️ **A miss carries forward rather than starting over.** The pool, the
+  // probes made and the answered/unanswered tally all feed the normal path
+  // below, which skips the barcode query because it has been asked: a 0-result
+  // answer is an answered search, and a refused one stays unanswered.
+  //
+  // Where the retailer cannot search a barcode, `barcodeQuery` is `null`,
+  // nothing here runs, and every path below is what it always was.
+  const firstQuery = barcodeQuery(request.barcode, adapter.querySupport);
+  if (firstQuery !== null && canQuery(adapter.querySupport, firstQuery)) {
+    await search(firstQuery);
+    if (pool.size > 0) {
+      const stageInput = {
+        partNumbers: [],
+        brand: null,
+        barcode: request.barcode,
+        queryTokens: tokenise(tried),
+      };
+      const stageRanked = probeOrder(
+        rankCandidates([...pool.values()], stageInput),
+      );
+      const counted = {
+        ...base,
+        searchesUnfetched: unfetched,
+        searchesNotResultsPage: notAResultsPage,
+      };
+      // Nothing was bought to establish what the item is: the barcode proved
+      // the pairing, so no identity is claimed.
+      const proven = (
+        entry: { candidate: ParsedCandidate; score: number },
+        agreeing: string,
+        probedSoFar: ReadonlyMap<string, ProbeOutcome>,
+      ): Resolution => ({
+        ...counted,
+        outcome: "verified",
+        identity: null,
+        queriesTried: tried,
+        candidatesSeen,
+        probes,
+        requests: fetcher.liveRequestCount,
+        match: evidence(entry.candidate, entry.score, agreeing),
+        alternatives: alternativesFor({
+          ranked: stageRanked,
+          chosen: entry.candidate,
+          probed: probedSoFar,
+          scoreInput: stageInput,
+        }),
+      });
+
+      const remembered = rememberedAgreement(stageRanked);
+      if (remembered !== null) {
+        return proven(
+          remembered.entry,
+          remembered.known,
+          new Map([
+            [
+              remembered.entry.candidate.url,
+              { retailerBarcode: remembered.known },
+            ],
+          ]),
+        );
+      }
+      for (const entry of stageRanked) {
+        if (probes >= options.maxProbes) break;
+        const published = await probe(entry.candidate);
+        const agreeing = published === null ? null : agreeingIn(published);
+        if (agreeing !== null) return proven(entry, agreeing, probeOutcomes);
+      }
+    }
+  }
+
   const { identity, partNumbers, phrase, fetchFailed } =
     await establishIdentity(request, fetcher, options);
 
@@ -394,6 +613,9 @@ export async function resolveItem(
     // ⚠️ This changes what the customer is TOLD, not what gets bought: the
     // gateway re-attempts on `state <> 'approved'`, so `error` and
     // `not_carried` are retried identically.
+    //
+    // ⚠️ Unreachable after a barcode search: the plan puts that same query
+    // first, so a plan that asked it is never empty.
     return {
       ...base,
       outcome: "not-found",
@@ -409,51 +631,11 @@ export async function resolveItem(
     };
   }
 
-  // Gather across every attempt into one pool, then rank globally.
-  //
-  // Ranking per attempt burned the probe budget on a weak early query's top
-  // hits while a later, better query never got probed at all — the handover
-  // records that as a real defect it had to fix.
-  const pool = new Map<string, ParsedCandidate>();
-  const tried: string[] = [];
-  let candidatesSeen = 0;
-  /**
-   * 🔴 **How many searches the retailer did NOT answer, and why.** A miss is a
-   * fact about the retailer only when the retailer answered every search the
-   * item asked. On 2026-10-22 an expired proxy credential made a production
-   * run fetch nothing: every search here was dropped with a bare `continue`,
-   * the empty pool returned a clean `not-found`, and the gateway filed all 227
-   * items `not_carried` — "the retailer does not stock this", on the strength
-   * of zero pages. `establishIdentity` already kept this rule; the search step
-   * did not.
-   */
-  let unfetched = 0;
-  let notAResultsPage = 0;
-
   for (const query of queries) {
     if (!canQuery(adapter.querySupport, query)) continue;
-    tried.push(query);
-    const { body } = await tryFetch(
-      fetcher,
-      adapter.buildSearchUrl(query),
-      adapter.fetchProfile,
-    );
-    if (body === null) {
-      unfetched++;
-      continue;
-    }
-
-    const candidates = adapter.parseSearchResults(body);
-    // A robot check or an error page is no more an answer than a failed
-    // fetch. The adapter says which it got; it never guesses `[]`.
-    if (candidates === null) {
-      notAResultsPage++;
-      continue;
-    }
-    candidatesSeen += candidates.length;
-    for (const candidate of candidates) {
-      if (!pool.has(candidate.itemId)) pool.set(candidate.itemId, candidate);
-    }
+    // The barcode stage's query has been asked; never twice.
+    if (tried.includes(query)) continue;
+    if (!(await search(query))) continue;
 
     if (
       hasConclusiveCandidate([...pool.values()], partNumbers, request.barcode)
@@ -495,6 +677,7 @@ export async function resolveItem(
       identity,
       queriesTried: tried,
       candidatesSeen,
+      probes,
       requests: fetcher.liveRequestCount,
       failure: missFailure,
     };
@@ -508,42 +691,12 @@ export async function resolveItem(
   };
   const ranked = probeOrder(rankCandidates([...pool.values()], rankInput));
 
-  let probes = 0;
   /** The best listing we found but could not compare — an `unverifiable`. */
   let noBarcodeFound: { candidate: ParsedCandidate; score: number } | null =
     null;
-  /**
-   * What each probe learned, keyed by url.
-   *
-   * 🔑 Recorded as the loop goes rather than reconstructed afterwards: an
-   * alternative nobody opened and one opened to find no barcode are
-   * different facts, and only the loop knows which is which. Reconstructing
-   * it from `probes` and the ranking order would be a guess that looks like
-   * a record.
-   */
-  const probeOutcomes = new Map<string, ProbeOutcome>();
 
-  /**
-   * 🔑 **Before spending anything: has this run already read a barcode off one
-   * of these listings?** A probe made for an earlier item answers this one for
-   * free, and it answers it with the retailer's own published value rather
-   * than with a guess about ranking.
-   *
-   * ⚠️ **The whole pool, not the probe budget.** The budget is exactly what
-   * went wrong — the verifying listing sat outside it — so consulting only the
-   * first `maxProbes` entries would reproduce the defect in the fix.
-   *
-   * 🔴 Only an AGREEING value returns. A remembered barcode that disagrees is
-   * left to the probe loop, which will re-read the page and report it as the
-   * disagreement it is; promoting it here would turn one item's evidence into
-   * another item's false pairing.
-   */
-  for (const entry of ranked) {
-    const remembered = memory?.get(entry.candidate.itemId);
-    if (remembered === undefined) continue;
-    const known =
-      remembered.find((value) => gtinMatches(request.barcode, value)) ?? null;
-    if (known === null) continue;
+  const remembered = rememberedAgreement(ranked);
+  if (remembered !== null) {
     return {
       ...counted,
       outcome: "verified",
@@ -551,46 +704,38 @@ export async function resolveItem(
       queriesTried: tried,
       candidatesSeen,
       // No page was fetched to learn this, and the count must not claim one.
-      probes: 0,
+      probes,
       requests: fetcher.liveRequestCount,
-      match: evidence(entry.candidate, entry.score, known),
+      match: evidence(
+        remembered.entry.candidate,
+        remembered.entry.score,
+        remembered.known,
+      ),
       alternatives: alternativesFor({
         ranked,
-        chosen: entry.candidate,
-        probed: new Map([[entry.candidate.url, { retailerBarcode: known }]]),
+        chosen: remembered.entry.candidate,
+        probed: new Map([
+          [
+            remembered.entry.candidate.url,
+            { retailerBarcode: remembered.known },
+          ],
+        ]),
         scoreInput: rankInput,
       }),
     };
   }
 
-  for (const entry of ranked.slice(0, options.maxProbes)) {
-    const { body } = await tryFetch(
-      fetcher,
-      entry.candidate.url,
-      adapter.fetchProfile,
-    );
-    probes++;
-    if (body === null) continue;
+  for (const entry of ranked) {
+    // 🔑 A listing the barcode stage already opened costs nothing here: its
+    // answer is reused, never bought again, and it spends no probe.
+    let published = probed.get(entry.candidate.url);
+    if (published === undefined) {
+      if (probes >= options.maxProbes) continue;
+      published = await probe(entry.candidate);
+    }
+    if (published === null) continue;
 
-    const product = adapter.parseProductPage(body);
-    probeOutcomes.set(entry.candidate.url, {
-      retailerBarcode: product.barcode,
-    });
-
-    // 🔑 Every barcode the field published, not only the first. One real
-    // product page returns two space-separated values in one field and the
-    // client's was one of them — see `additionalBarcodes`. Checking only the
-    // primary would lose a verified pairing and, worse, report the reason as
-    // a disagreement rather than as nothing to compare.
-    const published = [
-      ...(product.barcode === null ? [] : [product.barcode]),
-      ...product.additionalBarcodes,
-    ];
-    // Learned once, available to every later item in this run.
-    memory?.remember(entry.candidate.itemId, published);
-    const agreeing =
-      published.find((value) => gtinMatches(request.barcode, value)) ?? null;
-
+    const agreeing = agreeingIn(published);
     if (agreeing !== null) {
       return {
         ...counted,
