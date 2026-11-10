@@ -410,6 +410,8 @@ export async function resolveItem(
   };
 
   let probes = 0;
+  /** This retailer's own ceiling, else the run's. */
+  const maxProbes = adapter.maxProbes ?? options.maxProbes;
   /**
    * What each probe learned, keyed by url.
    *
@@ -422,7 +424,7 @@ export async function resolveItem(
   const probeOutcomes = new Map<string, ProbeOutcome>();
   /**
    * Every url probed for this item, and every barcode it published — `null`
-   * where the page could not be had. 🔑 So a listing the barcode stage
+   * where the page could not be had, or was not a product page. 🔑 So a listing the barcode stage
    * already opened is never bought again by the probes after identity.
    */
   const probed = new Map<string, readonly string[] | null>();
@@ -443,6 +445,13 @@ export async function resolveItem(
     }
 
     const product = adapter.parseProductPage(body);
+    // 🔴 Not a product page: an unanswered probe, as a failed fetch is —
+    // never "publishes no barcode". Nothing is remembered, because nothing
+    // was learned about the listing.
+    if (product === null) {
+      probed.set(candidate.url, null);
+      return null;
+    }
     probeOutcomes.set(candidate.url, {
       retailerBarcode: product.barcode,
     });
@@ -567,7 +576,7 @@ export async function resolveItem(
         );
       }
       for (const entry of stageRanked) {
-        if (probes >= options.maxProbes) break;
+        if (probes >= maxProbes) break;
         const published = await probe(entry.candidate);
         const agreeing = published === null ? null : agreeingIn(published);
         if (agreeing !== null) return proven(entry, agreeing, probeOutcomes);
@@ -730,7 +739,7 @@ export async function resolveItem(
     // answer is reused, never bought again, and it spends no probe.
     let published = probed.get(entry.candidate.url);
     if (published === undefined) {
-      if (probes >= options.maxProbes) continue;
+      if (probes >= maxProbes) continue;
       published = await probe(entry.candidate);
     }
     if (published === null) continue;

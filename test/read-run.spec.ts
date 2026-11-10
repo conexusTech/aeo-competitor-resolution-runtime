@@ -18,6 +18,7 @@ import {
 } from "../src/adapters/amazon.js";
 import {
   neweggAdapter,
+  parseProductPage as parseNeweggProduct,
   readListingPage as readNeweggPage,
 } from "../src/adapters/newegg.js";
 import type {
@@ -498,10 +499,8 @@ describe("the adapter reads a product page it already knows", () => {
   it("CONTROL: reading leaves the resolution parse exactly as it was", () => {
     // The resolution path collapses an empty barcode to null; reading must not
     // have changed that, or the 53-row split moves.
-    expect(
-      neweggAdapter.parseProductPage(PAGES.barcodeEmpty).barcode,
-    ).toBeNull();
-    expect(neweggAdapter.parseProductPage(PAGES.barcode12)).toEqual({
+    expect(parseNeweggProduct(PAGES.barcodeEmpty).barcode).toBeNull();
+    expect(parseNeweggProduct(PAGES.barcode12)).toEqual({
       barcode: "065030870382",
       additionalBarcodes: [],
       priceCents: null,

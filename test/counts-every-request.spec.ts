@@ -210,6 +210,7 @@ describe("the meter charges failed attempts to the item that made them", () => {
     querySupport: { maxNumericQueryDigits: null, barcodeIsSearchable: false },
     pacing: { pagesAtOnce: 3 },
     fetchProfile: { country: null, timeoutMs: null },
+    maxProbes: null,
     buildSearchUrl: (q) => `https://r.test/s?q=${encodeURIComponent(q)}`,
     parseSearchResults: () => [],
     parseProductPage: () => ({

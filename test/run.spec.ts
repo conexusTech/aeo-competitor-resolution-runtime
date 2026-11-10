@@ -46,6 +46,7 @@ const adapter: RetailerAdapter = {
   querySupport: { maxNumericQueryDigits: 9, barcodeIsSearchable: false },
   pacing: { pagesAtOnce: 3 },
   fetchProfile: { country: null, timeoutMs: null },
+  maxProbes: null,
   buildSearchUrl: (q) => `https://retailer.test/s?q=${encodeURIComponent(q)}`,
   parseSearchResults: (html) => (html === "SEARCH" ? [candidate] : []),
   parseProductPage: (html) => ({

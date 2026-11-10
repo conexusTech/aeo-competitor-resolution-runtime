@@ -209,6 +209,13 @@ export interface RetailerAdapter {
    */
   readonly fetchProfile: FetchProfile;
 
+  /**
+   * Ceiling on product-page probes per item at this retailer, or `null` for
+   * the run's default (`ResolveOptions.maxProbes`). Required, so the next
+   * adapter states its answer.
+   */
+  readonly maxProbes: number | null;
+
   /** Where to send a search for `query`. Pure. */
   buildSearchUrl(query: string): string;
 
@@ -229,8 +236,18 @@ export interface RetailerAdapter {
    */
   parseSearchResults(html: string): ParsedCandidate[] | null;
 
-  /** Raw product-page body -> the fields resolution needs. Pure. */
-  parseProductPage(html: string): ParsedProduct;
+  /**
+   * Raw product-page body -> the fields resolution needs, or `null` when the
+   * body is not a product page at all. Pure.
+   *
+   * 🔴 **`null` is not "publishes no barcode".** A product shell, a
+   * replacement page or a page with no product payload says nothing about
+   * the listing; the pipeline counts it as a probe nobody answered — exactly
+   * as it counts a page that could not be fetched — never as a listing that
+   * publishes no barcode, which would make the item `unverifiable` on the
+   * strength of a page that was never the product's.
+   */
+  parseProductPage(html: string): ParsedProduct | null;
 }
 
 /**

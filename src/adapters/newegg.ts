@@ -294,6 +294,8 @@ export const neweggAdapter: RetailerAdapter & ListingReader = {
   // The vendor's defaults: no country, no client timeout — as before profiles
   // existed, so the request body is byte for byte what it was.
   fetchProfile: { country: null, timeoutMs: null },
+  // The run's default, as before the limit was per competitor.
+  maxProbes: null,
   buildSearchUrl: (query) =>
     `https://www.newegg.com/p/pl?d=${encodeURIComponent(query)}`,
   parseSearchResults,

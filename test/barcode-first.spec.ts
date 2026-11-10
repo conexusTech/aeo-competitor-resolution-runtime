@@ -152,6 +152,7 @@ function retailer(support: QuerySupport): RetailerAdapter {
     querySupport: support,
     pacing: { pagesAtOnce: 3 },
     fetchProfile: { country: null, timeoutMs: null },
+    maxProbes: null,
     buildSearchUrl: SEARCH,
     parseSearchResults: (html) => {
       if (html === "NOTHING") return [];

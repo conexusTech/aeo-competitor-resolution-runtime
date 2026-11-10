@@ -200,6 +200,7 @@ describe("resolve sends the competitor's profile on competitor pages only", () =
     querySupport: { maxNumericQueryDigits: null, barcodeIsSearchable: false },
     pacing: { pagesAtOnce: 3 },
     fetchProfile: PROFILE,
+    maxProbes: null,
     buildSearchUrl: (q) => `https://r.test/s?q=${encodeURIComponent(q)}`,
     parseSearchResults: () => [
       {
