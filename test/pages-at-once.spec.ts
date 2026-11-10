@@ -76,6 +76,7 @@ function retailer(limit: number): RetailerAdapter {
     slug: "fake",
     querySupport: { maxNumericQueryDigits: null, barcodeIsSearchable: false },
     pacing: { pagesAtOnce: limit },
+    fetchProfile: { country: null, timeoutMs: null },
     buildSearchUrl: (q) => `https://r.test/s?q=${encodeURIComponent(q)}`,
     parseSearchResults: () => [],
     parseProductPage: () => ({
@@ -93,6 +94,7 @@ function reader(limit: number): ListingReader {
     slug: "fake",
     hosts: ["r.test"],
     pacing: { pagesAtOnce: limit },
+    fetchProfile: { country: null, timeoutMs: null },
     readListingPage: () => ({
       kind: "page",
       page: {

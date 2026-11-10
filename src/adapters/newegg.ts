@@ -291,6 +291,9 @@ export const neweggAdapter: RetailerAdapter & ListingReader = {
   querySupport: QUERY_SUPPORT,
   // Three, as before the registry carried a figure (the lead, 2026-11-10).
   pacing: { pagesAtOnce: 3 },
+  // The vendor's defaults: no country, no client timeout — as before profiles
+  // existed, so the request body is byte for byte what it was.
+  fetchProfile: { country: null, timeoutMs: null },
   buildSearchUrl: (query) =>
     `https://www.newegg.com/p/pl?d=${encodeURIComponent(query)}`,
   parseSearchResults,

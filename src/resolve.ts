@@ -13,7 +13,11 @@ import {
 } from "./alternatives.js";
 import { canQuery, type RetailerAdapter } from "./adapters/types.js";
 import { RequestMeter } from "./fetcher/meter.js";
-import { FetchFailed, type Fetcher } from "./fetcher/types.js";
+import {
+  FetchFailed,
+  type Fetcher,
+  type FetchProfile,
+} from "./fetcher/types.js";
 import { gtinMatches } from "./gtin.js";
 import { identityFromBarcode } from "./identity/from-barcode.js";
 import { identityFromSearchResults } from "./identity/from-search-results.js";
@@ -214,9 +218,15 @@ export interface ResolveRequest {
 async function tryFetch(
   fetcher: Fetcher,
   url: string,
+  /**
+   * The competitor's profile, for a competitor's page only. 🔴 Never for the
+   * client's catalogue or the search engine: a competitor's country and
+   * timeout say nothing about how those pages are fetched.
+   */
+  profile?: FetchProfile,
 ): Promise<{ body: string | null; fetchFailed: boolean }> {
   try {
-    const result = await fetcher.fetch(url);
+    const result = await fetcher.fetch(url, profile);
     return { body: result.body, fetchFailed: false };
   } catch (error) {
     if (error instanceof FetchFailed) return { body: null, fetchFailed: true };
@@ -423,7 +433,11 @@ export async function resolveItem(
   for (const query of queries) {
     if (!canQuery(adapter.querySupport, query)) continue;
     tried.push(query);
-    const { body } = await tryFetch(fetcher, adapter.buildSearchUrl(query));
+    const { body } = await tryFetch(
+      fetcher,
+      adapter.buildSearchUrl(query),
+      adapter.fetchProfile,
+    );
     if (body === null) {
       unfetched++;
       continue;
@@ -550,7 +564,11 @@ export async function resolveItem(
   }
 
   for (const entry of ranked.slice(0, options.maxProbes)) {
-    const { body } = await tryFetch(fetcher, entry.candidate.url);
+    const { body } = await tryFetch(
+      fetcher,
+      entry.candidate.url,
+      adapter.fetchProfile,
+    );
     probes++;
     if (body === null) continue;
 

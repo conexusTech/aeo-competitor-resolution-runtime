@@ -11,7 +11,12 @@
 
 import { createHash } from "node:crypto";
 
-import { type Fetcher, type FetchResult, NotInCorpus } from "./types.js";
+import {
+  type Fetcher,
+  type FetchProfile,
+  type FetchResult,
+  NotInCorpus,
+} from "./types.js";
 
 export interface CorpusEntry {
   readonly url: string;
@@ -40,7 +45,11 @@ export class ReplayFetcher implements Fetcher {
     this.byKey = new Map(corpus.entries.map((e) => [corpusKey(e.url), e]));
   }
 
-  fetch(url: string): Promise<FetchResult> {
+  /**
+   * ⚠️ The profile is accepted and ignored: a corpus is keyed by url, and the
+   * bytes it holds were fetched however they were fetched.
+   */
+  fetch(url: string, _profile?: FetchProfile): Promise<FetchResult> {
     const entry = this.byKey.get(corpusKey(url));
     if (entry === undefined) return Promise.reject(new NotInCorpus(url));
     this.served.add(corpusKey(url));

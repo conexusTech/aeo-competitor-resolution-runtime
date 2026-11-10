@@ -247,7 +247,7 @@ async function attemptListing(
   let body: string;
   let readAt: Date;
   try {
-    const result = await fetcher.fetch(listing.url);
+    const result = await fetcher.fetch(listing.url, reader.fetchProfile);
     body = result.body;
     // When the page arrived — not after the cache write and the jitter.
     readAt = result.fetchedAt ?? now();

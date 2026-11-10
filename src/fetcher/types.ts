@@ -39,6 +39,28 @@ export interface Screenshot {
   readonly attempts: number;
 }
 
+/**
+ * How a competitor's pages must be fetched.
+ *
+ * 🔑 **Facts about the retailer, so they live in code, on the adapter** — unlike
+ * pages at once, which is tuning and lives in the registry (the lead,
+ * 2026-11-10). Required on every adapter and reader, so the next one states
+ * its answer; `null` in a field means "as the vendor does by default".
+ */
+export interface FetchProfile {
+  /**
+   * The country the vendor should fetch from, as its request parameter — not
+   * a zone setting. `null` sends none.
+   */
+  readonly country: string | null;
+  /**
+   * Abandon one attempt after this long. A timeout is an ordinary failed
+   * attempt: retried like any other and counted as a request sent. `null`
+   * leaves the attempt to the vendor's own limit.
+   */
+  readonly timeoutMs: number | null;
+}
+
 export interface Fetcher {
   /**
    * Fetch a page.
@@ -47,8 +69,12 @@ export interface Fetcher {
    * said no such product" (an empty parse) from "we could not ask" (a rejection)
    * — collapsing those two is how a run reports 14 not-found and 0 errors while
    * a proxy was down for half of it.
+   *
+   * @param profile How the competitor's pages must be fetched. Absent for a
+   * page that is not a competitor's — the client's catalogue, the search
+   * engine — which the vendor fetches with its defaults.
    */
-  fetch(url: string): Promise<FetchResult>;
+  fetch(url: string, profile?: FetchProfile): Promise<FetchResult>;
 
   /**
    * A PNG of the page, rendered by the proxy.

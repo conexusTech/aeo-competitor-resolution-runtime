@@ -38,6 +38,7 @@
 import {
   FetchFailed,
   type Fetcher,
+  type FetchProfile,
   type FetchResult,
   type Screenshot,
 } from "./types.js";
@@ -61,8 +62,8 @@ export class RequestMeter implements Fetcher {
     }
   }
 
-  async fetch(url: string): Promise<FetchResult> {
-    const result = await this.counted(() => this.inner.fetch(url));
+  async fetch(url: string, profile?: FetchProfile): Promise<FetchResult> {
+    const result = await this.counted(() => this.inner.fetch(url, profile));
     this.spent += result.attempts;
     if (!result.cached) this.delivered++;
     return result;

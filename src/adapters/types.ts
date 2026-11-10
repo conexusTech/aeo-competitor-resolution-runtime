@@ -19,6 +19,8 @@
  * criterion from a paid manual run into a deterministic test.
  */
 
+import type { FetchProfile } from "../fetcher/types.js";
+
 /**
  * An image URL an adapter may publish, or `null`.
  *
@@ -193,6 +195,12 @@ export interface RetailerAdapter {
   /** Pages at once when the job does not say. See `Pacing`. */
   readonly pacing: Pacing;
 
+  /**
+   * How this competitor's pages are fetched: its searches and its product
+   * pages, never the client's catalogue or the search engine.
+   */
+  readonly fetchProfile: FetchProfile;
+
   /** Where to send a search for `query`. Pure. */
   buildSearchUrl(query: string): string;
 
@@ -291,6 +299,8 @@ export interface ListingReader {
   readonly hosts: readonly string[];
   /** Pages at once when the read job does not say. See `Pacing`. */
   readonly pacing: Pacing;
+  /** How this competitor's listing pages are fetched. */
+  readonly fetchProfile: FetchProfile;
   /** Raw product-page body -> what it says. Pure. */
   readListingPage(html: string): ListingPageResult;
 }

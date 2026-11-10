@@ -40,6 +40,7 @@ function adapter(): RetailerAdapter {
     slug: "fake",
     querySupport: { maxNumericQueryDigits: 9, barcodeIsSearchable: false },
     pacing: { pagesAtOnce: 3 },
+    fetchProfile: { country: null, timeoutMs: null },
     buildSearchUrl: (q) => `https://r.test/s?q=${encodeURIComponent(q)}`,
     parseSearchResults: (html): ParsedCandidate[] =>
       html.startsWith("SEARCH ")

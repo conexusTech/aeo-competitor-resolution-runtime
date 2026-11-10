@@ -15,6 +15,7 @@ import path from "node:path";
 import {
   FetchFailed,
   type Fetcher,
+  type FetchProfile,
   type FetchResult,
   type Screenshot,
 } from "./types.js";
@@ -201,8 +202,19 @@ export class LiveFetcher implements Fetcher {
     return path.join(this.options.cacheDir, `${key}.html`);
   }
 
-  async fetch(url: string): Promise<FetchResult> {
+  async fetch(url: string, profile?: FetchProfile): Promise<FetchResult> {
     const cached = this.cachePath(url);
+    // 🔑 Built once, and with the country LAST and only when set, so a fetch
+    // with no profile — or the vendor-default one Newegg and Amazon state —
+    // sends exactly the body it always did.
+    const country = profile?.country ?? null;
+    const timeoutMs = profile?.timeoutMs ?? null;
+    const requestBody = JSON.stringify({
+      zone: this.options.zone,
+      url,
+      format: "raw",
+      ...(country === null ? {} : { country }),
+    });
     if (this.options.serveFromCache) {
       try {
         const body = await readFile(cached, "utf8");
@@ -246,11 +258,13 @@ export class LiveFetcher implements Fetcher {
               Authorization: `Bearer ${this.options.apiKey}`,
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({
-              zone: this.options.zone,
-              url,
-              format: "raw",
-            }),
+            body: requestBody,
+            // A fresh signal per attempt: a timeout abandons THIS attempt,
+            // and the loop treats it like any other failure — retried, and
+            // already counted as sent.
+            ...(timeoutMs === null
+              ? {}
+              : { signal: AbortSignal.timeout(timeoutMs) }),
           },
         );
         const body = await response.text();
