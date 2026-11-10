@@ -893,7 +893,33 @@ async function resolveCounted(
           `retailer's product index by its name only, never by its brand`
       : `could not establish what this item is: a source needed to ` +
           `identify it could not be fetched, so it was searched only by ` +
-          `${tried.map((q) => `"${q}"`).join(", ")} and never by part number`;
+          `${searchedBy()} (${tried.length} search(es)) and never by part number`;
+  };
+
+  /**
+   * The kinds of search this item asked, never their text.
+   *
+   * 🔴 **The words of a query are not quoted into a failure.** One of them is
+   * the client's own product name, of any length, and a failure past the
+   * gateway's `MAX_FAILURE_LENGTH` costs the whole batch it rides in. The
+   * queries themselves are in `queriesTried`.
+   */
+  const searchedBy = (): string => {
+    const barcode = barcodeQuery(request.barcode, adapter.querySupport);
+    const name = request.productName?.trim() ?? null;
+    const kinds: string[] = [];
+    for (const query of tried) {
+      const kind =
+        query === barcode
+          ? "its barcode"
+          : query === name
+            ? "the client's product name"
+            : query === phrase?.trim()
+              ? "a phrase from search results"
+              : "a query derived from its barcode";
+      if (!kinds.includes(kind)) kinds.push(kind);
+    }
+    return kinds.length === 0 ? "nothing" : kinds.join(" and ");
   };
   const counted = {
     ...base,

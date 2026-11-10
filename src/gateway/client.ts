@@ -35,6 +35,7 @@ import {
   type CapturePolicy,
 } from "../capture/types.js";
 import { MAX_UNVERIFIABLE_REASON_LENGTH } from "../adapters/types.js";
+import { boundText, MAX_FAILURE_LENGTH } from "../wire-limits.js";
 import { buildVersion } from "../fetcher/select.js";
 import type { ListingReading } from "../read-run.js";
 import type { Resolution } from "../resolve.js";
@@ -370,7 +371,19 @@ export class GatewayClient {
     }
     return this.postEvent({
       type: "resolutions",
-      resolutions,
+      // 🔴 Held to the gateway's limit here, the one place every finding
+      // passes before it is posted: a failure past `MAX_FAILURE_LENGTH`
+      // would refuse the whole batch. A failure is the runtime's own words,
+      // and a cut one is still a failure, which is what the gateway files.
+      resolutions: resolutions.map((resolution) =>
+        resolution.failure === null ||
+        resolution.failure.length <= MAX_FAILURE_LENGTH
+          ? resolution
+          : {
+              ...resolution,
+              failure: boundText(resolution.failure, MAX_FAILURE_LENGTH),
+            },
+      ),
       ...(requestsSpent === undefined ? {} : { requests_spent: requestsSpent }),
       ...delivered(pagesDelivered),
     });
