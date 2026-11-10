@@ -1,0 +1,330 @@
+{
+  "note": "The Best Buy investigation's 20-row lookup, UPC first then part number (row investigate-bestbuy-competitor, run 2026-11-09). Trimmed, field for field, from meriwether-data-scraper recon/captures/bestbuy-upc/results-mpn-upc-first.json on branch feature/CONE-0016-92-investigate-competitors; rows from docs/newegg-upc-test-20.csv. mpn and brand are what the investigation read off Micro Center's own product pages (cached by the Amazon spike).",
+  "split": {
+    "mpn-exact-unverified": 2,
+    "not-found": 7,
+    "upc-verified": 11
+  },
+  "rows": [
+    {
+      "upc": "731304016298",
+      "microCenterSku": "352534",
+      "mpn": "BK350",
+      "brand": "APC",
+      "status": "upc-verified",
+      "upcSearch": {
+        "numFound": 1,
+        "recallStrategy": "textMatchOnly"
+      },
+      "bestbuySku": "11521676",
+      "bestbuySeller": "3P",
+      "bestbuyPriceCents": 12310,
+      "pdpUpcs": ["731304016298"],
+      "reason": null
+    },
+    {
+      "upc": "649532012008",
+      "microCenterSku": "219725",
+      "mpn": "CP1200AVR",
+      "brand": "CyberPower Systems",
+      "status": "not-found",
+      "upcSearch": {
+        "numFound": 0,
+        "recallStrategy": "textMatchOnly"
+      },
+      "bestbuySku": null,
+      "bestbuySeller": null,
+      "bestbuyPriceCents": null,
+      "pdpUpcs": null,
+      "reason": "no candidate's model or title matched the mpn (\"649532012008\": 0 results, textMatchOnly; \"CP1200AVR\": 50 results, dvsOnly; \"CyberPower Systems CP1200AVR\": 50 results, dvsOnly)"
+    },
+    {
+      "upc": "649833101746",
+      "microCenterSku": "271361",
+      "mpn": "10174",
+      "brand": "IMAK Products",
+      "status": "mpn-exact-unverified",
+      "upcSearch": {
+        "numFound": 0,
+        "recallStrategy": "textMatchOnly"
+      },
+      "bestbuySku": "12245183",
+      "bestbuySeller": "3P",
+      "bestbuyPriceCents": 7999,
+      "pdpUpcs": null,
+      "reason": "model matches mpn but no UPC on the page equals the row's (page states [\"699788101742\"])"
+    },
+    {
+      "upc": "035286295383",
+      "microCenterSku": "883827",
+      "mpn": "29538",
+      "brand": "Allsop",
+      "status": "upc-verified",
+      "upcSearch": {
+        "numFound": 1,
+        "recallStrategy": "textMatchOnly"
+      },
+      "bestbuySku": "12604216",
+      "bestbuySeller": "3P",
+      "bestbuyPriceCents": 2573,
+      "pdpUpcs": ["035286295383"],
+      "reason": null
+    },
+    {
+      "upc": "813810010431",
+      "microCenterSku": "314393",
+      "mpn": "63005",
+      "brand": "SteelSeries",
+      "status": "not-found",
+      "upcSearch": {
+        "numFound": 0,
+        "recallStrategy": "textMatchOnly"
+      },
+      "bestbuySku": null,
+      "bestbuySeller": null,
+      "bestbuyPriceCents": null,
+      "pdpUpcs": null,
+      "reason": "no candidate's model or title matched the mpn (\"813810010431\": 0 results, textMatchOnly; \"63005\": 0 results, dvsTextMatchHybrid; \"SteelSeries 63005\": 33 results, dvsOnly)"
+    },
+    {
+      "upc": "097855046871",
+      "microCenterSku": "668707",
+      "mpn": "981-000014",
+      "brand": "Logitech",
+      "status": "upc-verified",
+      "upcSearch": {
+        "numFound": 2,
+        "recallStrategy": "textMatchOnly"
+      },
+      "bestbuySku": "9618932",
+      "bestbuySeller": "1P",
+      "bestbuyPriceCents": 2099,
+      "pdpUpcs": ["097855046871"],
+      "reason": null
+    },
+    {
+      "upc": "035286296489",
+      "microCenterSku": "994905",
+      "mpn": "29648",
+      "brand": "Allsop",
+      "status": "mpn-exact-unverified",
+      "upcSearch": {
+        "numFound": 0,
+        "recallStrategy": "textMatchOnly"
+      },
+      "bestbuySku": "11809995",
+      "bestbuySeller": "3P",
+      "bestbuyPriceCents": 3299,
+      "pdpUpcs": null,
+      "reason": "model matches mpn but no UPC on the page equals the row's (page states [\"724945296488\"])"
+    },
+    {
+      "upc": "710931610147",
+      "microCenterSku": "011833",
+      "mpn": "TEG-S50G",
+      "brand": "Trendnet",
+      "status": "upc-verified",
+      "upcSearch": {
+        "numFound": 1,
+        "recallStrategy": "textMatchOnly"
+      },
+      "bestbuySku": "11071589",
+      "bestbuySeller": "3P",
+      "bestbuyPriceCents": 2878,
+      "pdpUpcs": ["710931610147"],
+      "reason": null
+    },
+    {
+      "upc": "649833101234",
+      "microCenterSku": "156034",
+      "mpn": "10123",
+      "brand": "IMAK Products",
+      "status": "not-found",
+      "upcSearch": {
+        "numFound": 0,
+        "recallStrategy": "textMatchOnly"
+      },
+      "bestbuySku": null,
+      "bestbuySeller": null,
+      "bestbuyPriceCents": null,
+      "pdpUpcs": null,
+      "reason": "no candidate's model or title matched the mpn (\"649833101234\": 0 results, textMatchOnly; \"10123\": 30 results, dvsTextMatchHybrid; \"IMAK Products 10123\": 41 results, dvsOnly)"
+    },
+    {
+      "upc": "188218000453",
+      "microCenterSku": "497966",
+      "mpn": "CRW-UINB",
+      "brand": "Sabrent",
+      "status": "not-found",
+      "upcSearch": {
+        "numFound": 0,
+        "recallStrategy": "textMatchOnly"
+      },
+      "bestbuySku": null,
+      "bestbuySeller": null,
+      "bestbuyPriceCents": null,
+      "pdpUpcs": null,
+      "reason": "no candidate's model or title matched the mpn (\"188218000453\": 0 results, textMatchOnly; \"CRW-UINB\": 50 results, dvsOnly; \"Sabrent CRW-UINB\": 50 results, dvsOnly)"
+    },
+    {
+      "upc": "085896723370",
+      "microCenterSku": "540062",
+      "mpn": "K72337US",
+      "brand": "Kensington",
+      "status": "upc-verified",
+      "upcSearch": {
+        "numFound": 1,
+        "recallStrategy": "textMatchOnly"
+      },
+      "bestbuySku": "10117379",
+      "bestbuySeller": "3P",
+      "bestbuyPriceCents": 5797,
+      "pdpUpcs": ["085896723370"],
+      "reason": null
+    },
+    {
+      "upc": "812348010548",
+      "microCenterSku": "531814",
+      "mpn": "CF-08LB",
+      "brand": "Kingwin",
+      "status": "not-found",
+      "upcSearch": {
+        "numFound": 0,
+        "recallStrategy": "textMatchOnly"
+      },
+      "bestbuySku": null,
+      "bestbuySeller": null,
+      "bestbuyPriceCents": null,
+      "pdpUpcs": null,
+      "reason": "no candidate's model or title matched the mpn (\"812348010548\": 0 results, textMatchOnly; \"CF-08LB\": 22 results, dvsOnly; \"Kingwin CF-08LB\": 49 results, dvsOnly)"
+    },
+    {
+      "upc": "812348010555",
+      "microCenterSku": "531822",
+      "mpn": "CF-012LB",
+      "brand": "Kingwin",
+      "status": "not-found",
+      "upcSearch": {
+        "numFound": 0,
+        "recallStrategy": "textMatchOnly"
+      },
+      "bestbuySku": null,
+      "bestbuySeller": null,
+      "bestbuyPriceCents": null,
+      "pdpUpcs": null,
+      "reason": "no candidate's model or title matched the mpn (\"812348010555\": 0 results, textMatchOnly; \"CF-012LB\": 12374 results, dvsTextMatchHybrid; \"Kingwin CF-012LB\": 50 results, dvsOnly)"
+    },
+    {
+      "upc": "097855066237",
+      "microCenterSku": "744334",
+      "mpn": "910-001675",
+      "brand": "Logitech",
+      "status": "upc-verified",
+      "upcSearch": {
+        "numFound": 1,
+        "recallStrategy": "textMatchOnly"
+      },
+      "bestbuySku": "1297054",
+      "bestbuySeller": "1P",
+      "bestbuyPriceCents": 1699,
+      "pdpUpcs": ["097855066237"],
+      "reason": null
+    },
+    {
+      "upc": "097855067876",
+      "microCenterSku": "772269",
+      "mpn": "910-001917",
+      "brand": "Logitech",
+      "status": "upc-verified",
+      "upcSearch": {
+        "numFound": 1,
+        "recallStrategy": "textMatchOnly"
+      },
+      "bestbuySku": "9927955",
+      "bestbuySeller": "1P",
+      "bestbuyPriceCents": 2299,
+      "pdpUpcs": ["097855067876"],
+      "reason": null
+    },
+    {
+      "upc": "710931505061",
+      "microCenterSku": "842641",
+      "mpn": "TPE-S44",
+      "brand": "Trendnet",
+      "status": "not-found",
+      "upcSearch": {
+        "numFound": 0,
+        "recallStrategy": "textMatchOnly"
+      },
+      "bestbuySku": null,
+      "bestbuySeller": null,
+      "bestbuyPriceCents": null,
+      "pdpUpcs": null,
+      "reason": "no candidate's model or title matched the mpn (\"710931505061\": 0 results, textMatchOnly; \"TPE-S44\": 48 results, dvsOnly; \"Trendnet TPE-S44\": 50 results, dvsOnly)"
+    },
+    {
+      "upc": "097855065537",
+      "microCenterSku": "930685",
+      "mpn": "920-002478",
+      "brand": "Logitech",
+      "status": "upc-verified",
+      "upcSearch": {
+        "numFound": 1,
+        "recallStrategy": "textMatchOnly"
+      },
+      "bestbuySku": "1053557",
+      "bestbuySeller": "1P",
+      "bestbuyPriceCents": 1299,
+      "pdpUpcs": ["097855065537"],
+      "reason": null
+    },
+    {
+      "upc": "097855066466",
+      "microCenterSku": "134338",
+      "mpn": "980-000402",
+      "brand": "Logitech",
+      "status": "upc-verified",
+      "upcSearch": {
+        "numFound": 1,
+        "recallStrategy": "textMatchOnly"
+      },
+      "bestbuySku": "1231979",
+      "bestbuySeller": "1P",
+      "bestbuyPriceCents": 18199,
+      "pdpUpcs": ["097855066466"],
+      "reason": null
+    },
+    {
+      "upc": "035286302067",
+      "microCenterSku": "090142",
+      "mpn": "30206",
+      "brand": "Allsop",
+      "status": "upc-verified",
+      "upcSearch": {
+        "numFound": 1,
+        "recallStrategy": "textMatchOnly"
+      },
+      "bestbuySku": "11441634",
+      "bestbuySeller": "3P",
+      "bestbuyPriceCents": 1806,
+      "pdpUpcs": ["035286302067"],
+      "reason": null
+    },
+    {
+      "upc": "035286301848",
+      "microCenterSku": "082081",
+      "mpn": "30184",
+      "brand": "Allsop",
+      "status": "upc-verified",
+      "upcSearch": {
+        "numFound": 1,
+        "recallStrategy": "textMatchOnly"
+      },
+      "bestbuySku": "13159113",
+      "bestbuySeller": "3P",
+      "bestbuyPriceCents": 1816,
+      "pdpUpcs": ["035286301848"],
+      "reason": null
+    }
+  ]
+}
