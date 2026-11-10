@@ -78,7 +78,8 @@ class MapFetcher implements Fetcher {
   constructor(private readonly bodies: Record<string, string>) {}
   fetch(url: string): Promise<FetchResult> {
     const body = this.bodies[url];
-    if (body === undefined) return Promise.reject(new FetchFailed(url));
+    if (body === undefined)
+      return Promise.reject(new FetchFailed(url, undefined, null, 1));
     this.liveRequestCount++;
     return Promise.resolve({ url, body, cached: false, attempts: 1 });
   }
@@ -115,7 +116,8 @@ class SearchFetcher implements Fetcher {
       : url === SERP
         ? serpBody
         : this.others[url];
-    if (body === undefined) return Promise.reject(new FetchFailed(url));
+    if (body === undefined)
+      return Promise.reject(new FetchFailed(url, undefined, null, 1));
     this.liveRequestCount++;
     return Promise.resolve({ url, body, cached: false, attempts: 1 });
   }
@@ -1056,7 +1058,7 @@ describe("resolveItem hands the client's description to the plan", () => {
       pagesDelivered: 0,
       fetch: (url: string) => {
         asked.push(url);
-        return Promise.reject(new FetchFailed(url));
+        return Promise.reject(new FetchFailed(url, undefined, null, 1));
       },
     };
 

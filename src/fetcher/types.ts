@@ -115,7 +115,7 @@ export interface Fetcher {
 export class FetchFailed extends Error {
   constructor(
     readonly url: string,
-    override readonly cause?: unknown,
+    override readonly cause: unknown,
     /**
      * The HTTP status the vendor answered the LAST attempt with, or `null`
      * when no response arrived (a dropped connection, a timeout).
@@ -124,13 +124,17 @@ export class FetchFailed extends Error {
      * retailer's.** Whether the proxy relays a retailer's 404 as its own 404
      * has not been measured.
      */
-    readonly status: number | null = null,
+    readonly status: number | null,
     /**
      * Requests sent to the vendor before giving up, every one of them paid
-     * for. `0` where nothing was sent — a double in a test, or a refusal
-     * before any request.
+     * for. `0` where nothing was sent — a refusal before any request.
+     *
+     * 🔴 **Required, with no default, at every throw site.** It defaulted to
+     * `0`, so a new failure path that forgot it compiled and silently charged
+     * nothing for requests the vendor billed. A required argument makes the
+     * next throw site state what it sent.
      */
-    readonly attempts: number = 0,
+    readonly attempts: number,
   ) {
     super(`could not fetch ${url}`);
     this.name = "FetchFailed";

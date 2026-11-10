@@ -183,6 +183,21 @@ describe("the live fetcher counts every attempt it sends", () => {
   });
 });
 
+describe("a failed fetch always says what it sent", () => {
+  /**
+   * 🔴 **`attempts` defaulted to 0**, so a throw site written without it
+   * compiled and charged nothing for requests the vendor billed. The compiler
+   * now refuses such a site; this proves at run time that no argument has a
+   * default, since a parameter with one is not counted in `length`.
+   */
+  it("🔴 takes the url, the cause, the status and the attempts, none defaulted", () => {
+    expect(FetchFailed.length).toBe(4);
+    const failed = new FetchFailed("https://x.test/z", undefined, null, 2);
+    expect(failed.attempts).toBe(2);
+    expect(failed.status).toBeNull();
+  });
+});
+
 describe("the meter charges failed attempts to the item that made them", () => {
   it("🔴 charges a failure's attempts, where it used to charge nothing", async () => {
     vendor(status(500));

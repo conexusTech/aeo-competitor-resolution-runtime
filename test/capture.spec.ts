@@ -481,7 +481,9 @@ describe("capturing a resolution's page", () => {
 
   it("records a failure when the page cannot be re-read", async () => {
     const { capturer, upload } = await build({
-      fetcher: fakeFetcher(new FetchFailed("https://x.invalid")),
+      fetcher: fakeFetcher(
+        new FetchFailed("https://x.invalid", undefined, null, 1),
+      ),
     });
     const record = await capturer.offer(resolution());
 

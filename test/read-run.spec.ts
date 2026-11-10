@@ -195,11 +195,16 @@ class ScriptedFetcher implements Fetcher {
     this.completedAt.set(url, fetchedAt.toISOString());
     const status = this.statuses.get(url);
     if (status !== undefined) {
-      throw new FetchFailed(url, new Error(`status=${status} bytes=0`), status);
+      throw new FetchFailed(
+        url,
+        new Error(`status=${status} bytes=0`),
+        status,
+        1,
+      );
     }
     const body = this.pages.get(url);
     if (body === undefined) {
-      throw new FetchFailed(url, new Error("status=403 bytes=0"), 403);
+      throw new FetchFailed(url, new Error("status=403 bytes=0"), 403, 1);
     }
     this.liveRequestCount++;
     // The cache write and the jitter happen after the page is in hand.
@@ -623,7 +628,8 @@ describe("one listing, read", () => {
     const noStatus: Fetcher = {
       liveRequestCount: 0,
       pagesDelivered: 0,
-      fetch: (url) => Promise.reject(new FetchFailed(url, new Error("reset"))),
+      fetch: (url) =>
+        Promise.reject(new FetchFailed(url, new Error("reset"), null, 1)),
     };
     const reading = failureOf(
       await readListing(
@@ -1551,6 +1557,7 @@ class ThrottlingFetcher implements Fetcher {
         url,
         new Error(status === null ? "socket hang up" : `status=${status}`),
         status,
+        1,
       );
     }
     if (earlier < (this.throttledFor.get(url) ?? 0)) {
@@ -1558,11 +1565,12 @@ class ThrottlingFetcher implements Fetcher {
         url,
         new Error(`status=${this.throttleStatus} bytes=0`),
         this.throttleStatus,
+        1,
       );
     }
     const body = this.pages.get(url);
     if (body === undefined) {
-      throw new FetchFailed(url, new Error("status=403 bytes=0"), 403);
+      throw new FetchFailed(url, new Error("status=403 bytes=0"), 403, 1);
     }
     this.liveRequestCount++;
     return { url, body, cached: false, attempts: 1, fetchedAt };
@@ -1819,7 +1827,7 @@ describe("a throttled page is read again at a measured pace", () => {
 
   it("names a throttle by the vendor's answer, and nothing else", () => {
     const failure = (status: number | null): FetchFailed =>
-      new FetchFailed("https://www.newegg.com/p/A", undefined, status);
+      new FetchFailed("https://www.newegg.com/p/A", undefined, status, 1);
     expect(isThrottled(failure(200))).toBe(true);
     expect(isThrottled(failure(429))).toBe(true);
     for (const status of [null, 400, 403, 404, 410, 500, 503]) {

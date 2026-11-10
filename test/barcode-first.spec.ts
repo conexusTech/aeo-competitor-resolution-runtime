@@ -183,7 +183,8 @@ class Scripted implements Fetcher {
   fetch(url: string): Promise<FetchResult> {
     this.asked.push(url);
     const body = this.bodies[url];
-    if (body === undefined) return Promise.reject(new FetchFailed(url));
+    if (body === undefined)
+      return Promise.reject(new FetchFailed(url, undefined, null, 1));
     this.liveRequestCount++;
     return Promise.resolve({ url, body, cached: false, attempts: 1 });
   }
