@@ -222,7 +222,11 @@ describe("the meter charges failed attempts to the item that made them", () => {
   /** A retailer whose searches are never reached: identity alone is fetched. */
   const adapter: RetailerAdapter = {
     slug: "fake",
-    querySupport: { maxNumericQueryDigits: null, barcodeIsSearchable: false },
+    querySupport: {
+      maxNumericQueryDigits: null,
+      barcodeIsSearchable: false,
+      partNumberNeedsBrand: false,
+    },
     pacing: { pagesAtOnce: 3 },
     fetchProfile: { country: null, timeoutMs: null },
     maxProbes: null,

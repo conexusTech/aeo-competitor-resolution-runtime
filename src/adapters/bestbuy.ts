@@ -529,6 +529,7 @@ export function readListingPage(html: string): ListingPageResult {
 const QUERY_SUPPORT: QuerySupport = {
   maxNumericQueryDigits: null,
   barcodeIsSearchable: true,
+  partNumberNeedsBrand: false,
 };
 
 export const bestbuyAdapter: RetailerAdapter & ListingReader = {

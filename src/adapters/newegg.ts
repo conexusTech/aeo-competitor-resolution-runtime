@@ -45,6 +45,7 @@ const BARCODE_FIELD = /"UPCCode":"([^"]*)"/;
 const QUERY_SUPPORT: QuerySupport = {
   maxNumericQueryDigits: 9,
   barcodeIsSearchable: false,
+  partNumberNeedsBrand: false,
 };
 
 interface InitialState {

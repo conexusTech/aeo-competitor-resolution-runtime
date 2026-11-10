@@ -74,7 +74,11 @@ class GatedFetcher implements Fetcher {
 function retailer(limit: number): RetailerAdapter {
   return {
     slug: "fake",
-    querySupport: { maxNumericQueryDigits: null, barcodeIsSearchable: false },
+    querySupport: {
+      maxNumericQueryDigits: null,
+      barcodeIsSearchable: false,
+      partNumberNeedsBrand: false,
+    },
     pacing: { pagesAtOnce: limit },
     fetchProfile: { country: null, timeoutMs: null },
     maxProbes: null,

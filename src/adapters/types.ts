@@ -163,6 +163,30 @@ export interface QuerySupport {
    * 12 digits, or the barcode is refused locally like any other.
    */
   readonly barcodeIsSearchable: boolean;
+  /**
+   * Whether a part number at this retailer names a product only together with
+   * its brand.
+   *
+   * 🔴 **Measured at B&H**, whose catalogue spans photo, video, audio and
+   * computing: the MFR # of four rows the investigation found B&H does not
+   * carry each belonged to ANOTHER brand's item there — "29538" a C2G cable,
+   * "10174" an Aquatech housing, "63005" a SIG SAUER scope, "30206" an
+   * Aquatica port. An equal part number alone would have spent a probe on
+   * each and proposed a cable for a wrist rest.
+   *
+   * Where true, once the item's brand is known:
+   * - a listing is a candidate only when it has part-number evidence AND its
+   *   brand agrees with the item's — never probed, never proposed otherwise;
+   * - the bare part number is asked BEFORE the brand-scoped one, because the
+   *   brand is checked on every answer, and a search that requires every word
+   *   is narrowed by a client's brand spelling to nothing (measured at B&H:
+   *   brand-scoped queries found none of 9, the bare MFR # all 11 it carries).
+   *
+   * ⚠️ A listing found by the barcode is untouched: the barcode names the
+   * product, and nothing is known about the item's brand at that stage.
+   * Where false, every plan and every ranking is what it always was.
+   */
+  readonly partNumberNeedsBrand: boolean;
 }
 
 /**

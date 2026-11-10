@@ -56,7 +56,11 @@ function retailer(
 ): RetailerAdapter {
   return {
     slug: "fake",
-    querySupport: { maxNumericQueryDigits: null, barcodeIsSearchable: false },
+    querySupport: {
+      maxNumericQueryDigits: null,
+      barcodeIsSearchable: false,
+      partNumberNeedsBrand: false,
+    },
     pacing: { pagesAtOnce: 3 },
     fetchProfile: { country: null, timeoutMs: null },
     maxProbes,

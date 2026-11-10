@@ -51,7 +51,11 @@ function fakeAdapter(
 ): RetailerAdapter {
   return {
     slug: "fake",
-    querySupport: { maxNumericQueryDigits: 9, barcodeIsSearchable: false },
+    querySupport: {
+      maxNumericQueryDigits: 9,
+      barcodeIsSearchable: false,
+      partNumberNeedsBrand: false,
+    },
     pacing: { pagesAtOnce: 3 },
     fetchProfile: { country: null, timeoutMs: null },
     maxProbes: null,
@@ -424,7 +428,11 @@ describe("an item that was never searched", () => {
   /** A retailer that cannot be asked for a barcode, so identity is required. */
   const needsIdentity = (): RetailerAdapter => ({
     ...fakeAdapter({}, {}),
-    querySupport: { maxNumericQueryDigits: 9, barcodeIsSearchable: false },
+    querySupport: {
+      maxNumericQueryDigits: 9,
+      barcodeIsSearchable: false,
+      partNumberNeedsBrand: false,
+    },
     pacing: { pagesAtOnce: 3 },
     fetchProfile: { country: null, timeoutMs: null },
     maxProbes: null,

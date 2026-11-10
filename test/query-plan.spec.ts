@@ -6,6 +6,7 @@ import type { QuerySupport } from "../src/adapters/types.js";
 const LAUNCH: QuerySupport = {
   maxNumericQueryDigits: 9,
   barcodeIsSearchable: false,
+  partNumberNeedsBrand: false,
 };
 
 describe("planQueries", () => {

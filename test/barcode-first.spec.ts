@@ -31,10 +31,12 @@ import { DEFAULT_OPTIONS, resolveItem } from "../src/resolve.js";
 const SEARCHABLE: QuerySupport = {
   maxNumericQueryDigits: null,
   barcodeIsSearchable: true,
+  partNumberNeedsBrand: false,
 };
 const NOT_SEARCHABLE: QuerySupport = {
   maxNumericQueryDigits: null,
   barcodeIsSearchable: false,
+  partNumberNeedsBrand: false,
 };
 
 describe("barcodeQuery", () => {

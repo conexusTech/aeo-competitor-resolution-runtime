@@ -8,6 +8,7 @@
 import type { ParsedCandidate } from "./adapters/types.js";
 import { gtinCore } from "./gtin.js";
 import { manufacturerItemRef } from "./identity/from-barcode.js";
+import { partNumberStem } from "./identity/from-search-results.js";
 
 /**
  * Weights, ported from the handover with its reasoning intact. They are
@@ -106,6 +107,41 @@ export function hasPartNumberEvidence(input: ScoreInput): boolean {
     if (model !== "" && model === p) return true;
     if (model !== "" && (model.includes(p) || p.includes(model))) return true;
     if (model !== "" && sharedPrefixLength(model, p) >= 5) return true;
+    return haystack.includes(p.toLowerCase());
+  });
+}
+
+/**
+ * Does the listing NAME one of the item's part numbers — its model equals,
+ * contains or is contained in one, or carries its regional stem as a prefix
+ * (`K72337` of `K72337US`), or its text names one, or the barcode encodes its
+ * model — rather than merely sharing a prefix with one?
+ *
+ * 🔴 **The stricter test, for a retailer where a part number needs the
+ * brand.** A shared prefix is how a manufacturer numbers a FAMILY: at B&H a
+ * search for Logitech's `980-000402` (the Z623) also lists the Z313
+ * (`980-000382`), the Z625 (`980-001258`) and the Z533 (`980-001053`), all
+ * Logitech, all sharing `980-00`, none the item. `hasPartNumberEvidence`
+ * credits that prefix, and is left exactly as it is for every other retailer.
+ */
+export function namesThePartNumber(input: ScoreInput): boolean {
+  const { candidate, partNumbers, barcode } = input;
+  const model = (candidate.model ?? "").toUpperCase();
+  const haystack =
+    `${candidate.title} ${candidate.model ?? ""} ${candidate.brand ?? ""}`.toLowerCase();
+
+  const core = gtinCore(barcode);
+  if (core !== "" && model !== "") {
+    const digits = model.replace(/\D/g, "");
+    if (digits.length >= 4 && core.padStart(12, "0").includes(digits))
+      return true;
+  }
+
+  return partNumbers.some((partNumber) => {
+    const p = partNumber.toUpperCase();
+    if (model !== "" && (model.includes(p) || p.includes(model))) return true;
+    const stem = partNumberStem(p);
+    if (model !== "" && stem !== null && model.startsWith(stem)) return true;
     return haystack.includes(p.toLowerCase());
   });
 }
@@ -245,6 +281,30 @@ export function hasConclusiveCandidate(
       }) >= WEIGHTS.partNumberInsideBarcode
     );
   });
+}
+
+/** A brand's first word, upper-cased and stripped to letters and digits. */
+const brandWord = (value: string): string =>
+  (value.trim().split(/\s+/)[0] ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+
+/**
+ * Does a listing's brand agree with the item's — `true` when the item's brand
+ * is unknown, because nothing then refutes it.
+ *
+ * 🔑 **First words, as the B&H investigation compared them**, because the two
+ * sides spell one brand differently: the client's list says "IMAK Products"
+ * and "CyberPower Systems" where the retailer says "IMAK" and "CyberPower". The
+ * listing's brand where it states one, else its title's first word — a title
+ * leads with the brand at every retailer read so far.
+ */
+export function brandAgrees(
+  itemBrand: string | null,
+  candidate: ParsedCandidate,
+): boolean {
+  if (itemBrand === null) return true;
+  const want = brandWord(itemBrand);
+  if (want === "") return true;
+  return brandWord(candidate.brand ?? candidate.title) === want;
 }
 
 /** Probe first-party listings before marketplace ones at equal evidence. */

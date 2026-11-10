@@ -102,8 +102,15 @@ export function planQueries(
     // trying — for many brands the item reference IS the catalogue number.
     if (i === 1 && itemRef !== null && brand !== null)
       push(`${brand} ${itemRef}`);
-    if (brand !== null) push(`${brand} ${partNumber}`);
-    push(partNumber);
+    // Where the brand is checked on every answer, the bare part number goes
+    // first — see `QuerySupport.partNumberNeedsBrand`.
+    if (support.partNumberNeedsBrand) {
+      push(partNumber);
+      if (brand !== null) push(`${brand} ${partNumber}`);
+    } else {
+      if (brand !== null) push(`${brand} ${partNumber}`);
+      push(partNumber);
+    }
     const stem = partNumberStem(partNumber);
     if (stem !== null) push(brand !== null ? `${brand} ${stem}` : stem);
   });

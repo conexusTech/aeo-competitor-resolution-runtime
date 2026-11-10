@@ -113,6 +113,7 @@ describe("the configuration", () => {
     expect(bestbuyAdapter.querySupport).toEqual({
       maxNumericQueryDigits: null,
       barcodeIsSearchable: true,
+      partNumberNeedsBrand: false,
     });
     const query = barcodeQuery(M310_UPC, bestbuyAdapter.querySupport);
     expect(query).toBe(M310_UPC);

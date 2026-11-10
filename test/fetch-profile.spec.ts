@@ -197,7 +197,11 @@ const PROFILE: FetchProfile = { country: "us", timeoutMs: 150_000 };
 describe("resolve sends the competitor's profile on competitor pages only", () => {
   const adapter: RetailerAdapter = {
     slug: "fake",
-    querySupport: { maxNumericQueryDigits: null, barcodeIsSearchable: false },
+    querySupport: {
+      maxNumericQueryDigits: null,
+      barcodeIsSearchable: false,
+      partNumberNeedsBrand: false,
+    },
     pacing: { pagesAtOnce: 3 },
     fetchProfile: PROFILE,
     maxProbes: null,

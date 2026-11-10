@@ -147,6 +147,7 @@ const BARCODE_LABELS: ReadonlySet<string> = new Set([
 const QUERY_SUPPORT: QuerySupport = {
   maxNumericQueryDigits: null,
   barcodeIsSearchable: false,
+  partNumberNeedsBrand: false,
 };
 
 /** The handful of entities Amazon emits inside attribute values. */

@@ -43,7 +43,11 @@ const candidate: ParsedCandidate = {
 
 const adapter: RetailerAdapter = {
   slug: "fake",
-  querySupport: { maxNumericQueryDigits: 9, barcodeIsSearchable: false },
+  querySupport: {
+    maxNumericQueryDigits: 9,
+    barcodeIsSearchable: false,
+    partNumberNeedsBrand: false,
+  },
   pacing: { pagesAtOnce: 3 },
   fetchProfile: { country: null, timeoutMs: null },
   maxProbes: null,

@@ -38,7 +38,11 @@ const SERP_BODY = `<h3>Kingwin CF-08LB Fan</h3><h3>Kingwin CF-08LB 80mm</h3><p>C
 function adapter(): RetailerAdapter {
   return {
     slug: "fake",
-    querySupport: { maxNumericQueryDigits: 9, barcodeIsSearchable: false },
+    querySupport: {
+      maxNumericQueryDigits: 9,
+      barcodeIsSearchable: false,
+      partNumberNeedsBrand: false,
+    },
     pacing: { pagesAtOnce: 3 },
     fetchProfile: { country: null, timeoutMs: null },
     maxProbes: null,

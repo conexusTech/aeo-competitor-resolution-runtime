@@ -29,8 +29,10 @@ import {
 } from "./identity/types.js";
 import { barcodeQuery, planQueries } from "./query-plan.js";
 import {
+  brandAgrees,
   hasConclusiveCandidate,
   hasPartNumberEvidence,
+  namesThePartNumber,
   MIN_EVIDENCE_TO_REPORT,
   probeOrder,
   rankCandidates,
@@ -661,6 +663,27 @@ export async function resolveItem(
     };
   }
 
+  /**
+   * Whether a listing found by searching is a candidate for this item at all.
+   *
+   * 🔴 **Where a part number names a product only with its brand**, a listing
+   * needs part-number evidence AND a brand that agrees with the item's — the
+   * rule that keeps a C2G cable sharing an Allsop wrist rest's MFR # from
+   * being probed, or proposed. Everywhere else every listing found is one, as
+   * it always was. See `QuerySupport.partNumberNeedsBrand`.
+   */
+  const itemBrand = identity?.brand ?? null;
+  const isCandidate = (candidate: ParsedCandidate): boolean =>
+    !adapter.querySupport.partNumberNeedsBrand ||
+    (namesThePartNumber({
+      candidate,
+      partNumbers,
+      brand: itemBrand,
+      barcode: request.barcode,
+      queryTokens: [],
+    }) &&
+      brandAgrees(itemBrand, candidate));
+
   for (const query of queries) {
     if (!canQuery(adapter.querySupport, query)) continue;
     // The barcode stage's query has been asked; never twice.
@@ -668,7 +691,11 @@ export async function resolveItem(
     if (!(await search(query))) continue;
 
     if (
-      hasConclusiveCandidate([...pool.values()], partNumbers, request.barcode)
+      hasConclusiveCandidate(
+        [...pool.values()].filter(isCandidate),
+        partNumbers,
+        request.barcode,
+      )
     ) {
       break;
     }
@@ -735,13 +762,22 @@ export async function resolveItem(
     barcode: request.barcode,
     queryTokens: tokenise(tried),
   };
-  const ranked = probeOrder(rankCandidates([...pool.values()], rankInput));
+  const ranked = probeOrder(
+    rankCandidates([...pool.values()].filter(isCandidate), rankInput),
+  );
 
   /** The best listing we found but could not compare — an `unverifiable`. */
   let noBarcodeFound: { candidate: ParsedCandidate; score: number } | null =
     null;
 
-  const remembered = rememberedAgreement(ranked);
+  // 🔑 Over EVERY listing found, not only the candidates: a barcode this run
+  // already read that agrees with the client's proves the pairing whatever
+  // the brand reads as. Where the brand rule is off, the two lists are one.
+  const remembered = rememberedAgreement(
+    adapter.querySupport.partNumberNeedsBrand
+      ? probeOrder(rankCandidates([...pool.values()], rankInput))
+      : ranked,
+  );
   if (remembered !== null) {
     return {
       ...counted,

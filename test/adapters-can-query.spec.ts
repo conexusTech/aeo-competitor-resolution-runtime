@@ -14,11 +14,13 @@ import { canQuery, type QuerySupport } from "../src/adapters/types.js";
 const LAUNCH_RETAILER: QuerySupport = {
   maxNumericQueryDigits: 9,
   barcodeIsSearchable: false,
+  partNumberNeedsBrand: false,
 };
 
 const NO_LIMIT_KNOWN: QuerySupport = {
   maxNumericQueryDigits: null,
   barcodeIsSearchable: false,
+  partNumberNeedsBrand: false,
 };
 
 describe("canQuery", () => {
