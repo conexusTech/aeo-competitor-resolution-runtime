@@ -105,14 +105,15 @@ describe("the committed B&H pages", () => {
 
   it("CONTROL: the markers find real session values where they are", () => {
     // Without this, a marker list that matched nothing would pass above.
-    // Each sample is copied from the raw M310 page in the investigation's
-    // cache, in the encoding the page carries it in.
+    // 🔴 Each sample is SYNTHETIC, in the shape and encoding the raw M310
+    // page carries the real one in — never a value copied from a session
+    // (security finding 7; `control-samples-are-synthetic.spec.ts`).
     const leaked = [
-      "&quot;bhTraceId&quot;:&quot;RZQQBOLWCWEI5W4PFCFJ&quot;",
-      "&quot;ssrReqId&quot;:&quot;ea62cfe1-919a-45b7-9947-1d9bf2664ac2&quot;",
-      "__CF$cv$params={r:'a583bbe40cefef9f',t:'MTc5NDI5OTgzMg=='}",
-      "/cdn-cgi/challenge-platform/scripts/precursor/main.js?ray=a583bbe40cefef9f",
-      "/aperture/client/watchdog?reqId=ea62cfe1-919a-45b7-9947-1d9bf2664ac2",
+      "&quot;bhTraceId&quot;:&quot;SYNTHETICTRACEID0000&quot;",
+      "&quot;ssrReqId&quot;:&quot;22222222-2222-4222-8222-222222222222&quot;",
+      "__CF$cv$params={r:'f0f0f0f0f0f0f0f0',t:'SYNTHETIC='}",
+      "/cdn-cgi/challenge-platform/scripts/precursor/main.js?ray=f0f0f0f0f0f0f0f0",
+      "/aperture/client/watchdog?reqId=22222222-2222-4222-8222-222222222222",
     ];
     for (const sample of leaked) {
       expect(leaks(sample), sample).not.toEqual([]);
@@ -121,7 +122,8 @@ describe("the committed B&H pages", () => {
 
   it("CONTROL: a session value put back into a committed page is caught", () => {
     // The real file format, not a sample string: the M310 page's preloaded
-    // state given back the trace id and request id its raw capture carried.
+    // state given back a trace id and request id of the shape its raw
+    // capture carried (SYNTHETIC values).
     const body = gunzipSync(
       readFileSync(dir("./raw/bh-pdp-m310.html.gz")),
     ).toString("utf8");
@@ -129,8 +131,8 @@ describe("the committed B&H pages", () => {
     const reinjected = body.replace(
       'data-data="{',
       'data-data="{&quot;ConfigStore&quot;:{&quot;bhTraceId&quot;:' +
-        "&quot;RZQQBOLWCWEI5W4PFCFJ&quot;,&quot;ssrReqId&quot;:" +
-        "&quot;ea62cfe1-919a-45b7-9947-1d9bf2664ac2&quot;},",
+        "&quot;SYNTHETICTRACEID0000&quot;,&quot;ssrReqId&quot;:" +
+        "&quot;22222222-2222-4222-8222-222222222222&quot;},",
     );
     expect(reinjected).not.toBe(body);
     expect(leaks(reinjected)).toEqual([

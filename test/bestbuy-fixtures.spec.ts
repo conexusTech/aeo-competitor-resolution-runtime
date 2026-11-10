@@ -106,11 +106,13 @@ describe("the committed Best Buy pages", () => {
 
   it("CONTROL: the markers find a session value where one is", () => {
     // Without this, a marker list that matched nothing would pass above.
+    // 🔴 Each sample is SYNTHETIC, in the shape of a real one — never a value
+    // copied from a session (security finding 7).
     const leaked = [
-      '{"x-forwarded-for":"r1fc0, 23.195.36.147"}',
-      '"visitorToken":"01a1c0a2-c8f3-71ae-8713-7842e6ce05ca"',
-      '"SID":"a95d4f61"',
-      "UID=0000168e468cbbdc:T=1794233265",
+      '{"x-forwarded-for":"r1fc0, 192.0.2.1"}',
+      '"visitorToken":"33333333-3333-4333-8333-333333333333"',
+      '"SID":"b0b0b0b0"',
+      "UID=00000000e0e0e0e0:T=1000000000",
     ];
     for (const sample of leaked) {
       expect(SESSION_MARKERS.some((m) => m.test(sample))).toBe(true);

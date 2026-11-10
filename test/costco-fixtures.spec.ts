@@ -114,13 +114,14 @@ describe("the committed Costco pages", () => {
   });
 
   it("CONTROL: the markers find real session values where they are", () => {
-    // Without this, a marker list that matched nothing would pass above. Each
-    // sample is copied from the raw AirPods page in the investigation's cache,
-    // in the encoding the page carries it in.
+    // Without this, a marker list that matched nothing would pass above.
+    // 🔴 Each sample is SYNTHETIC, in the shape and encoding the raw AirPods
+    // page carries the real one in — never a value copied from a session
+    // (security finding 7; `control-samples-are-synthetic.spec.ts`).
     const leaked = [
-      "nonce=03VbXvcelAZbmDGm\\u0026client_id=4900eb1f-0c10-4bd9-99c3-c59e6c1ecebf",
-      '"clientId":"4900eb1f-0c10-4bd9-99c3-c59e6c1ecebf"',
-      'dtTrId;desc="a8b107fb06830c963e9b2a0a4e8f06bd"',
+      "nonce=SYNTHETIC0nonce0\\u0026client_id=11111111-1111-4111-8111-111111111111",
+      '"clientId":"11111111-1111-4111-8111-111111111111"',
+      'dtTrId;desc="a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0"',
     ];
     for (const sample of leaked) {
       expect(leaks(sample), sample).not.toEqual([]);
@@ -128,15 +129,15 @@ describe("the committed Costco pages", () => {
   });
 
   it("CONTROL: a session value put back into a committed page is caught", () => {
-    // The real file format: the AirPods page's flight data given back the
-    // item clientId its raw capture carried.
+    // The real file format: the AirPods page's flight data given back an
+    // item clientId of the shape its raw capture carried (SYNTHETIC value).
     const body = gunzipSync(
       readFileSync(dir("./raw/costco-pdp-airpods-4-anc.html.gz")),
     ).toString("utf8");
     expect(leaks(body)).toEqual([]);
     const reinjected = body.replace(
       '\\"id\\":\\"1611943\\"',
-      '\\"id\\":\\"1611943\\",\\"clientId\\":\\"4900eb1f-0c10-4bd9-99c3-c59e6c1ecebf\\"',
+      '\\"id\\":\\"1611943\\",\\"clientId\\":\\"11111111-1111-4111-8111-111111111111\\"',
     );
     expect(reinjected).not.toBe(body);
     expect(leaks(reinjected)).toEqual([
