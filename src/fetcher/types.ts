@@ -59,6 +59,17 @@ export interface FetchProfile {
    * leaves the attempt to the vendor's own limit.
    */
   readonly timeoutMs: number | null;
+  /**
+   * Shortest body accepted for THIS request, where it is not the fetcher's
+   * own page minimum. Absent = the fetcher's.
+   *
+   * 🔑 **Per request, not per retailer, so it is optional here** while the
+   * two facts above are required. One file is known to be smaller than any
+   * page: Costco's sitemap index, 1,547 bytes against a 2,000-byte minimum
+   * that exists to refuse a proxy's short error document. Lowering the
+   * fetcher's minimum for it would lower it for every page.
+   */
+  readonly minBodyBytes?: number;
 }
 
 export interface Fetcher {

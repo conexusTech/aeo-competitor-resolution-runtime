@@ -475,6 +475,8 @@ export const amazonAdapter: RetailerAdapter & ListingReader = {
   fetchProfile: { country: null, timeoutMs: null },
   // The run's default, as before the limit was per competitor.
   maxProbes: null,
+  // It answers a search, so its candidates come from searching.
+  productIndex: null,
   buildSearchUrl: (query) =>
     `https://www.amazon.com/s?k=${encodeURIComponent(query)}`,
   parseSearchResults,

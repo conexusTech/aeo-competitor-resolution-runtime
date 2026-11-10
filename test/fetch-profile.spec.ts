@@ -157,6 +157,34 @@ describe("the live fetcher sends the profile", () => {
     expect(fetcher.liveRequestCount).toBe(2);
   });
 
+  it("🔴 takes a body as short as the profile's own minimum, and only that one", async () => {
+    // Costco's sitemap index is a real 1,547-byte file.
+    const list = "x".repeat(1547);
+    vendorAnswering(() => Promise.resolve(new Response(list, { status: 200 })));
+    const url = "https://shop.test/index.xml";
+    const result = await new LiveFetcher(opts()).fetch(url, {
+      country: "us",
+      timeoutMs: null,
+      minBodyBytes: 500,
+    });
+    expect(result.body).toBe(list);
+    // Client-side only: the vendor is sent exactly the body it always was.
+    expect(sent[0]?.body).toBe(
+      `{"zone":"z","url":"${url}","format":"raw","country":"us"}`,
+    );
+
+    // CONTROL: the same body for a request that names no minimum is refused.
+    const refused = await new LiveFetcher(
+      opts({ attempts: 1, serveFromCache: false }),
+    )
+      .fetch(url, { country: "us", timeoutMs: null })
+      .then(
+        () => null,
+        (e: unknown) => e,
+      );
+    expect(refused).toBeInstanceOf(FetchFailed);
+  });
+
   it("the meter hands the profile through", async () => {
     vendorAnswering(page);
     await new RequestMeter(new LiveFetcher(opts())).fetch(
@@ -205,6 +233,7 @@ describe("resolve sends the competitor's profile on competitor pages only", () =
     pacing: { pagesAtOnce: 3 },
     fetchProfile: PROFILE,
     maxProbes: null,
+    productIndex: null,
     buildSearchUrl: (q) => `https://r.test/s?q=${encodeURIComponent(q)}`,
     parseSearchResults: () => [
       {

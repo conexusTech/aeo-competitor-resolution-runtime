@@ -288,7 +288,10 @@ export class LiveFetcher implements Fetcher {
 
         // Both conditions. A 200 carrying a 300-byte block notice is a failure
         // that looks like a success, and caching it makes the failure permanent.
-        if (response.status >= 400 || body.length < this.options.minBodyBytes) {
+        if (
+          response.status >= 400 ||
+          body.length < (profile?.minBodyBytes ?? this.options.minBodyBytes)
+        ) {
           // 🔴 **A short body on a 2xx is a SILENT THROTTLE and the next attempt
           // must wait much longer.** Measured: the vendor answers the identity
           // lookup with `200` and **zero bytes** for about a fifth of requests

@@ -543,6 +543,8 @@ export const bestbuyAdapter: RetailerAdapter & ListingReader = {
   fetchProfile: { country: "us", timeoutMs: 150_000 },
   // The investigation probed at most three product pages per row.
   maxProbes: 3,
+  // It answers a search, so its candidates come from searching.
+  productIndex: null,
   buildSearchUrl: (query) =>
     `https://www.bestbuy.com/site/searchpage.jsp?st=${encodeURIComponent(query)}`,
   parseSearchResults,

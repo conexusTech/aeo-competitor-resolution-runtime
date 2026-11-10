@@ -22,6 +22,7 @@ import { gtinMatches } from "./gtin.js";
 import { identityFromBarcode } from "./identity/from-barcode.js";
 import { identityFromSearchResults } from "./identity/from-search-results.js";
 import { identityFromStructuredData } from "./identity/from-structured-data.js";
+import { createIndexCache, type IndexCache } from "./product-index.js";
 import {
   mergeIdentities,
   type IdentityProvenance,
@@ -341,6 +342,11 @@ export async function resolveItem(
   options: ResolveOptions = DEFAULT_OPTIONS,
   /** What earlier items in this run already read. Absent = a lone item. */
   memory?: ProbeMemory,
+  /**
+   * The run's read of the retailer's product index, where it has one. Absent
+   * = a lone item, which reads the index for itself.
+   */
+  index?: IndexCache,
 ): Promise<Resolution> {
   // 🔴 **Every `requests` below used to be `liveRequestCount - startedAt` on
   // the fetcher this was handed — and that is not an attribution.** `runList`
@@ -609,59 +615,7 @@ export async function resolveItem(
 
   const { identity, partNumbers, phrase, fetchFailed } =
     await establishIdentity(request, fetcher, options);
-
-  const queries = planQueries(
-    {
-      barcode: request.barcode,
-      brand: identity?.brand ?? null,
-      partNumbers,
-      phrase,
-      productName: request.productName ?? null,
-    },
-    adapter.querySupport,
-  );
-
-  if (queries.length === 0) {
-    // 🔴 **This returned a clean `not-found` with no `failure`, and the
-    // gateway maps that to item state `not_carried` — which its own constants
-    // define as "the competitor GENUINELY does not stock the item, which is
-    // real assortment information".** Nothing had been searched. A live queue
-    // run on 2026-09-11 filed 3 of 10 items that way, each noted "0
-    // candidate(s) across 0 query attempt(s)": the run's own words admitted
-    // nobody looked while the state it filed said the retailer does not carry
-    // it.
-    //
-    // 🔑 **`runList` already guards the identical hazard on the throwing
-    // route**, and says so in as many words: "never as a clean miss, which
-    // would report 'this retailer does not carry it' for an item nobody
-    // managed to look up." This is that case on the route that does not throw.
-    //
-    // ⚠️ **Two different reasons land here and the note distinguishes them**,
-    // because one is ours and one is the item's. A fetch that failed is a
-    // transient proxy or network problem and the run should be retried; an
-    // item with nothing derivable will never resolve however often it is
-    // retried, and somebody has to add a part number to the list.
-    //
-    // ⚠️ This changes what the customer is TOLD, not what gets bought: the
-    // gateway re-attempts on `state <> 'approved'`, so `error` and
-    // `not_carried` are retried identically.
-    //
-    // ⚠️ Unreachable after a barcode search: the plan puts that same query
-    // first, so a plan that asked it is never empty.
-    return {
-      ...base,
-      outcome: "not-found",
-      identity,
-      queriesTried: [],
-      requests: fetcher.liveRequestCount,
-      failure: fetchFailed
-        ? `could not establish what this item is: a source needed to identify ` +
-          `it could not be fetched, so no search was attempted`
-        : `no searchable identity could be derived for this item and the ` +
-          `retailer does not accept a barcode search, so no search was ` +
-          `attempted`,
-    };
-  }
+  const itemBrand = identity?.brand ?? null;
 
   /**
    * Whether a listing found by searching is a candidate for this item at all.
@@ -672,7 +626,6 @@ export async function resolveItem(
    * being probed, or proposed. Everywhere else every listing found is one, as
    * it always was. See `QuerySupport.partNumberNeedsBrand`.
    */
-  const itemBrand = identity?.brand ?? null;
   const isCandidate = (candidate: ParsedCandidate): boolean =>
     !adapter.querySupport.partNumberNeedsBrand ||
     (namesThePartNumber({
@@ -684,22 +637,130 @@ export async function resolveItem(
     }) &&
       brandAgrees(itemBrand, candidate));
 
-  for (const query of queries) {
-    if (!canQuery(adapter.querySupport, query)) continue;
-    // The barcode stage's query has been asked; never twice.
-    if (tried.includes(query)) continue;
-    if (!(await search(query))) continue;
-
-    if (
-      hasConclusiveCandidate(
-        [...pool.values()].filter(isCandidate),
-        partNumbers,
-        request.barcode,
-      )
-    ) {
-      break;
+  /**
+   * Where this retailer lists what it sells instead of answering a search.
+   *
+   * 🔑 **Candidates from the index, then the same probes and the same
+   * proof.** Nothing below the gathering step knows where a candidate came
+   * from: it is probed, and verified only by a barcode its own page states.
+   */
+  const productIndex = adapter.productIndex;
+  if (productIndex !== null) {
+    const productName = request.productName ?? identity?.title ?? null;
+    if (itemBrand === null && productName === null) {
+      // The index path's twin of an empty query plan, and the same rule: a
+      // failure, never a clean miss, because nothing was looked up.
+      return {
+        ...base,
+        outcome: "not-found",
+        identity,
+        queriesTried: [],
+        requests: fetcher.liveRequestCount,
+        failure: fetchFailed
+          ? `could not establish what this item is: a source needed to ` +
+            `identify it could not be fetched, so it was never looked up in ` +
+            `the retailer's product index`
+          : `neither a brand nor a name could be found for this item, and ` +
+            `the retailer is looked up by one or the other in its product ` +
+            `index, so it was never looked up`,
+      };
     }
-    if (pool.size > options.candidateFlood * 4) break; // runaway generic query
+    tried.push(`index:${itemBrand ?? productName}`);
+    const read = await (
+      index ?? createIndexCache(productIndex, adapter.fetchProfile)
+    ).read(fetcher);
+    if (read.kind === "failed") {
+      return {
+        ...base,
+        outcome: "not-found",
+        identity,
+        queriesTried: tried,
+        requests: fetcher.liveRequestCount,
+        failure:
+          `the retailer's product index could not be read, so this item was ` +
+          `never looked up in it: ${read.reason}`,
+      };
+    }
+    const found = productIndex.candidates(read.entries, {
+      brand: itemBrand,
+      partNumbers,
+      productName,
+    });
+    candidatesSeen += found.length;
+    for (const candidate of found) {
+      if (!pool.has(candidate.itemId)) pool.set(candidate.itemId, candidate);
+    }
+  } else {
+    const queries = planQueries(
+      {
+        barcode: request.barcode,
+        brand: identity?.brand ?? null,
+        partNumbers,
+        phrase,
+        productName: request.productName ?? null,
+      },
+      adapter.querySupport,
+    );
+
+    if (queries.length === 0) {
+      // 🔴 **This returned a clean `not-found` with no `failure`, and the
+      // gateway maps that to item state `not_carried` — which its own constants
+      // define as "the competitor GENUINELY does not stock the item, which is
+      // real assortment information".** Nothing had been searched. A live queue
+      // run on 2026-09-11 filed 3 of 10 items that way, each noted "0
+      // candidate(s) across 0 query attempt(s)": the run's own words admitted
+      // nobody looked while the state it filed said the retailer does not carry
+      // it.
+      //
+      // 🔑 **`runList` already guards the identical hazard on the throwing
+      // route**, and says so in as many words: "never as a clean miss, which
+      // would report 'this retailer does not carry it' for an item nobody
+      // managed to look up." This is that case on the route that does not throw.
+      //
+      // ⚠️ **Two different reasons land here and the note distinguishes them**,
+      // because one is ours and one is the item's. A fetch that failed is a
+      // transient proxy or network problem and the run should be retried; an
+      // item with nothing derivable will never resolve however often it is
+      // retried, and somebody has to add a part number to the list.
+      //
+      // ⚠️ This changes what the customer is TOLD, not what gets bought: the
+      // gateway re-attempts on `state <> 'approved'`, so `error` and
+      // `not_carried` are retried identically.
+      //
+      // ⚠️ Unreachable after a barcode search: the plan puts that same query
+      // first, so a plan that asked it is never empty.
+      return {
+        ...base,
+        outcome: "not-found",
+        identity,
+        queriesTried: [],
+        requests: fetcher.liveRequestCount,
+        failure: fetchFailed
+          ? `could not establish what this item is: a source needed to identify ` +
+            `it could not be fetched, so no search was attempted`
+          : `no searchable identity could be derived for this item and the ` +
+            `retailer does not accept a barcode search, so no search was ` +
+            `attempted`,
+      };
+    }
+
+    for (const query of queries) {
+      if (!canQuery(adapter.querySupport, query)) continue;
+      // The barcode stage's query has been asked; never twice.
+      if (tried.includes(query)) continue;
+      if (!(await search(query))) continue;
+
+      if (
+        hasConclusiveCandidate(
+          [...pool.values()].filter(isCandidate),
+          partNumbers,
+          request.barcode,
+        )
+      ) {
+        break;
+      }
+      if (pool.size > options.candidateFlood * 4) break; // runaway generic query
+    }
   }
 
   /**
@@ -725,7 +786,13 @@ export async function resolveItem(
    * barcode with nothing for 9 of the 20 sampled rows, and a run that then
    * cannot identify the item would have filed all 9 as not carried.
    */
-  const identityUnfetched = fetchFailed && partNumbers.length === 0;
+  //
+  // ⚠️ For a lookup in a product index the brand is what an item is found
+  // by, so an identity that could not be fetched leaves a miss resting on the
+  // name alone.
+  const identityUnfetched =
+    fetchFailed &&
+    (productIndex === null ? partNumbers.length === 0 : itemBrand === null);
   const missFailure =
     unanswered !== 0
       ? `${unanswered} of ${tried.length} searches went unanswered by the ` +
@@ -733,9 +800,13 @@ export async function resolveItem(
         `came back as not a results page, so a miss here cannot be told from ` +
         `a search nobody answered`
       : identityUnfetched
-        ? `could not establish what this item is: a source needed to ` +
-          `identify it could not be fetched, so it was searched only by ` +
-          `${tried.map((q) => `"${q}"`).join(", ")} and never by part number`
+        ? productIndex !== null
+          ? `could not establish what this item is: a source needed to ` +
+            `identify it could not be fetched, so it was looked up in the ` +
+            `retailer's product index by its name only, never by its brand`
+          : `could not establish what this item is: a source needed to ` +
+            `identify it could not be fetched, so it was searched only by ` +
+            `${tried.map((q) => `"${q}"`).join(", ")} and never by part number`
         : null;
   const counted = {
     ...base,
@@ -756,11 +827,20 @@ export async function resolveItem(
     };
   }
 
+  /**
+   * 🔑 **For candidates from a product index, the index's order decides among
+   * equals.** It chose them by the item's brand and name already; crediting
+   * the brand again here would rank every one of the brand's weaker names
+   * above a better one that does not spell the brand — Costco's AirPods are
+   * `airpods-4-with-…`, while `apple-airpods-max-2` leads with "apple". And
+   * the lookup's record (`index:<brand>`) is not a query whose words a
+   * listing could share. Part-number evidence still counts as ever.
+   */
   const rankInput = {
     partNumbers,
-    brand: identity?.brand ?? null,
+    brand: productIndex === null ? itemBrand : null,
     barcode: request.barcode,
-    queryTokens: tokenise(tried),
+    queryTokens: productIndex === null ? tokenise(tried) : [],
   };
   const ranked = probeOrder(
     rankCandidates([...pool.values()].filter(isCandidate), rankInput),

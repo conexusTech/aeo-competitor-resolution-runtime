@@ -229,6 +229,85 @@ export function pagesAtOnce(requested: number | null, pacing: Pacing): number {
   return Math.min(MAX_PAGES_AT_ONCE, Math.max(1, wanted));
 }
 
+/**
+ * One product a retailer's own product index lists.
+ *
+ * 🔑 **Only what the index states**: an id, the url, and the name its url
+ * spells. Costco's sitemap carries no barcode, no price and no brand field —
+ * a brand is read off the name only where the name leads with it.
+ */
+export interface ProductIndexEntry {
+  /** The retailer's own id for the product, in the form its pages state. */
+  readonly itemId: string;
+  /** The product page's url, ready to fetch. */
+  readonly url: string;
+  /** The name the index gives it, lower-case words. */
+  readonly name: string;
+}
+
+/** What an item is known as, for finding it in a product index. */
+export interface ProductIndexQuery {
+  readonly brand: string | null;
+  readonly partNumbers: readonly string[];
+  /** The client's own name for the product, or `null` where none is known. */
+  readonly productName: string | null;
+}
+
+/**
+ * Where a retailer that cannot be searched lists what it sells.
+ *
+ * ── 🔴 Why this exists ───────────────────────────────────────────────
+ *
+ * Costco's search and category pages arrive as client-rendered shells: 40 of
+ * 40 searches in the investigation, by barcode and by part number, came back
+ * with 0 products, a search for an item Costco sells looking exactly like a
+ * search for nonsense. Its product sitemap is the only server-side list of
+ * what it sells online (about 18,180 products), so a candidate comes from
+ * there, and the product page still proves it by barcode.
+ *
+ * ⚠️ **Read once per run, never per item** — see `IndexCache`. The files are
+ * megabytes each, and every item of a run asks the same question of them.
+ *
+ * 🔑 **Two levels, as the retailer publishes it.** `urls` is the list of the
+ * index's files (Costco's sitemap index), read FIRST so a product file the
+ * retailer adds is read rather than missed silently; `parseListing` names the
+ * product files in it, and `parse` reads each of those.
+ *
+ * Every function here is pure, like the rest of the seam.
+ */
+export interface ProductIndex {
+  /** The index's own list of files, read before anything else. */
+  readonly urls: readonly string[];
+  /**
+   * Shortest body accepted as that list.
+   *
+   * ⚠️ **Its own figure, not the fetcher's page minimum.** Costco's sitemap
+   * index is a real 1,547-byte file, below the 2,000 bytes a fetcher takes as
+   * the least a page can be — the investigation lost it once to exactly that.
+   */
+  readonly minListBytes: number;
+  /** The list's body -> the product files it names, or `null` if it is no list. */
+  parseListing(body: string): string[] | null;
+  /**
+   * Fewest products a whole index holds. Fewer means a file cut short or a
+   * file that changed shape, and the read is refused rather than trusted:
+   * a short index makes every item it lacks look not carried.
+   */
+  readonly minEntries: number;
+  /** A product file's body -> its entries, or `null` if it is no product file. */
+  parse(body: string): ProductIndexEntry[] | null;
+  /**
+   * The entries worth probing for an item, best first.
+   *
+   * 🔴 A candidate's `brand` is set only where the entry's name leads with
+   * the item's brand — never invented from a name that does not say it.
+   */
+  candidates(
+    entries: readonly ProductIndexEntry[],
+    query: ProductIndexQuery,
+  ): ParsedCandidate[];
+}
+
 export interface RetailerAdapter {
   /**
    * The registry slug — a string, deliberately. Retailer capability is a row in
@@ -253,6 +332,16 @@ export interface RetailerAdapter {
    * adapter states its answer.
    */
   readonly maxProbes: number | null;
+
+  /**
+   * Where this retailer lists what it sells, for a retailer that cannot be
+   * searched — or `null` for one that can.
+   *
+   * 🔑 **Required, so the next adapter states its answer.** Where set, an
+   * item's candidates come from the index instead of from searches, and
+   * `parseSearchResults` is never called.
+   */
+  readonly productIndex: ProductIndex | null;
 
   /** Where to send a search for `query`. Pure. */
   buildSearchUrl(query: string): string;

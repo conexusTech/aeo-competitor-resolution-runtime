@@ -119,6 +119,7 @@ function retailer(
     pacing: { pagesAtOnce: 3 },
     fetchProfile: { country: null, timeoutMs: null },
     maxProbes: 3,
+    productIndex: null,
     buildSearchUrl: searchUrl,
     parseSearchResults: (html) => [
       ...(results[html.replace(/^search:/, "")] ?? []),

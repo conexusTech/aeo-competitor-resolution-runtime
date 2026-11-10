@@ -12,6 +12,7 @@ import path from "node:path";
 import { pagesAtOnce, type RetailerAdapter } from "./adapters/types.js";
 import { RequestMeter } from "./fetcher/meter.js";
 import type { Fetcher } from "./fetcher/types.js";
+import { createIndexCache } from "./product-index.js";
 import {
   DEFAULT_OPTIONS,
   createProbeMemory,
@@ -257,6 +258,17 @@ export async function runList(
    */
   const memory = createProbeMemory();
 
+  /**
+   * 🔑 **One read of the retailer's product index for the whole run**, beside
+   * the memory and for the same reason: every item asks it the same question.
+   * Single-flight, so workers that ask at once share one read. See
+   * `IndexCache`.
+   */
+  const index =
+    adapter.productIndex === null
+      ? undefined
+      : createIndexCache(adapter.productIndex, adapter.fetchProfile);
+
   let cursor = 0;
   /** What a deferred item's first attempt spent and went unanswered, by barcode. */
   const carried = new Map<string, Resolution>();
@@ -309,7 +321,14 @@ export async function runList(
       // direction a cost figure must never be wrong in.
       const meter = new RequestMeter(fetcher);
       try {
-        resolution = await resolveItem(item, adapter, meter, options, memory);
+        resolution = await resolveItem(
+          item,
+          adapter,
+          meter,
+          options,
+          memory,
+          index,
+        );
       } catch (error) {
         // The pipeline could not complete. Recorded as a failure with its
         // reason — never as a clean miss, which would report "this retailer
@@ -401,6 +420,9 @@ export async function runList(
     for (const d of deferred) carried.set(d.item.barcode, d.first);
     deferred.length = 0;
     cursor = 0;
+    // An index that could not be read in the first pass is read once more,
+    // now that the run has stopped pressing — by the retry's first item only.
+    index?.forgetFailure();
     await worker(held, true);
   }
 

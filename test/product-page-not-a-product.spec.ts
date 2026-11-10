@@ -64,6 +64,7 @@ function retailer(
     pacing: { pagesAtOnce: 3 },
     fetchProfile: { country: null, timeoutMs: null },
     maxProbes,
+    productIndex: null,
     buildSearchUrl: (q) => `https://r.test/s?q=${encodeURIComponent(q)}`,
     parseSearchResults: () => ids.map(candidate),
     parseProductPage: page,
