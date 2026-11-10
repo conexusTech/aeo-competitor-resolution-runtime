@@ -660,6 +660,10 @@ export const COSTCO_PRODUCT_INDEX: ProductIndex = {
   // 10,000 is a file cut short, and would make every item it lost look not
   // carried.
   minEntries: 10_000,
+  // One `/p/-/` product file when measured (2026-11-10), each about 2 MB:
+  // five is room for the catalogue to grow, and a list naming more is not
+  // the index this was built against.
+  maxFiles: 5,
   parse: parseSitemap,
   candidates: indexCandidates,
 };

@@ -76,6 +76,12 @@ describe("Costco's configuration", () => {
     expect(COSTCO_PRODUCT_INDEX.urls).toEqual([
       "https://www.costco.com/sitemap_lw_index.xml",
     ]);
+    // 🔴 It lists one product file today; a list naming more than five is
+    // refused rather than read (security finding 4).
+    expect(COSTCO_PRODUCT_INDEX.maxFiles).toBe(5);
+    expect(parseSitemapIndex(INDEX)?.length ?? 0).toBeLessThanOrEqual(
+      COSTCO_PRODUCT_INDEX.maxFiles,
+    );
   });
 
   it("is read four pages at once, from the us, with a 280 s timeout and three probes", () => {

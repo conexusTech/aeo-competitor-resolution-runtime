@@ -58,6 +58,22 @@ export interface LiveFetcherOptions {
   readonly serveFromCache: boolean;
 }
 
+/**
+ * The largest response body the live fetcher reads.
+ *
+ * 🔴 **Read as a stream and stopped here, never read whole first.** A vendor
+ * body is somebody else's bytes, and reading one of any size into memory
+ * lets a single runaway response end the container mid-run. A body past this
+ * is a failed attempt — retried and counted like any other — and never a cut
+ * page, which would parse as a page lacking whatever was cut.
+ *
+ * 🔑 **12 MB, from measured page sizes**: Costco's product pages are the
+ * largest any competitor serves, 2.8–3.8 MB, and Costco's whole product
+ * sitemap is about 2 MB. Three times the largest leaves room for a page that
+ * grows, while a body four times anything seen is not a page.
+ */
+export const MAX_RESPONSE_BYTES = 12 * 1024 * 1024;
+
 export const LIVE_DEFAULTS = {
   attempts: 3,
   delayMinMs: 500,
@@ -89,6 +105,46 @@ const isPng = (bytes: Uint8Array): boolean =>
   bytes[1] === 0x50 &&
   bytes[2] === 0x4e &&
   bytes[3] === 0x47;
+
+/**
+ * A response's body as bytes, read as a stream and abandoned at
+ * `MAX_RESPONSE_BYTES` — or `null` when it is longer, or says it will be.
+ */
+async function boundedBytes(response: Response): Promise<Uint8Array | null> {
+  const declared = Number(response.headers.get("content-length") ?? "");
+  if (Number.isFinite(declared) && declared > MAX_RESPONSE_BYTES) {
+    await response.body?.cancel();
+    return null;
+  }
+  const reader: ReadableStreamDefaultReader<Uint8Array> | undefined =
+    response.body?.getReader();
+  if (reader === undefined) return new Uint8Array(0);
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > MAX_RESPONSE_BYTES) {
+      await reader.cancel();
+      return null;
+    }
+    chunks.push(value);
+  }
+  const out = new Uint8Array(size);
+  let at = 0;
+  for (const chunk of chunks) {
+    out.set(chunk, at);
+    at += chunk.byteLength;
+  }
+  return out;
+}
+
+/** The body past the ceiling, as the attempt's error. */
+const tooLarge = (status: number): Error =>
+  new Error(
+    `status=${status} body larger than ${MAX_RESPONSE_BYTES} bytes, not read`,
+  );
 
 const sleep = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));
@@ -187,8 +243,13 @@ export class LiveFetcher implements Fetcher {
               : { signal: AbortSignal.timeout(timeoutMs) }),
           },
         );
-        const bytes = new Uint8Array(await response.arrayBuffer());
+        const read = await boundedBytes(response);
         status = response.status;
+        if (read === null) {
+          lastError = tooLarge(response.status);
+          continue;
+        }
+        const bytes = read;
         if (response.status >= 400 || !isPng(bytes)) {
           // ⚠️ **Not counted here.** `fetch` counts one failure per URL, on
           // the terminal attempt — counting each retry would report failures
@@ -282,9 +343,13 @@ export class LiveFetcher implements Fetcher {
               : { signal: AbortSignal.timeout(timeoutMs) }),
           },
         );
-        const body = await response.text();
-        const fetchedAt = new Date();
+        const bytes = await boundedBytes(response);
         status = response.status;
+        // 🔴 Past the ceiling: a failed attempt, never a cut page — and not a
+        // throttle, which a body too SHORT to be a page is.
+        if (bytes === null) throw tooLarge(response.status);
+        const body = new TextDecoder().decode(bytes);
+        const fetchedAt = new Date();
 
         // Both conditions. A 200 carrying a 300-byte block notice is a failure
         // that looks like a success, and caching it makes the failure permanent.

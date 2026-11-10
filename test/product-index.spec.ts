@@ -54,6 +54,7 @@ const FAKE_INDEX: ProductIndex = {
     return files.length === 0 ? null : files;
   },
   minEntries: 4,
+  maxFiles: 2,
   parse: (body) => {
     const entries: ProductIndexEntry[] = [];
     for (const m of body.matchAll(/^product (\d+) (.+)$/gm)) {
@@ -302,6 +303,24 @@ describe("an index that cannot be read is a failure, never a miss", () => {
       expect(r.failure).toMatch(/product index could not be read/);
       expect(r.identity).toBeNull();
     }
+  });
+
+  it("🔴 a list naming more product files than its ceiling is refused, none of them read (security finding 4)", async () => {
+    const many = [1, 2, 3].map((n) => `https://r.test/products-x${n}.xml`);
+    const s = site({ [LIST]: listBody(many) });
+    const results = await run(s);
+    for (const r of results) {
+      expect(r.outcome).toBe("not-found");
+      expect(r.failure).toMatch(/lists 3 product files, more than the 2/);
+    }
+    for (const file of many) expect(s.count(file)).toBe(0);
+  });
+
+  it("CONTROL: a list at its ceiling is read", async () => {
+    const s = site();
+    expect(s.count(LIST)).toBe(0);
+    const results = await run(s);
+    expect(results.every((r) => r.outcome === "verified")).toBe(true);
   });
 
   it("🔴 a failed product file fails every item too", async () => {

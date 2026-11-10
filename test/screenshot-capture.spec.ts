@@ -42,17 +42,9 @@ const PNG = Uint8Array.from([
   0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4,
 ]);
 
+// A real Response, so the fetcher reads it as it reads the vendor's: a stream.
 const respondBytes = (status: number, bytes: Uint8Array) =>
-  ({
-    status,
-    arrayBuffer: () =>
-      Promise.resolve(
-        bytes.buffer.slice(
-          bytes.byteOffset,
-          bytes.byteOffset + bytes.byteLength,
-        ),
-      ),
-  }) as unknown as Response;
+  new Response(bytes, { status });
 
 /**
  * Stubs `globalThis.fetch` with a body-returning responder.

@@ -350,6 +350,17 @@ export interface ProductIndex {
    * a short index makes every item it lacks look not carried.
    */
   readonly minEntries: number;
+  /**
+   * Most product files a whole index may name. More, and the read is refused
+   * before any of them is fetched.
+   *
+   * 🔴 **The list is the retailer's to write**, and every file it names is a
+   * paid request of megabytes: a list that grew to hundreds of files — or was
+   * answered by something that is not the retailer's index — would spend a
+   * run's budget before the first item is looked up. A refused read is a
+   * failure for every item, never a miss.
+   */
+  readonly maxFiles: number;
   /** A product file's body -> its entries, or `null` if it is no product file. */
   parse(body: string): ProductIndexEntry[] | null;
   /**

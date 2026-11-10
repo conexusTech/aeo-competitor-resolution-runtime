@@ -64,8 +64,9 @@ function recordWaits(): number[] {
   return waits;
 }
 
+// A real Response, so the fetcher reads it as it reads the vendor's: a stream.
 const respond = (status: number, body: string) =>
-  ({ status, text: () => Promise.resolve(body) }) as unknown as Response;
+  new Response(body, { status });
 
 describe("a silent throttle is waited out", () => {
   let waits: number[];

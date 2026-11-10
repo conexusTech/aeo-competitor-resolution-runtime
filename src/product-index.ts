@@ -97,6 +97,12 @@ async function readIndex(
   if (files.length === 0) {
     return failed(`${index.urls.join(", ")} lists no product file`);
   }
+  if (files.length > index.maxFiles) {
+    return failed(
+      `${index.urls.join(", ")} lists ${files.length} product files, more ` +
+        `than the ${index.maxFiles} a whole index is read from, so none was read`,
+    );
+  }
 
   const byId = new Map<string, ProductIndexEntry>();
   for (const file of files) {
