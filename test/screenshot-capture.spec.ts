@@ -99,7 +99,7 @@ describe("fetchScreenshot", () => {
 
   it("returns the bytes verbatim", async () => {
     stubFetch(() => respondBytes(200, PNG));
-    const bytes = await new LiveFetcher(opts()).fetchScreenshot(
+    const { bytes } = await new LiveFetcher(opts()).fetchScreenshot(
       "https://x.test/p",
     );
     expect(Array.from(bytes.slice(0, 4))).toEqual([0x89, 0x50, 0x4e, 0x47]);
@@ -130,7 +130,7 @@ describe("fetchScreenshot", () => {
     const big = new Uint8Array(3_000_000);
     big.set(PNG.slice(0, 8));
     stubFetch(() => respondBytes(200, big));
-    const bytes = await new LiveFetcher(opts()).fetchScreenshot(
+    const { bytes } = await new LiveFetcher(opts()).fetchScreenshot(
       "https://x.test/p",
     );
     expect(bytes).toHaveLength(3_000_000);

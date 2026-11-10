@@ -152,12 +152,24 @@ export type ListingReading = PageReading | GoneReading | FailedReading;
 /** What a read run tells the gateway, and what it asks it. */
 export interface ReadRunPort {
   fetchJob(): Promise<ReadJob>;
+  /**
+   * @param requestsSpent Every attempt sent so far, a running total.
+   * @param pagesDelivered Of those, pages the vendor delivered.
+   */
   reportReadings(
     readings: readonly ListingReading[],
     requestsSpent: number,
+    pagesDelivered: number,
   ): Promise<ReportOutcome>;
-  reportCompleted(requestsSpent: number): Promise<ReportOutcome>;
-  reportError(message: string, requestsSpent: number): Promise<ReportOutcome>;
+  reportCompleted(
+    requestsSpent: number,
+    pagesDelivered: number,
+  ): Promise<ReportOutcome>;
+  reportError(
+    message: string,
+    requestsSpent: number,
+    pagesDelivered: number,
+  ): Promise<ReportOutcome>;
 }
 
 type FailureReason = Exclude<
@@ -399,7 +411,10 @@ export interface ReadRunDeps {
 
 export interface ReadRunResult {
   readonly readings: readonly ListingReading[];
+  /** Requests sent to the vendor: every attempt. */
   readonly liveRequests: number;
+  /** Of those, pages the vendor delivered. */
+  readonly pagesDelivered: number;
   /** True when the gateway said the read run had ended and reading stopped. */
   readonly stoppedEarly: boolean;
   /** Readings the gateway never accepted. Non-zero ends the run in `error`. */
@@ -432,6 +447,7 @@ export async function runReadJob(deps: ReadRunDeps): Promise<ReadRunResult> {
     MAX_READINGS_PER_EVENT,
   );
   const spent = (): number => deps.fetcher.liveRequestCount;
+  const delivered = (): number => deps.fetcher.pagesDelivered;
   const pacing = deps.pacing ?? READ_PACING;
   const sleep = deps.sleep ?? realSleep;
 
@@ -449,7 +465,11 @@ export async function runReadJob(deps: ReadRunDeps): Promise<ReadRunResult> {
       undelivered += batch.length;
       return;
     }
-    const outcome = await deps.client.reportReadings(batch, spent());
+    const outcome = await deps.client.reportReadings(
+      batch,
+      spent(),
+      delivered(),
+    );
     if (outcome.kind === "applied") return;
     undelivered += batch.length;
     if (outcome.kind === "run-gone") {
@@ -604,13 +624,15 @@ export async function runReadJob(deps: ReadRunDeps): Promise<ReadRunResult> {
     log(
       `read ${readings.length} of ${job.listings.length} listing(s): ` +
         `${readings.length - failures} page(s), ${failures} failed reading(s), ` +
-        `${rereads} re-read(s) of a throttled page, ${spent()} request(s)`,
+        `${rereads} re-read(s) of a throttled page, ${spent()} request(s) ` +
+        `sent, ${delivered()} page(s) delivered`,
     );
 
     if (gone) {
       return {
         readings,
         liveRequests: spent(),
+        pagesDelivered: delivered(),
         stoppedEarly: true,
         undelivered,
         rereads,
@@ -622,13 +644,15 @@ export async function runReadJob(deps: ReadRunDeps): Promise<ReadRunResult> {
         `${undelivered} of ${readings.length} reading(s) were not accepted ` +
           `by the gateway`,
         spent(),
+        delivered(),
       );
     } else {
-      await deps.client.reportCompleted(spent());
+      await deps.client.reportCompleted(spent(), delivered());
     }
     return {
       readings,
       liveRequests: spent(),
+      pagesDelivered: delivered(),
       stoppedEarly: false,
       undelivered,
       rereads,
@@ -638,7 +662,7 @@ export async function runReadJob(deps: ReadRunDeps): Promise<ReadRunResult> {
     // — and a failure to file it must not mask the error being reported.
     await flush(true).catch(() => undefined);
     const message = error instanceof Error ? error.message : String(error);
-    await deps.client.reportError(message, spent());
+    await deps.client.reportError(message, spent(), delivered());
     throw error;
   }
 }

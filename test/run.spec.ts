@@ -58,6 +58,10 @@ const adapter: RetailerAdapter = {
 
 class CountingFetcher implements Fetcher {
   liveRequestCount = 0;
+  /** Every request this double serves is one page delivered. */
+  get pagesDelivered(): number {
+    return this.liveRequestCount;
+  }
   readonly asked: string[] = [];
   constructor(private readonly bodies: Record<string, string>) {}
   fetch(url: string): Promise<FetchResult> {
@@ -65,7 +69,7 @@ class CountingFetcher implements Fetcher {
     const body = this.bodies[url];
     if (body === undefined) return Promise.reject(new FetchFailed(url));
     this.liveRequestCount++;
-    return Promise.resolve({ url, body, cached: false });
+    return Promise.resolve({ url, body, cached: false, attempts: 1 });
   }
 }
 
@@ -225,6 +229,7 @@ describe("runList", () => {
     const all = bodies("812348010548");
     const healing: Fetcher & { liveRequestCount: number } = {
       liveRequestCount: 0,
+      pagesDelivered: 0,
       fetch(url: string): Promise<FetchResult> {
         if (
           url.startsWith("https://retailer.test/s?") &&
@@ -236,7 +241,7 @@ describe("runList", () => {
         const body = all[url];
         if (body === undefined) return Promise.reject(new FetchFailed(url));
         this.liveRequestCount++;
-        return Promise.resolve({ url, body, cached: false });
+        return Promise.resolve({ url, body, cached: false, attempts: 1 });
       },
     };
     const results = await runList(

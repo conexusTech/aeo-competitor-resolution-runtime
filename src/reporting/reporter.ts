@@ -107,6 +107,11 @@ export interface ReporterOptions {
    * summing the per-item figures.
    */
   readonly requestsSpent?: () => number;
+  /**
+   * Of those, the pages the vendor delivered, read at send time like
+   * `requestsSpent`. Omitted, no `pages_delivered` is sent.
+   */
+  readonly pagesDelivered?: () => number;
 }
 
 /**
@@ -121,6 +126,7 @@ export class GatewayReporter {
   private readonly journalPath: string;
   private readonly log: (message: string) => void;
   private readonly requestsSpent: (() => number) | null;
+  private readonly pagesDelivered: (() => number) | null;
 
   /** Set when the gateway refuses in a way retrying cannot fix. */
   private reportingDisabled = false;
@@ -141,6 +147,7 @@ export class GatewayReporter {
     this.journalPath = path.join(options.runDir, REPORTED_JOURNAL);
     this.log = options.log ?? console.warn;
     this.requestsSpent = options.requestsSpent ?? null;
+    this.pagesDelivered = options.pagesDelivered ?? null;
   }
 
   /** Whether the gateway has said this run no longer exists. */
@@ -195,6 +202,7 @@ export class GatewayReporter {
       outcome = await this.client.reportResolutions(
         batch,
         this.requestsSpent?.(),
+        this.pagesDelivered?.(),
       );
     } catch (error) {
       // A throw here is a programming error rather than a network one — the
@@ -239,6 +247,7 @@ export class GatewayReporter {
   async reportProgress(args: {
     readonly itemsReported: number;
     readonly requestsSpent: number;
+    readonly pagesDelivered?: number;
   }): Promise<void> {
     if (!this.isReporting) return;
     const outcome = await this.client.reportProgress(args);
@@ -257,10 +266,13 @@ export class GatewayReporter {
    * Flushes first, so a `completed` never arrives before the findings it
    * summarises — the gateway's terminal guard would drop them.
    */
-  async reportCompleted(requestsSpent: number): Promise<void> {
+  async reportCompleted(
+    requestsSpent: number,
+    pagesDelivered?: number,
+  ): Promise<void> {
     await this.flush();
     if (!this.isReporting) return;
-    await this.client.reportCompleted(requestsSpent);
+    await this.client.reportCompleted(requestsSpent, pagesDelivered);
   }
 
   /**
@@ -280,7 +292,12 @@ export class GatewayReporter {
     // says the resolutions disagree about their shape, which says nothing about
     // whether an error event can be delivered — and a run that dies silently is
     // worse than one that dies loudly.
-    await this.client.reportError(message, context, this.requestsSpent?.());
+    await this.client.reportError(
+      message,
+      context,
+      this.requestsSpent?.(),
+      this.pagesDelivered?.(),
+    );
   }
 
   private async recordAcknowledged(

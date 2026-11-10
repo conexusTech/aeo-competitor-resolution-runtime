@@ -187,6 +187,7 @@ export async function runDispatchedJob(
           void deps.reporter.reportProgress({
             itemsReported: progress.completed,
             requestsSpent: progress.liveRequests,
+            pagesDelivered: progress.pagesDelivered,
           });
         },
       },
@@ -214,7 +215,10 @@ export async function runDispatchedJob(
       );
     }
 
-    await deps.reporter.reportCompleted(deps.fetcher.liveRequestCount);
+    await deps.reporter.reportCompleted(
+      deps.fetcher.liveRequestCount,
+      deps.fetcher.pagesDelivered,
+    );
     return {
       resolutions,
       liveRequests: deps.fetcher.liveRequestCount,

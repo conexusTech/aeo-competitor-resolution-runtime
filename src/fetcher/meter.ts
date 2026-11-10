@@ -21,17 +21,30 @@
  * replay fetcher serves its whole corpus as `cached: true` for the same reason,
  * which is why a replayed run correctly reports zero.
  *
- * ⚠️ **The rule "a live request is a non-cached success" is now stated in two
- * places** — here and in `LiveFetcher.fetch`. That duplication is deliberate
- * and it is pinned rather than commented: a check asserts that the per-item
- * meters sum to the fetcher's own total, so the two definitions cannot drift
- * apart without turning a test red.
+ * 🔑 **What counts is every request sent, not every page delivered**
+ * (`resolution-runtime-counts-a-bought-request`). A retry, a 200 too short to
+ * be a page and a timeout are each a request the vendor was asked for. The
+ * live fetcher retries INSIDE one `fetch` call, so a meter that counted calls
+ * would see one request where three were sent; instead each result, and each
+ * `FetchFailed`, says how many attempts it took, and the meter adds that.
+ *
+ * ⚠️ **The rule is still stated in two places** — here and in `LiveFetcher`,
+ * which counts the same attempts on its shared counter. That duplication is
+ * deliberate and pinned rather than commented: a check asserts that the
+ * per-item meters sum to the fetcher's own total, failures included, so the
+ * two definitions cannot drift apart without turning a test red.
  */
 
-import type { Fetcher, FetchResult } from "./types.js";
+import {
+  FetchFailed,
+  type Fetcher,
+  type FetchResult,
+  type Screenshot,
+} from "./types.js";
 
 export class RequestMeter implements Fetcher {
   private spent = 0;
+  private delivered = 0;
 
   constructor(private readonly inner: Fetcher) {
     // Assigned in the constructor rather than as a field initialiser: the
@@ -39,18 +52,38 @@ export class RequestMeter implements Fetcher {
     // cannot take a screenshot — the capturer branches on presence.
     const take = inner.fetchScreenshot?.bind(inner);
     if (take !== undefined) {
-      this.fetchScreenshot = async (url: string): Promise<Uint8Array> => {
-        const bytes = await take(url);
-        this.spent++;
-        return bytes;
+      this.fetchScreenshot = async (url: string): Promise<Screenshot> => {
+        const shot = await this.counted(() => take(url));
+        this.spent += shot.attempts;
+        this.delivered++;
+        return shot;
       };
     }
   }
 
   async fetch(url: string): Promise<FetchResult> {
-    const result = await this.inner.fetch(url);
-    if (!result.cached) this.spent++;
+    const result = await this.counted(() => this.inner.fetch(url));
+    this.spent += result.attempts;
+    if (!result.cached) this.delivered++;
     return result;
+  }
+
+  /**
+   * Run one call, charging a `FetchFailed`'s attempts before it propagates.
+   *
+   * 🔴 **A failed fetch was charged nothing**, because the inner fetcher
+   * counted nothing for it either — it threw before incrementing. Three
+   * attempts that each came back empty are three requests the vendor was
+   * asked for. Any other error carries no count and is charged nothing: it is
+   * not a request that was sent.
+   */
+  private async counted<T>(call: () => Promise<T>): Promise<T> {
+    try {
+      return await call();
+    } catch (error) {
+      if (error instanceof FetchFailed) this.spent += error.attempts;
+      throw error;
+    }
   }
 
   /**
@@ -71,21 +104,19 @@ export class RequestMeter implements Fetcher {
    * item-by-item failure.
    *
    * ⚠️ **No cache clause, unlike `fetch`.** Screenshots are not cached — see
-   * `LiveFetcher.fetchScreenshot` — so every call is a purchase.
+   * `LiveFetcher.fetchScreenshot` — so every attempt is a purchase.
    */
-  readonly fetchScreenshot?: (url: string) => Promise<Uint8Array>;
+  readonly fetchScreenshot?: (url: string) => Promise<Screenshot>;
 
   /**
-   * What was bought through this meter.
-   *
-   * ⚠️ A failed fetch counts **nothing**, because the inner fetcher counts
-   * nothing for it either — it throws before incrementing. That is a known
-   * under-count of the vendor's side of the ledger, not a property of this
-   * class: a 200 rejected for carrying too short a body is a request that was
-   * made and answered. Roadmap row
-   * `resolution-runtime-counts-a-bought-request`.
+   * Requests sent through this meter: every attempt, failures included.
    */
   get liveRequestCount(): number {
     return this.spent;
+  }
+
+  /** Pages (and screenshots) delivered through this meter. */
+  get pagesDelivered(): number {
+    return this.delivered;
   }
 }

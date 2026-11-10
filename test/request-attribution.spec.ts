@@ -84,6 +84,10 @@ const sleep = (ms: number): Promise<void> =>
  */
 class CountingFetcher implements Fetcher {
   liveRequestCount = 0;
+  /** Every request this double serves is one page delivered. */
+  get pagesDelivered(): number {
+    return this.liveRequestCount;
+  }
   constructor(private readonly failOn: RegExp | null = null) {}
   async fetch(url: string): Promise<FetchResult> {
     await sleep(1);
@@ -99,7 +103,7 @@ class CountingFetcher implements Fetcher {
       : url.includes("/s?q=")
         ? `SEARCH ${url}`
         : `PRODUCT ${url}`;
-    return { url, body, cached: false };
+    return { url, body, cached: false, attempts: 1 };
   }
 }
 
@@ -206,7 +210,9 @@ describe("RequestMeter", () => {
     // `cached: true`. That page cost money once, on the run that bought it.
     const cache: Fetcher = {
       liveRequestCount: 0,
-      fetch: (url) => Promise.resolve({ url, body: "x", cached: true }),
+      pagesDelivered: 0,
+      fetch: (url) =>
+        Promise.resolve({ url, body: "x", cached: true, attempts: 0 }),
     };
     const meter = new RequestMeter(cache);
 
@@ -352,6 +358,10 @@ describe("a failed item is retried once, after the run", () => {
    */
   class HealingFetcher implements Fetcher {
     liveRequestCount = 0;
+    /** Every request this double serves is one page delivered. */
+    get pagesDelivered(): number {
+      return this.liveRequestCount;
+    }
     private readonly attempts = new Map<string, number>();
     constructor(
       private readonly failOn: RegExp,
@@ -370,7 +380,7 @@ describe("a failed item is retried once, after the run", () => {
         : url.includes("/s?q=")
           ? `SEARCH ${url}`
           : `PRODUCT ${url}`;
-      return { url, body, cached: false };
+      return { url, body, cached: false, attempts: 1 };
     }
   }
 
@@ -477,6 +487,7 @@ describe("the retry pass does not recreate the throttle", () => {
       // deliberately-broken retry for exactly that reason.
       const fetcher: Fetcher = {
         liveRequestCount: 0,
+        pagesDelivered: 0,
         async fetch(url: string) {
           inFlight += 1;
           // 🔑 The search-engine url carries the barcode, so it is unique
@@ -500,7 +511,7 @@ describe("the retry pass does not recreate the throttle", () => {
               : url.includes("/s?q=")
                 ? `SEARCH ${url}`
                 : `PRODUCT ${url}`;
-            return { url, body, cached: false };
+            return { url, body, cached: false, attempts: 1 };
           } finally {
             inFlight -= 1;
           }
@@ -552,11 +563,17 @@ describe("the meter counts a screenshot", () => {
     return {
       shots,
       liveRequestCount: 0,
+      pagesDelivered: 0,
       fetch: (url: string) =>
-        Promise.resolve({ url, body: "<html></html>", cached: false }),
+        Promise.resolve({
+          url,
+          body: "<html></html>",
+          cached: false,
+          attempts: 1,
+        }),
       fetchScreenshot: (url: string) => {
         shots.push(url);
-        return Promise.resolve(PNG);
+        return Promise.resolve({ bytes: PNG, attempts: 1 });
       },
     };
   };
@@ -564,9 +581,9 @@ describe("the meter counts a screenshot", () => {
   it("forwards the call, so a metered capturer can still take one", async () => {
     const source = inner();
     const meter = new RequestMeter(source);
-    const bytes = await meter.fetchScreenshot?.("https://x.test/p");
+    const shot = await meter.fetchScreenshot?.("https://x.test/p");
     expect(source.shots).toEqual(["https://x.test/p"]);
-    expect(bytes).toEqual(PNG);
+    expect(shot?.bytes).toEqual(PNG);
   });
 
   it("counts it against the item that asked for it", async () => {
@@ -591,8 +608,14 @@ describe("the meter counts a screenshot", () => {
     // clean refusal into an item-by-item failure.
     const replayish: Fetcher = {
       liveRequestCount: 0,
+      pagesDelivered: 0,
       fetch: (url: string) =>
-        Promise.resolve({ url, body: "<html></html>", cached: true }),
+        Promise.resolve({
+          url,
+          body: "<html></html>",
+          cached: true,
+          attempts: 0,
+        }),
     };
     expect(new RequestMeter(replayish).fetchScreenshot).toBeUndefined();
     expect(new RequestMeter(inner()).fetchScreenshot).toBeDefined();

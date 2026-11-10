@@ -12,7 +12,12 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { FetchFailed, type Fetcher, type FetchResult } from "./types.js";
+import {
+  FetchFailed,
+  type Fetcher,
+  type FetchResult,
+  type Screenshot,
+} from "./types.js";
 
 export interface LiveFetcherOptions {
   readonly apiKey: string;
@@ -88,7 +93,14 @@ const sleep = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));
 
 export class LiveFetcher implements Fetcher {
+  /**
+   * Requests sent to the vendor: one per ATTEMPT, counted as it is sent,
+   * before its answer is known — so a retry, a short-body 200 and a timeout
+   * each count. See `Fetcher.liveRequestCount`.
+   */
   liveRequestCount = 0;
+  /** Pages and screenshots the vendor delivered. */
+  pagesDelivered = 0;
   cacheHitCount = 0;
   failureCount = 0;
   /**
@@ -131,10 +143,17 @@ export class LiveFetcher implements Fetcher {
    * tests body length — but a TRUNCATED png is long, so length would accept a
    * corrupt image. Four bytes settle it.
    */
-  async fetchScreenshot(url: string): Promise<Uint8Array> {
+  async fetchScreenshot(url: string): Promise<Screenshot> {
     let lastError: unknown = null;
+    let status: number | null = null;
+    let sent = 0;
     for (let attempt = 0; attempt < this.options.attempts; attempt++) {
       if (attempt > 0) await sleep(this.options.throttleDelayMs * attempt);
+      status = null;
+      // Counted as sent, before the answer: a refused screenshot was still
+      // asked for.
+      sent++;
+      this.liveRequestCount++;
       try {
         const response = await globalThis.fetch(
           "https://api.brightdata.com/request",
@@ -153,23 +172,28 @@ export class LiveFetcher implements Fetcher {
           },
         );
         const bytes = new Uint8Array(await response.arrayBuffer());
+        status = response.status;
         if (response.status >= 400 || !isPng(bytes)) {
           // ⚠️ **Not counted here.** `fetch` counts one failure per URL, on
           // the terminal attempt — counting each retry would report failures
           // for a screenshot that ultimately succeeded, and the run's tally is
           // read by a person deciding whether the vendor is throttling us.
-          lastError = new FetchFailed(url);
+          lastError = new Error(
+            `status=${response.status} bytes=${bytes.length}, not a png`,
+          );
           continue;
         }
-        this.liveRequestCount++;
-        return bytes;
+        this.pagesDelivered++;
+        return { bytes, attempts: sent };
       } catch (error) {
         lastError = error;
       }
     }
     // One failure per url, on the way out — the convention `fetch` set.
+    // 🔑 Always a `FetchFailed`, carrying what was sent, so a meter can charge
+    // the attempts to the item that asked.
     this.failureCount++;
-    throw lastError instanceof Error ? lastError : new FetchFailed(url);
+    throw new FetchFailed(url, lastError, status, sent);
   }
 
   private cachePath(url: string): string {
@@ -183,7 +207,7 @@ export class LiveFetcher implements Fetcher {
       try {
         const body = await readFile(cached, "utf8");
         this.cacheHitCount++;
-        return { url, body, cached: true };
+        return { url, body, cached: true, attempts: 0 };
       } catch {
         // Not cached; fall through and pay for it.
       }
@@ -197,6 +221,8 @@ export class LiveFetcher implements Fetcher {
     // The status of the LATEST attempt only: a 404 followed by a dropped
     // connection is a dropped connection, not a page that is gone.
     let status: number | null = null;
+    /** Requests sent for this url, this call. */
+    let sent = 0;
     for (let attempt = 0; attempt < this.options.attempts; attempt++) {
       status = null;
       if (attempt > 0) {
@@ -206,6 +232,11 @@ export class LiveFetcher implements Fetcher {
             : 500 * 2 ** attempt,
         );
       }
+      // 🔴 Counted as SENT, before its answer is known. A 200 too short to be
+      // a page, a 5xx and a dropped connection were each a request the vendor
+      // was asked for — `resolution-runtime-counts-a-bought-request`.
+      sent++;
+      this.liveRequestCount++;
       try {
         const response = await globalThis.fetch(
           "https://api.brightdata.com/request",
@@ -239,25 +270,25 @@ export class LiveFetcher implements Fetcher {
           throw new Error(`status=${response.status} bytes=${body.length}`);
         }
 
-        this.liveRequestCount++;
+        this.pagesDelivered++;
         // A read never serves the cache, so it does not write one either.
         if (this.options.serveFromCache) await this.writeCache(cached, body);
         await this.jitter();
-        return { url, body, cached: false, fetchedAt };
+        return { url, body, cached: false, fetchedAt, attempts: sent };
       } catch (error) {
         if (attempt === this.options.attempts - 1) {
           this.failureCount++;
           // 🔑 Counted apart, because a run that says `16 throttled` tells an
           // operator what to change and one that says `16 failures` does not.
           if (throttled) this.throttleCount++;
-          throw new FetchFailed(url, error, status);
+          throw new FetchFailed(url, error, status, sent);
         }
       }
     }
 
     // Unreachable: the loop either returns or throws on its last attempt.
     this.failureCount++;
-    throw new FetchFailed(url);
+    throw new FetchFailed(url, undefined, status, sent);
   }
 
   /**

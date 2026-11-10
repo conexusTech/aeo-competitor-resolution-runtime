@@ -17,6 +17,7 @@ describe("ReplayFetcher", () => {
       url: "https://example.test/a",
       body: "<html>a</html>",
       cached: true,
+      attempts: 0,
     });
   });
 

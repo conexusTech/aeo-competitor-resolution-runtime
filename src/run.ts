@@ -86,7 +86,10 @@ export interface RunProgress {
   readonly completed: number;
   readonly total: number;
   readonly outcomes: Readonly<Record<Resolution["outcome"], number>>;
+  /** Requests sent to the vendor so far: every attempt. */
   readonly liveRequests: number;
+  /** Of those, pages the vendor delivered. */
+  readonly pagesDelivered: number;
   readonly estimatedUsd: number;
 }
 
@@ -372,6 +375,7 @@ export async function runList(
         total: pending.length,
         outcomes: { ...outcomes },
         liveRequests: fetcher.liveRequestCount,
+        pagesDelivered: fetcher.pagesDelivered,
         estimatedUsd: estimateUsd(fetcher.liveRequestCount),
       });
     }

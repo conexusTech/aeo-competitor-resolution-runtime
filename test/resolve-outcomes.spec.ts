@@ -69,12 +69,16 @@ function fakeAdapter(
 /** Serves a body per url; anything else is a fetch failure. */
 class MapFetcher implements Fetcher {
   liveRequestCount = 0;
+  /** Every request this double serves is one page delivered. */
+  get pagesDelivered(): number {
+    return this.liveRequestCount;
+  }
   constructor(private readonly bodies: Record<string, string>) {}
   fetch(url: string): Promise<FetchResult> {
     const body = this.bodies[url];
     if (body === undefined) return Promise.reject(new FetchFailed(url));
     this.liveRequestCount++;
-    return Promise.resolve({ url, body, cached: false });
+    return Promise.resolve({ url, body, cached: false, attempts: 1 });
   }
 }
 
@@ -94,6 +98,10 @@ const isSearch = (url: string): boolean =>
  */
 class SearchFetcher implements Fetcher {
   liveRequestCount = 0;
+  /** Every request this double serves is one page delivered. */
+  get pagesDelivered(): number {
+    return this.liveRequestCount;
+  }
   private searches = 0;
   constructor(
     private readonly answer: (n: number) => string | undefined,
@@ -107,7 +115,7 @@ class SearchFetcher implements Fetcher {
         : this.others[url];
     if (body === undefined) return Promise.reject(new FetchFailed(url));
     this.liveRequestCount++;
-    return Promise.resolve({ url, body, cached: false });
+    return Promise.resolve({ url, body, cached: false, attempts: 1 });
   }
 }
 
@@ -1041,6 +1049,7 @@ describe("resolveItem hands the client's description to the plan", () => {
     // the full list of attempts is observable.
     const recording: Fetcher = {
       liveRequestCount: 0,
+      pagesDelivered: 0,
       fetch: (url: string) => {
         asked.push(url);
         return Promise.reject(new FetchFailed(url));

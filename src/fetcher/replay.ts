@@ -31,6 +31,7 @@ export function corpusKey(url: string): string {
 
 export class ReplayFetcher implements Fetcher {
   readonly liveRequestCount = 0;
+  readonly pagesDelivered = 0;
 
   private readonly byKey: Map<string, CorpusEntry>;
   private readonly served = new Set<string>();
@@ -43,7 +44,12 @@ export class ReplayFetcher implements Fetcher {
     const entry = this.byKey.get(corpusKey(url));
     if (entry === undefined) return Promise.reject(new NotInCorpus(url));
     this.served.add(corpusKey(url));
-    return Promise.resolve({ url, body: entry.body, cached: true });
+    return Promise.resolve({
+      url,
+      body: entry.body,
+      cached: true,
+      attempts: 0,
+    });
   }
 
   /** How many corpus entries this run never asked for. */

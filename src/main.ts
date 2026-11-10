@@ -142,6 +142,7 @@ function throttleCountOf(fetcher: unknown): number | null {
 function tally(
   results: readonly Resolution[],
   liveRequests: number,
+  pagesDelivered: number,
   throttled: number | null = null,
 ): void {
   const byOutcome = results.reduce<Record<string, number>>((acc, r) => {
@@ -170,7 +171,7 @@ function tally(
   // page answered. Printed on every run, zeros included, so its absence is
   // never mistaken for "none".
   console.log(describeSearchTally(tallySearches(results)));
-  console.log(`requests:  ${liveRequests}`);
+  console.log(`requests:  ${liveRequests} sent, ${pagesDelivered} delivered`);
 }
 
 /**
@@ -221,6 +222,9 @@ async function runFromQueue(): Promise<void> {
     // suppressed finding and double-counts a resend — and recorded nothing at
     // all for a run that died before its first progress tick.
     requestsSpent: () => fetcher.liveRequestCount,
+    // 🔑 Beside it, never instead: `requestsSpent` is every attempt sent,
+    // this is the pages that came back.
+    pagesDelivered: () => fetcher.pagesDelivered,
   });
 
   const result = await runDispatchedJob({
@@ -238,7 +242,12 @@ async function runFromQueue(): Promise<void> {
     },
   });
 
-  tally(result.resolutions, result.liveRequests, throttleCountOf(fetcher));
+  tally(
+    result.resolutions,
+    result.liveRequests,
+    fetcher.pagesDelivered,
+    throttleCountOf(fetcher),
+  );
 }
 
 /** A local or manual run: no queue, no gateway, output to the console. */
@@ -266,7 +275,12 @@ async function runFromFile(): Promise<void> {
     },
   });
 
-  tally(results, fetcher.liveRequestCount, throttleCountOf(fetcher));
+  tally(
+    results,
+    fetcher.liveRequestCount,
+    fetcher.pagesDelivered,
+    throttleCountOf(fetcher),
+  );
 }
 
 async function main(): Promise<void> {

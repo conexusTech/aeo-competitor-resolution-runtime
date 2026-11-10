@@ -90,11 +90,12 @@ function fakeFetcher(
   return {
     calls,
     liveRequestCount: 0,
+    pagesDelivered: 0,
     fetch: (url: string) => {
       calls.push(url);
       if (body instanceof Error) return Promise.reject(body);
       // `cached: true` is the ordinary case — the page was fetched moments ago.
-      return Promise.resolve({ url, body, cached: true });
+      return Promise.resolve({ url, body, cached: true, attempts: 0 });
     },
   };
 }
@@ -623,13 +624,19 @@ describe("capturing a resolution's page", () => {
         // page reads, so it stays empty — which the CONTROL below asserts.
         calls: pages,
         liveRequestCount: 0,
+        pagesDelivered: 0,
         fetch: (url: string) => {
           pages.push(url);
-          return Promise.resolve({ url, body: PAGE, cached: true });
+          return Promise.resolve({
+            url,
+            body: PAGE,
+            cached: true,
+            attempts: 0,
+          });
         },
         fetchScreenshot: (url: string) => {
           shots.push(url);
-          return Promise.resolve(PNG_BYTES);
+          return Promise.resolve({ bytes: PNG_BYTES, attempts: 1 });
         },
       };
     };

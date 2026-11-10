@@ -311,12 +311,14 @@ export class GatewayClient {
   async reportProgress(args: {
     readonly itemsReported: number;
     readonly requestsSpent: number;
+    readonly pagesDelivered?: number;
     readonly phase?: string;
   }): Promise<ReportOutcome> {
     return this.postEvent({
       type: "progress",
       items_reported: args.itemsReported,
       requests_spent: args.requestsSpent,
+      ...delivered(args.pagesDelivered),
       ...(args.phase === undefined ? {} : { phase: args.phase }),
     });
   }
@@ -332,10 +334,13 @@ export class GatewayClient {
    * makes it survive a resend and an out-of-order callback. Omitted, the
    * gateway falls back to summing the per-item figures, which under-reports by
    * every suppressed finding.
+   * @param pagesDelivered Of those, the pages the vendor delivered — also a
+   * running total. Omitted, the field is not sent.
    */
   async reportResolutions(
     resolutions: readonly Resolution[],
     requestsSpent?: number,
+    pagesDelivered?: number,
   ): Promise<ReportOutcome> {
     if (resolutions.length === 0) return { kind: "applied" };
     if (resolutions.length > MAX_RESOLUTIONS_PER_EVENT) {
@@ -351,6 +356,7 @@ export class GatewayClient {
       type: "resolutions",
       resolutions,
       ...(requestsSpent === undefined ? {} : { requests_spent: requestsSpent }),
+      ...delivered(pagesDelivered),
     });
   }
 
@@ -440,8 +446,15 @@ export class GatewayClient {
     return { kind: "unreachable", detail: lastDetail };
   }
 
-  async reportCompleted(requestsSpent: number): Promise<ReportOutcome> {
-    return this.postEvent({ type: "completed", requests_spent: requestsSpent });
+  async reportCompleted(
+    requestsSpent: number,
+    pagesDelivered?: number,
+  ): Promise<ReportOutcome> {
+    return this.postEvent({
+      type: "completed",
+      requests_spent: requestsSpent,
+      ...delivered(pagesDelivered),
+    });
   }
 
   /**
@@ -454,10 +467,12 @@ export class GatewayClient {
     message: string,
     context?: Record<string, unknown>,
     requestsSpent?: number,
+    pagesDelivered?: number,
   ): Promise<ReportOutcome> {
     return this.postEvent({
       type: "error",
       ...(requestsSpent === undefined ? {} : { requests_spent: requestsSpent }),
+      ...delivered(pagesDelivered),
       // The gateway stores 2,000 characters; a stack is longer and the tail is
       // the useless half.
       message: message.slice(0, 2000),
@@ -505,6 +520,24 @@ export class GatewayClient {
   ): Promise<Response> {
     return getWithRetries(this.sleep, send, what);
   }
+}
+
+/**
+ * `pages_delivered`, or nothing.
+ *
+ * 🔑 **Beside `requests_spent`, never instead of it.** Since
+ * `resolution-runtime-counts-a-bought-request`, `requests_spent` is every
+ * attempt the vendor was asked for — what the registry's rates are measured
+ * on — and this is the pages that came back. Absent when the caller has no
+ * figure, so an event reads exactly as it did before rather than claiming a
+ * zero.
+ */
+function delivered(pagesDelivered: number | undefined): {
+  readonly pages_delivered?: number;
+} {
+  return pagesDelivered === undefined
+    ? {}
+    : { pages_delivered: pagesDelivered };
 }
 
 /** The `Authorization` header for the gateway's runtime callbacks. */
@@ -830,6 +863,7 @@ export class ReadRunClient {
   async reportReadings(
     readings: readonly ListingReading[],
     requestsSpent: number,
+    pagesDelivered?: number,
   ): Promise<ReportOutcome> {
     if (readings.length === 0) return { kind: "applied" };
     if (readings.length > MAX_READINGS_PER_EVENT) {
@@ -843,21 +877,31 @@ export class ReadRunClient {
       type: "readings",
       readings,
       requests_spent: requestsSpent,
+      ...delivered(pagesDelivered),
     });
   }
 
-  async reportCompleted(requestsSpent: number): Promise<ReportOutcome> {
-    return this.postEvent({ type: "completed", requests_spent: requestsSpent });
+  async reportCompleted(
+    requestsSpent: number,
+    pagesDelivered?: number,
+  ): Promise<ReportOutcome> {
+    return this.postEvent({
+      type: "completed",
+      requests_spent: requestsSpent,
+      ...delivered(pagesDelivered),
+    });
   }
 
   /** @param requestsSpent A failed read run still spent money. */
   async reportError(
     message: string,
     requestsSpent: number,
+    pagesDelivered?: number,
   ): Promise<ReportOutcome> {
     return this.postEvent({
       type: "error",
       requests_spent: requestsSpent,
+      ...delivered(pagesDelivered),
       message: message.slice(0, 2000),
     });
   }

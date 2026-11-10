@@ -117,7 +117,7 @@ describe("a silent throttle is waited out", () => {
     expect(waits.reduce((a, b) => a + b, 0)).toBeLessThan(5_000);
   });
 
-  it("recovers when a later attempt answers, and spends only once", async () => {
+  it("recovers when a later attempt answers, and is charged for both attempts", async () => {
     let n = 0;
     vi.stubGlobal(
       "fetch",
@@ -134,8 +134,12 @@ describe("a silent throttle is waited out", () => {
 
     expect(result.body.length).toBe(5000);
     expect(result.cached).toBe(false);
-    // Only the attempt that produced a page counts as a request bought.
-    expect(fetcher.liveRequestCount).toBe(1);
+    // 🔴 Both attempts were sent, so both count — the empty 200 was a request
+    // the vendor was asked for (`resolution-runtime-counts-a-bought-request`).
+    // This asserted 1 until that row; one page was delivered.
+    expect(fetcher.liveRequestCount).toBe(2);
+    expect(result.attempts).toBe(2);
+    expect(fetcher.pagesDelivered).toBe(1);
     expect(fetcher.throttleCount).toBe(0);
     // ⚠️ Filtered: a SUCCESSFUL fetch also sleeps the politeness jitter,
     // which is zero here and is not a backoff. Asserting the raw list

@@ -50,6 +50,10 @@ const sleep = (ms: number): Promise<void> =>
  */
 class GatedFetcher implements Fetcher {
   liveRequestCount = 0;
+  /** Every request this double serves is one page delivered. */
+  get pagesDelivered(): number {
+    return this.liveRequestCount;
+  }
   inFlight = 0;
   most = 0;
   constructor(private readonly body: string = "<html>nothing</html>") {}
@@ -59,7 +63,7 @@ class GatedFetcher implements Fetcher {
     try {
       await sleep(3);
       this.liveRequestCount++;
-      return { url, body: this.body, cached: false };
+      return { url, body: this.body, cached: false, attempts: 1 };
     } finally {
       this.inFlight--;
     }

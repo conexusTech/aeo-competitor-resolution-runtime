@@ -226,7 +226,7 @@ export class Capturer {
               "one — a replayed run has no proxy to render it",
           );
         }
-        body = shot;
+        body = shot.bytes;
       } else {
         const fetched = await this.deps.fetcher.fetch(url);
         body = fetched.body;

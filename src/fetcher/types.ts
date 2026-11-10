@@ -20,6 +20,23 @@ export interface FetchResult {
    * jitter alone is up to a second and a half per page.
    */
   readonly fetchedAt?: Date;
+  /**
+   * Requests sent to the vendor to get this page: every attempt, the one that
+   * delivered included. `0` for a page served from a cache or a corpus.
+   *
+   * 🔑 **On the result, not only on the fetcher's counter**, because a meter
+   * attributes spend to one item by what passes through it — see
+   * `RequestMeter`. A counter read across a span absorbs whatever concurrent
+   * items bought in it.
+   */
+  readonly attempts: number;
+}
+
+/** A PNG the proxy rendered, and what it cost to get. */
+export interface Screenshot {
+  readonly bytes: Uint8Array;
+  /** Requests sent to the vendor for it, the one that delivered included. */
+  readonly attempts: number;
 }
 
 export interface Fetcher {
@@ -45,10 +62,27 @@ export interface Fetcher {
    *
    * ⚠️ A caller that needs one must handle its absence rather than assume it.
    */
-  fetchScreenshot?(url: string): Promise<Uint8Array>;
+  fetchScreenshot?(url: string): Promise<Screenshot>;
 
-  /** Requests actually sent, for the cost meter. Never includes cache hits. */
+  /**
+   * Requests sent to the vendor: **every attempt**, a retry, a 200 too short to
+   * be a page and a timeout each included. Never a cache hit.
+   *
+   * 🔴 **This counted delivered pages only, until
+   * `resolution-runtime-counts-a-bought-request`.** A retried page counted
+   * once however many times it was asked for, so one Best Buy investigation
+   * read 110 where 166 had been sent. Whether the vendor bills every attempt
+   * is not invoice-validated; counting attempts makes the figure safe either
+   * way, since it can only overstate.
+   */
   readonly liveRequestCount: number;
+
+  /**
+   * Pages (and screenshots) the vendor actually delivered — the figure
+   * `liveRequestCount` used to be. Reported beside it so a run says both what
+   * it asked for and what it got.
+   */
+  readonly pagesDelivered: number;
 }
 
 /** Raised when a page could not be fetched, as distinct from being empty. */
@@ -65,6 +99,12 @@ export class FetchFailed extends Error {
      * has not been measured.
      */
     readonly status: number | null = null,
+    /**
+     * Requests sent to the vendor before giving up, every one of them paid
+     * for. `0` where nothing was sent — a double in a test, or a refusal
+     * before any request.
+     */
+    readonly attempts: number = 0,
   ) {
     super(`could not fetch ${url}`);
     this.name = "FetchFailed";

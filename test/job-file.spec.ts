@@ -97,8 +97,14 @@ describe("file mode", () => {
     } as unknown as RetailerAdapter;
     const fetcher = {
       fetch: (url: string) =>
-        Promise.resolve({ url, body: "<html></html>", cached: true }),
+        Promise.resolve({
+          url,
+          body: "<html></html>",
+          cached: true,
+          attempts: 0,
+        }),
       liveRequestCount: 0,
+      pagesDelivered: 0,
     } as unknown as Fetcher;
 
     const results = await runList(envelope.items, adapter, fetcher, {

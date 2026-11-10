@@ -79,6 +79,7 @@ const resolution = (clientSku: string): Resolution =>
 const fetcher = (liveRequestCount = 41): Fetcher => ({
   fetch: () => Promise.reject(new Error("the pipeline is not exercised here")),
   liveRequestCount,
+  pagesDelivered: liveRequestCount,
 });
 
 /** A reporter double recording the order it was called in. */
@@ -370,6 +371,7 @@ describe("a queue-dispatched run", () => {
             "not-found": 0,
           },
           liveRequests: 3,
+          pagesDelivered: 2,
           estimatedUsd: 0.003,
         });
         return Promise.resolve([]);
@@ -431,8 +433,14 @@ describe("the onResolved seam", () => {
     } as unknown as RetailerAdapter,
     fetcher: {
       fetch: (url: string) =>
-        Promise.resolve({ url, body: "<html></html>", cached: true }),
+        Promise.resolve({
+          url,
+          body: "<html></html>",
+          cached: true,
+          attempts: 0,
+        }),
       liveRequestCount: 0,
+      pagesDelivered: 0,
     } as unknown as Fetcher,
   });
 
@@ -579,8 +587,14 @@ describe("a dispatched run's evidence", () => {
   /** A fetcher that can serve the chosen page back for capture. */
   const servingFetcher = (): Fetcher => ({
     fetch: (url: string) =>
-      Promise.resolve({ url, body: "<html>page</html>", cached: true }),
+      Promise.resolve({
+        url,
+        body: "<html>page</html>",
+        cached: true,
+        attempts: 0,
+      }),
     liveRequestCount: 7,
+    pagesDelivered: 7,
   });
 
   const capturingJob = (budget: number): ResolutionJob => ({
@@ -829,8 +843,14 @@ describe("a dispatched run's selection", () => {
 
   const serving = (): Fetcher => ({
     fetch: (url: string) =>
-      Promise.resolve({ url, body: "<html>page</html>", cached: true }),
+      Promise.resolve({
+        url,
+        body: "<html>page</html>",
+        cached: true,
+        attempts: 0,
+      }),
     liveRequestCount: 3,
+    pagesDelivered: 3,
   });
 
   it("captures only the items the job marked", async () => {

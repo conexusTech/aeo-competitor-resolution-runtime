@@ -170,6 +170,10 @@ class Clock {
  */
 class ScriptedFetcher implements Fetcher {
   liveRequestCount = 0;
+  /** Every request this double serves is one page delivered. */
+  get pagesDelivered(): number {
+    return this.liveRequestCount;
+  }
   readonly calls: string[] = [];
   /** When each url's page arrived, by the test's clock. */
   readonly completedAt = new Map<string, string>();
@@ -199,7 +203,7 @@ class ScriptedFetcher implements Fetcher {
     this.liveRequestCount++;
     // The cache write and the jitter happen after the page is in hand.
     this.clock.advance(5_000);
-    return { url, body, cached: false, fetchedAt };
+    return { url, body, cached: false, attempts: 1, fetchedAt };
   }
 }
 
@@ -619,6 +623,7 @@ describe("one listing, read", () => {
     // A failure the vendor gave no status for — a dropped connection.
     const noStatus: Fetcher = {
       liveRequestCount: 0,
+      pagesDelivered: 0,
       fetch: (url) => Promise.reject(new FetchFailed(url, new Error("reset"))),
     };
     const reading = failureOf(
@@ -1520,6 +1525,10 @@ describe("which mode a dispatched container runs in", () => {
  */
 class ThrottlingFetcher implements Fetcher {
   liveRequestCount = 0;
+  /** Every request this double serves is one page delivered. */
+  get pagesDelivered(): number {
+    return this.liveRequestCount;
+  }
   readonly calls: { readonly url: string; readonly at: number }[] = [];
 
   constructor(
@@ -1557,7 +1566,7 @@ class ThrottlingFetcher implements Fetcher {
       throw new FetchFailed(url, new Error("status=403 bytes=0"), 403);
     }
     this.liveRequestCount++;
-    return { url, body, cached: false, fetchedAt };
+    return { url, body, cached: false, attempts: 1, fetchedAt };
   }
 
   callsFor(url: string): { readonly url: string; readonly at: number }[] {
@@ -1903,6 +1912,9 @@ describe("a throttled page is read again at a measured pace", () => {
     const fetcher: Fetcher = {
       get liveRequestCount() {
         return inner.liveRequestCount;
+      },
+      get pagesDelivered() {
+        return inner.pagesDelivered;
       },
       fetch: async (url) => {
         if (url === L1.url) {
