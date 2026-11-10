@@ -265,6 +265,8 @@ describe("what is known about an alternative's barcode", () => {
 
 describe("why it ranked lower", () => {
   const signals = (...s: ScoreSignal[]) => new Set<ScoreSignal>(s);
+  /** A listing whose stock and seller the retailer states. */
+  const STATED = { inStock: false, isFirstParty: false } as const;
 
   /**
    * 🔑 The STRONGEST differing signal, by weight — not every difference. A
@@ -276,6 +278,7 @@ describe("why it ranked lower", () => {
       signals("partNumberExact", "brandMatch", "inStock"),
       ["brandMatch", "inStock"],
       "unprobed",
+      STATED,
     );
     expect(reason).toContain(
       "its model number is not the client's part number",
@@ -289,6 +292,7 @@ describe("why it ranked lower", () => {
       signals("partNumberExact", "firstParty"),
       [],
       "unprobed",
+      STATED,
     );
     // partNumberExact is 20, firstParty is 3.
     expect(reason).toContain("model number is not the client's part number");
@@ -299,8 +303,47 @@ describe("why it ranked lower", () => {
       signals("partNumberExact", "firstParty"),
       ["partNumberExact"],
       "unprobed",
+      STATED,
     );
     expect(reason).toContain("marketplace listing");
+  });
+
+  /**
+   * 🔴 **An unknown is not a no.** A retailer that does not say who sells a
+   * listing, or whether it is in stock, gives the listing no credit — and the
+   * reason said it "is a marketplace listing" or "is out of stock", stating as
+   * fact what the page never said.
+   */
+  it("🔴 says the seller is unknown, not marketplace, when the retailer does not say", () => {
+    const reason = reasonRankedLower(
+      signals("partNumberExact", "firstParty"),
+      ["partNumberExact"],
+      "unprobed",
+      { inStock: true, isFirstParty: null },
+    );
+    expect(reason).not.toContain("marketplace");
+    expect(reason).toContain("does not say who sells it");
+  });
+
+  it("🔴 says the stock is unknown, not out of stock, when the retailer does not say", () => {
+    const reason = reasonRankedLower(
+      signals("partNumberExact", "inStock"),
+      ["partNumberExact"],
+      "unprobed",
+      { inStock: null, isFirstParty: true },
+    );
+    expect(reason).not.toContain("out of stock");
+    expect(reason).toContain("states no stock for it");
+  });
+
+  it("CONTROL: a stated out-of-stock is still called out of stock", () => {
+    const reason = reasonRankedLower(
+      signals("partNumberExact", "inStock"),
+      ["partNumberExact"],
+      "unprobed",
+      STATED,
+    );
+    expect(reason).toContain("it is out of stock");
   });
 
   /**
@@ -314,13 +357,19 @@ describe("why it ranked lower", () => {
       signals("partNumberExact", "brandMatch"),
       ["partNumberExact", "brandMatch"],
       "unprobed",
+      STATED,
     );
     expect(reason).toContain("lost a tie on discovery order");
   });
 
   it("always says what is known about the barcode, whatever the signal reason", () => {
     for (const state of ["disagreed", "absent", "unprobed"] as const) {
-      const reason = reasonRankedLower(signals("brandMatch"), [], state);
+      const reason = reasonRankedLower(
+        signals("brandMatch"),
+        [],
+        state,
+        STATED,
+      );
       expect(reason).toMatch(/barcode|never opened/);
     }
   });

@@ -160,6 +160,7 @@ export function alternativesFor(
         chosenSignals,
         scoreBreakdown(scored).signals,
         barcodeState,
+        entry.candidate,
       ),
     });
   }
@@ -192,6 +193,39 @@ const MISSING_SIGNAL_READS: Record<ScoreSignal, string> = {
 };
 
 /**
+ * What a missing signal reads as when the retailer stated nothing either way.
+ *
+ * 🔴 **An unknown is not a no.** Only a stated `true` earns the first-party or
+ * the in-stock credit, so a listing whose page says nothing lacks the signal
+ * exactly as one that says "marketplace" or "sold out" does — and the reason
+ * said it "is a marketplace listing" or "is out of stock", stating as fact what
+ * the page never said. Best Buy's search, and Amazon's, leave either unstated.
+ */
+const UNKNOWN_SIGNAL_READS: Partial<Record<ScoreSignal, string>> = {
+  firstParty:
+    "the retailer does not say who sells it, and the chosen listing is sold by the retailer itself",
+  inStock:
+    "the retailer states no stock for it, and the chosen listing is in stock",
+};
+
+/** What the retailer stated about the listing being explained. */
+export interface ListingFacts {
+  readonly inStock: boolean | null;
+  readonly isFirstParty: boolean | null;
+}
+
+/** The sentence for a signal this listing lacks. */
+function missingSignalRead(signal: ScoreSignal, listing: ListingFacts): string {
+  const unknown =
+    (signal === "firstParty" && listing.isFirstParty === null) ||
+    (signal === "inStock" && listing.inStock === null);
+  return (
+    (unknown ? UNKNOWN_SIGNAL_READS[signal] : undefined) ??
+    MISSING_SIGNAL_READS[signal]
+  );
+}
+
+/**
  * One sentence saying why this ranked below the chosen listing.
  *
  * 🔑 The **strongest** differing signal, by weight — not every difference. A
@@ -202,6 +236,8 @@ export function reasonRankedLower(
   chosenSignals: ReadonlySet<ScoreSignal>,
   theseSignals: readonly ScoreSignal[],
   barcodeState: AlternativeBarcodeState,
+  /** Required, so an unknown can never be worded as a stated no. */
+  listing: ListingFacts,
 ): string {
   const mine = new Set(theseSignals);
   const missing = [...chosenSignals]
@@ -211,7 +247,7 @@ export function reasonRankedLower(
   const strongest = missing[0];
   const head =
     strongest !== undefined
-      ? MISSING_SIGNAL_READS[strongest]
+      ? missingSignalRead(strongest, listing)
       : // ⚠️ No difference in signals means the ranking was a tie, broken by
         // the order candidates were discovered in. Saying "it scored lower"
         // here would be inventing a distinction the scorer did not make.
