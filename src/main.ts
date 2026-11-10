@@ -22,6 +22,7 @@
 
 import { amazonAdapter } from "./adapters/amazon.js";
 import { bestbuyAdapter } from "./adapters/bestbuy.js";
+import { bhAdapter } from "./adapters/bh.js";
 import { neweggAdapter } from "./adapters/newegg.js";
 import type { ListingReader, RetailerAdapter } from "./adapters/types.js";
 import {
@@ -64,6 +65,7 @@ const ADAPTERS: Record<string, RetailerAdapter & ListingReader> = {
   [neweggAdapter.slug]: neweggAdapter,
   [amazonAdapter.slug]: amazonAdapter,
   [bestbuyAdapter.slug]: bestbuyAdapter,
+  [bhAdapter.slug]: bhAdapter,
 };
 
 /**

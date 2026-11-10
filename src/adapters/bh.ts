@@ -1,0 +1,548 @@
+import type {
+  ListingPageResult,
+  ListingReader,
+  ParsedCandidate,
+  ParsedProduct,
+  QuerySupport,
+  RetailerAdapter,
+} from "./types.js";
+import { safeImageUrl } from "./types.js";
+
+/**
+ * The B&H Photo adapter, read through B&H's public website only, signed out.
+ *
+ * 🔑 **Every B&H page carries the app's whole initial state as ONE
+ * entity-encoded JSON attribute**:
+ *
+ *   <div class="bh-preloaded-data" data-data="{&quot;CatalogChangeWatcher&quot;:…}">
+ *
+ * Decode the entities, then parse. A search page's results are
+ * `ListingStore.state.response.data`; a product page's item is the one
+ * `ServerStateStore.state.entries` entry that queried exactly one item key. A
+ * discontinued item's url can instead serve a replacement page, whose entry
+ * carries `replacementInfo` and no item.
+ *
+ * ⚠️ **No search card carries a UPC.** Only a product page does, in up to four
+ * places — the overview and specification entries, the JSON-LD Product's
+ * `gtin*`, and the rendered "UPC: …" line — all read here, and all equal on
+ * every page the investigation read.
+ *
+ * Ported from the investigation's parser (`meriwether-data-scraper`,
+ * `RECON-FINDINGS-BH.md`) and held to its data contract, not copied: this one
+ * answers the runtime's seam, which has two empty answers where the
+ * investigation's threw, and it never counts a kit's component UPC as the kit's
+ * own — which the investigation's did, through the kit page's JSON-LD.
+ *
+ * Pure, and no dependency. Category pages are another row's
+ * (`insights-reads-category-pages`), so no category parser lives here.
+ */
+
+type Json = Record<string, unknown>;
+
+const isObj = (v: unknown): v is Json =>
+  typeof v === "object" && v !== null && !Array.isArray(v);
+const obj = (v: unknown, key: string): Json | null => {
+  if (!isObj(v)) return null;
+  const inner = v[key];
+  return isObj(inner) ? inner : null;
+};
+const arr = (v: unknown, key: string): unknown[] => {
+  if (!isObj(v)) return [];
+  const inner = v[key];
+  return Array.isArray(inner) ? inner : [];
+};
+const str = (v: unknown): string | null =>
+  typeof v === "string" && v.trim() !== "" ? v.trim() : null;
+const strAt = (v: unknown, key: string): string | null =>
+  isObj(v) ? str(v[key]) : null;
+/** A numeric or string id, as a string. */
+const idAt = (v: unknown, key: string): string | null => {
+  if (!isObj(v)) return null;
+  const id = v[key];
+  if (typeof id === "number" && Number.isInteger(id) && id > 0) {
+    return String(id);
+  }
+  return str(id);
+};
+
+export const BH_ORIGIN = "https://www.bhphotovideo.com";
+
+/** Named, decimal and hex entities, as B&H writes them inside an attribute. */
+function decodeEntities(value: string): string {
+  const named: Readonly<Record<string, string>> = {
+    quot: '"',
+    amp: "&",
+    lt: "<",
+    gt: ">",
+    apos: "'",
+    nbsp: " ",
+  };
+  return value.replace(
+    /&(#x[0-9a-fA-F]+|#\d+|[a-zA-Z]+);/g,
+    (whole, entity: string) => {
+      if (entity.startsWith("#")) {
+        const code =
+          entity[1] === "x" || entity[1] === "X"
+            ? parseInt(entity.slice(2), 16)
+            : parseInt(entity.slice(1), 10);
+        return Number.isInteger(code) && code >= 0 && code <= 0x10ffff
+          ? String.fromCodePoint(code)
+          : whole;
+      }
+      return named[entity] ?? whole;
+    },
+  );
+}
+
+const PRELOADED = /class="bh-preloaded-data"\s+data-data="([^"]*)"/;
+
+/**
+ * The page's preloaded state, decoded and parsed — or `null` when there is
+ * none: an empty body, a vendor error, a refusal, a page that is not B&H's.
+ */
+export function extractPreloadedData(html: string): Json | null {
+  const encoded = PRELOADED.exec(html)?.[1];
+  if (encoded === undefined) return null;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(decodeEntities(encoded));
+  } catch {
+    return null;
+  }
+  return isObj(parsed) ? parsed : null;
+}
+
+/** A path B&H writes (`/c/product/…`) as an absolute url on its own host. */
+function absolute(raw: string | null): string | null {
+  if (raw === null) return null;
+  if (raw.startsWith("/") && !raw.startsWith("//")) return `${BH_ORIGIN}${raw}`;
+  return raw.startsWith(`${BH_ORIGIN}/`) ? raw : null;
+}
+
+/** Dollars as a number -> cents. Never 0: a price that reads 0 is not a price. */
+const toCents = (v: unknown): number | null =>
+  typeof v === "number" && Number.isFinite(v) && v > 0
+    ? Math.round(v * 100)
+    : null;
+
+/**
+ * `stockInfo.status`, never `statusMessage`.
+ *
+ * 🔴 **The message lies.** Measured over 887 search cards: `IN_STOCK` items
+ * read "Temporarily Out of Stock" (577 of them, the M310 among them, whose
+ * page says "In Stock"), "Special Order" and even "Discontinued", so the
+ * message says nothing the status does not say better.
+ *
+ * ⚠️ `DYNAMIC` covers special order, pre-order, "temporarily out of stock" and
+ * "currently unavailable" alike, so it is unknown — never assumed either way.
+ * `NO_LONGER_AVAILABLE` is B&H's "Discontinued": not in stock.
+ */
+function inStockOf(item: Json): boolean | null {
+  const status = strAt(obj(item, "stockInfo"), "status");
+  if (status === "IN_STOCK") return true;
+  if (status === "NO_LONGER_AVAILABLE") return false;
+  return null;
+}
+
+const isDiscontinued = (item: Json): boolean =>
+  strAt(obj(item, "stockInfo"), "status") === "NO_LONGER_AVAILABLE";
+
+/**
+ * Whether B&H withholds a price it has: a MAP item ("Add to Cart for Price",
+ * shown only in a cart, which needs a session this runtime never creates), or
+ * a price and cart section hidden.
+ *
+ * 🔴 **A withheld price is not a missing one**, and whatever number the state
+ * holds beside these flags is never read: a discontinued item's still carries
+ * its last price ($99.99 for the Z623), which nobody can buy at.
+ */
+function priceWithheld(item: Json): boolean {
+  const price = obj(item, "priceInfo");
+  if (price === null) return false;
+  return (
+    price["isMapItem"] === true ||
+    price["showPrice"] === false ||
+    price["hidePriceAndCartSection"] === true
+  );
+}
+
+/** The price B&H shows, or `null` where it shows none. */
+function shownPrice(item: Json): number | null {
+  if (isDiscontinued(item) || priceWithheld(item)) return null;
+  return toCents(obj(item, "priceInfo")?.["price"]);
+}
+
+/**
+ * The item's brand: a product page's `brand.name`; on a search card, which has
+ * no brand field, the title less the description B&H captions its image with.
+ *
+ * 🔑 **Measured, not guessed**: on 881 of 887 search cards the image caption
+ * (`imageInfo.images[0].note`) is the title, and the caption's
+ * `shortDescription` is the title with its leading brand removed — "C2G 100'
+ * DisplayPort…" against "100' DisplayPort…". The 6 others were kits whose
+ * caption is the title verbatim, and those carry no brand here rather than a
+ * guess at one.
+ */
+function brandOf(item: Json): string | null {
+  const named = strAt(obj(item, "brand"), "name");
+  if (named !== null) return named;
+  const title = strAt(obj(item, "core"), "shortDescription");
+  const image = arr(obj(item, "imageInfo"), "images")[0];
+  const note = strAt(image, "note");
+  const rest = strAt(image, "shortDescription");
+  if (title === null || note !== title || rest === null) return null;
+  if (!title.endsWith(` ${rest}`)) return null;
+  return str(title.slice(0, title.length - rest.length - 1));
+}
+
+/** B&H's own photo, or `null` where it shows its "no image" placeholder. */
+function imageOf(item: Json): string | null {
+  const image = obj(item, "mainImage");
+  if (image === null || image["hasMainImage"] === false) return null;
+  return safeImageUrl(
+    strAt(obj(image, "default"), "url") ??
+      strAt(obj(image, "detail"), "url") ??
+      strAt(obj(image, "listing"), "url"),
+  );
+}
+
+/**
+ * B&H sells everything it lists itself.
+ *
+ * 🔑 **No marketplace, measured**: the investigation scanned every key of the
+ * preloaded state on all 119 pages it fetched for a seller, vendor, merchant,
+ * marketplace or fulfilment name, and found none on any item. Its other offers
+ * — used and open-box — are its own stock too.
+ */
+const SELLER = "B&H Photo";
+
+function toCandidate(item: Json): ParsedCandidate | null {
+  const itemId = idAt(obj(item, "itemKey"), "skuNo");
+  const core = obj(item, "core");
+  const url = absolute(strAt(core, "detailsUrl"));
+  const title = strAt(core, "shortDescription");
+  // Nothing to probe, or nothing a reviewer could recognise it by.
+  if (itemId === null || url === null || title === null) return null;
+  return {
+    itemId,
+    url,
+    // 🔴 The "MFR #". **An equal MFR # is not the same product**: a bare
+    // numeric one belongs to another brand's item as often as not — "29538"
+    // is a C2G cable as well as an Allsop wrist rest. That is why this
+    // adapter's `partNumberNeedsBrand` is true.
+    model: strAt(core, "manufacturerCatalogNumber"),
+    title,
+    brand: brandOf(item),
+    priceCents: shownPrice(item),
+    inStock: inStockOf(item),
+    isFirstParty: true,
+    sellerName: SELLER,
+    imageUrl: imageOf(item),
+  };
+}
+
+/** The listing response of a search or category page, or `null`. */
+function listingData(html: string): Json | null {
+  const pre = extractPreloadedData(html);
+  return obj(obj(obj(obj(pre, "ListingStore"), "state"), "response"), "data");
+}
+
+/**
+ * Candidates from a search page: `[]` for a results page that holds nothing,
+ * `null` for a body that is not a results page at all — see the seam's
+ * contract.
+ *
+ * A results page is recognised by its listing response, which every search
+ * page carries — the explicit no-results one included, which states
+ * `responseInfo.type` `NO_RESULTS_SEARCH` with no items and no count — and
+ * which an empty body, a vendor error and a product page do not.
+ *
+ * ⚠️ **A partial match is still a results page, and its items are kept.**
+ * When nothing matches every word B&H falls back to matching some of them and
+ * says so (`PARTIAL_SEARCH`): a nonsense part number came back with 28 screen
+ * kits. They are kept for the pipeline to judge — a look-alike has neither the
+ * item's MFR # nor its brand, and at B&H a candidate needs both — because a
+ * partial page can also hold the item itself.
+ */
+export function parseSearchResults(html: string): ParsedCandidate[] | null {
+  const data = listingData(html);
+  if (data === null) return null;
+
+  const items = arr(data, "items");
+  const out: ParsedCandidate[] = [];
+  const seen = new Set<string>();
+  for (const item of items) {
+    if (!isObj(item)) continue;
+    const candidate = toCandidate(item);
+    if (candidate === null || seen.has(candidate.itemId)) continue;
+    seen.add(candidate.itemId);
+    out.push(candidate);
+  }
+  // 🔴 Items and not one readable: the markup has moved under us. Reading that
+  // as `[]` would file every item as not carried the day B&H renames a field.
+  if (out.length === 0 && items.length > 0) return null;
+  return out;
+}
+
+/** What a product page says about its own item. */
+interface PageItem {
+  readonly skuNo: string;
+  /** Every UPC the page states for its own item, in page order, once each. */
+  readonly upcs: readonly string[];
+  /**
+   * UPCs the page states for OTHER items — a kit's components. 🔴 Never the
+   * kit's own, never `additionalBarcodes`, never a match.
+   */
+  readonly componentUpcs: readonly string[];
+  /** The page carries a UPC field at all, even an empty one. */
+  readonly hasUpcField: boolean;
+  readonly priceCents: number | null;
+  /** B&H withholds the price it has (MAP, or price and cart hidden). */
+  readonly priceWithheld: boolean;
+  readonly discontinued: boolean;
+  readonly inStock: boolean | null;
+  readonly title: string | null;
+}
+
+/**
+ * Every barcode a value holds: one value may carry several, split on
+ * whitespace, commas, slashes, semicolons and bars. Anything that is not 8-14
+ * digits is not a barcode and is dropped.
+ */
+function barcodesIn(raw: unknown, into: string[]): void {
+  if (typeof raw !== "string") return;
+  for (const token of raw.split(/[\s,/;|]+/)) {
+    if (/^\d{8,14}$/.test(token) && !into.includes(token)) into.push(token);
+  }
+}
+
+const LD_JSON =
+  /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+
+/** The page's `schema.org/Product` nodes, in page order. */
+function ldProducts(html: string): Json[] {
+  const out: Json[] = [];
+  LD_JSON.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = LD_JSON.exec(html)) !== null) {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse((m[1] ?? "").trim());
+    } catch {
+      continue;
+    }
+    for (const node of Array.isArray(parsed) ? parsed : [parsed]) {
+      if (isObj(node) && node["@type"] === "Product") out.push(node);
+    }
+  }
+  return out;
+}
+
+const UPC_LINE = /data-selenium="overviewUpcText"[^>]*>\s*UPC:\s*([^<]*)</g;
+
+/** The entry that queried exactly one item, and its item. */
+function productEntries(pre: Json | null): Json[] {
+  const entries = obj(obj(obj(pre, "ServerStateStore"), "state"), "entries");
+  if (entries === null) return [];
+  const out: Json[] = [];
+  for (const entry of Object.values(entries)) {
+    if (arr(obj(entry, "query"), "itemKeys").length !== 1) continue;
+    const item = arr(entry, "data")[0];
+    if (isObj(item) && obj(item, "core") !== null) out.push(item);
+  }
+  return out;
+}
+
+/**
+ * The page's own item, or `null` when the body is not a product page: an
+ * empty body, a refusal, a search page, a discontinued item's replacement
+ * page.
+ */
+function pageItem(html: string): PageItem | null {
+  const pre = extractPreloadedData(html);
+  const candidates = productEntries(pre);
+  const ld = ldProducts(html);
+  // One single-item entry on every product page the investigation read. Were
+  // there several, the one the JSON-LD's own url names wins.
+  const ldSku = ld
+    .map((node) => /\/c\/product\/(\d+)-/.exec(strAt(node, "url") ?? "")?.[1])
+    .find((sku) => sku !== undefined);
+  const item =
+    candidates.find(
+      (c) => idAt(obj(c, "itemKey"), "skuNo") === (ldSku ?? null),
+    ) ??
+    candidates[0] ??
+    null;
+  const skuNo = idAt(obj(item, "itemKey"), "skuNo");
+  if (item === null || skuNo === null) return null;
+  const core = obj(item, "core");
+
+  // 🔴 **A kit's page states its COMPONENTS' UPCs, and none of them is the
+  // kit's.** Measured on a real one (a Logitech G mouse-and-charging-pad kit,
+  // skuNo 1882239): its overview entries are keyed to the two components'
+  // own items, and its JSON-LD `gtin12` and both rendered "UPC:" lines repeat
+  // those two values. The investigation's parser filed the JSON-LD value as
+  // the kit's own, so a client's mouse would have verified against the kit.
+  // On a kit only an entry keyed to the kit itself is the kit's.
+  const isKit =
+    core?.["isBHKit"] === true ||
+    core?.["isJKit"] === true ||
+    core?.["isMfrBundle"] === true;
+  const own: string[] = [];
+  const others: string[] = [];
+  let hasUpcField = false;
+  for (const group of ["overview", "specifications"]) {
+    for (const entry of arr(obj(item, group), "items")) {
+      if (!isObj(entry) || !("upc" in entry)) continue;
+      hasUpcField = true;
+      const key = idAt(obj(obj(entry, "item"), "itemKey"), "skuNo");
+      const mine = key === skuNo || (key === null && !isKit);
+      barcodesIn(entry["upc"], mine ? own : others);
+    }
+  }
+  for (const node of ld) {
+    const url = strAt(node, "url");
+    if (url !== null && !url.includes(`/${skuNo}-`)) continue;
+    for (const field of ["gtin", "gtin8", "gtin12", "gtin13", "gtin14"]) {
+      if (!(field in node)) continue;
+      hasUpcField = true;
+      barcodesIn(node[field], isKit ? others : own);
+    }
+  }
+  UPC_LINE.lastIndex = 0;
+  let line: RegExpExecArray | null;
+  while ((line = UPC_LINE.exec(html)) !== null) {
+    hasUpcField = true;
+    barcodesIn((line[1] ?? "").trim(), isKit ? others : own);
+  }
+
+  return {
+    skuNo,
+    upcs: own,
+    componentUpcs: others.filter((upc) => !own.includes(upc)),
+    hasUpcField,
+    priceCents: shownPrice(item),
+    priceWithheld: !isDiscontinued(item) && priceWithheld(item),
+    discontinued: isDiscontinued(item),
+    inStock: inStockOf(item),
+    title: strAt(core, "shortDescription"),
+  };
+}
+
+/**
+ * Raw product-page body -> what resolution reads, or `null` when it is not a
+ * product page: a replacement page, an empty body, a refusal, a search page.
+ *
+ * 🔑 Every UPC the page states for its own item is published — the first as
+ * `barcode`, the rest as `additionalBarcodes` — and a kit's component UPCs are
+ * never among them.
+ */
+export function parseProductPage(html: string): ParsedProduct | null {
+  const page = pageItem(html);
+  if (page === null) return null;
+  return {
+    // Verbatim, as published; `gtinCore` reconciles widths at compare time.
+    barcode: page.upcs[0] ?? null,
+    additionalBarcodes: page.upcs.slice(1),
+    // The page that proves the pairing is the freshest statement of the
+    // price; `null` where B&H withholds it or no longer sells the item.
+    priceCents: page.priceCents,
+    inStock: page.inStock,
+    title: page.title,
+    sellerName: SELLER,
+  };
+}
+
+/**
+ * Why a B&H listing publishes no barcode, where its page says.
+ *
+ * 🔑 **Jody's rule, applied by the lead on 2026-11-10: a candidate without a
+ * barcode match goes to a person.** Of 39 product pages the investigation
+ * read, 10 stated no UPC, and 6 of those were items B&H lists as Discontinued
+ * — with no current price, and with nothing a barcode could ever be compared
+ * against. Such a listing is `unverifiable`, never verified and never "not
+ * carried", and this is the reason a reviewer needs beside it.
+ *
+ * ⚠️ **Stated here, not on the wire.** The evidence a run reports carries no
+ * reason field — the gateway composes its own note from the outcome — so this
+ * is the one statement of it until one exists.
+ */
+export const DISCONTINUED_NO_UPC = "discontinued at B&H, no UPC published";
+
+export function noBarcodeReason(html: string): string | null {
+  const page = pageItem(html);
+  if (page === null || page.upcs.length > 0) return null;
+  return page.discontinued ? DISCONTINUED_NO_UPC : null;
+}
+
+/** What a listing's own page says, for a read run. */
+export function readListingPage(html: string): ListingPageResult {
+  const page = pageItem(html);
+  if (page === null) {
+    return {
+      kind: "not-a-product-page",
+      detail:
+        extractPreloadedData(html) === null
+          ? "no preloaded state"
+          : "no product item: a search page, or a discontinued item's replacement page",
+    };
+  }
+  // 🔴 A price B&H shows and this build cannot read is markup that moved. A
+  // price it WITHHOLDS (MAP) or no longer has (discontinued) is not: it is
+  // the page's answer, and it reads as no price rather than a failed reading.
+  if (page.priceCents === null && !page.priceWithheld && !page.discontinued) {
+    return {
+      kind: "unreadable-offer",
+      detail: "a price B&H shows could not be read",
+    };
+  }
+  return {
+    kind: "page",
+    page: {
+      pageItemId: page.skuNo,
+      barcode: page.upcs[0] ?? (page.hasUpcField ? "" : null),
+      additionalBarcodes: page.upcs.slice(1),
+      priceCents: page.priceCents,
+      inStock: page.inStock,
+    },
+  };
+}
+
+/**
+ * 🔑 **B&H answers a barcode search**, measured on the 20-row sample: a
+ * 12-digit UPC returned exactly the item for all 8 verified rows, whose
+ * product page stated that UPC (8 of 8), and an explicit no-results page for
+ * the other 12. No digit limit is known.
+ *
+ * 🔴 **A part number needs the brand.** The MFR # is exact, and the product is
+ * often another brand's: "29538" is a C2G cable, "10174" an Aquatech housing,
+ * "63005" a SIG SAUER scope, "30206" an Aquatica port — each the MFR # of a
+ * row the investigation found B&H does not carry. And B&H's search requires
+ * every word, so the client's brand spelling narrows an exact part number to
+ * nothing or to a partial match: brand-scoped queries found none of the items
+ * in 9 asked, where the bare MFR # found all 11 B&H carries.
+ */
+const QUERY_SUPPORT: QuerySupport = {
+  maxNumericQueryDigits: null,
+  barcodeIsSearchable: true,
+  partNumberNeedsBrand: true,
+};
+
+export const bhAdapter: RetailerAdapter & ListingReader = {
+  slug: "bh",
+  querySupport: QUERY_SUPPORT,
+  // Jody's politeness rule of two to four pages at once, at its top: the
+  // registry's figure arrives with the job and wins over this.
+  pacing: { pagesAtOnce: 4 },
+  // B&H answered in seconds and only 1 attempt in 120 failed; 150 s per
+  // attempt, as Best Buy, is generous rather than tight.
+  fetchProfile: { country: "us", timeoutMs: 150_000 },
+  // The investigation probed at most three product pages per row.
+  maxProbes: 3,
+  buildSearchUrl: (query) =>
+    `${BH_ORIGIN}/c/search?q=${encodeURIComponent(query)}`,
+  parseSearchResults,
+  parseProductPage,
+  hosts: ["www.bhphotovideo.com"],
+  readListingPage,
+};
