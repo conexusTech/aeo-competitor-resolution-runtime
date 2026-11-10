@@ -105,13 +105,26 @@ describe("planQueries with the switch", () => {
         continue;
       }
       expect(withIt[0]).toBe(first);
-      expect(withIt).toEqual(
-        [first, ...without.filter((q) => q !== first)].slice(
-          0,
-          MAX_QUERY_ATTEMPTS,
-        ),
-      );
+      // The barcode is outside the six (review finding 11): nothing of the
+      // plan it always had is pushed off the end.
+      expect(withIt).toEqual([first, ...without.filter((q) => q !== first)]);
     }
+  });
+
+  it("🔴 the barcode takes none of the plan's six slots (review finding 11)", () => {
+    // Several part numbers and the client's name: a plan that fills all six.
+    const full: QueryPlanInput = {
+      barcode: "813810010431",
+      brand: "SteelSeries",
+      partNumbers: ["63005", "QCK-MINI", "QCK-MINI-2", "QCK-HEAVY"],
+      phrase: "SteelSeries QcK",
+      productName: "QcK Mini Gaming Mouse Pad",
+    };
+    const without = planQueries(full, NOT_SEARCHABLE);
+    expect(without).toHaveLength(MAX_QUERY_ATTEMPTS);
+    const withIt = planQueries(full, SEARCHABLE);
+    expect(withIt).toEqual(["813810010431", ...without]);
+    expect(withIt).toHaveLength(MAX_QUERY_ATTEMPTS + 1);
   });
 
   it("🔴 false never asks the barcode", () => {

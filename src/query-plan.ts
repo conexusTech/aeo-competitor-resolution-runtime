@@ -54,7 +54,10 @@ export function barcodeQuery(
   return core.padStart(core.length > 12 ? 13 : 12, "0");
 }
 
-/** How many attempts are worth making before a query is just noise. */
+/**
+ * How many attempts are worth making before a query is just noise — not
+ * counting the barcode, which a retailer that answers one is asked first.
+ */
 export const MAX_QUERY_ATTEMPTS = 6;
 
 /**
@@ -91,8 +94,15 @@ export function planQueries(
    * found it, and the identity lookup is never bought. ⚠️ Read from the
    * retailer's configuration, never from its name; where the switch is off,
    * nothing is pushed and every plan is what it always was.
+   *
+   * 🔴 **Outside `MAX_QUERY_ATTEMPTS`.** Counted among the six, it pushed the
+   * plan's last query off the end — for an item with several part numbers,
+   * the client's own name — so a retailer that answers barcodes was asked
+   * one question fewer about the item than one that does not.
    */
-  push(barcodeQuery(input.barcode, support));
+  const barcode = barcodeQuery(input.barcode, support);
+  push(barcode);
+  const first = attempts.length;
 
   const { brand } = input;
   const itemRef = manufacturerItemRef(input.barcode);
@@ -141,5 +151,8 @@ export function planQueries(
   push(input.productName);
   push(input.phrase);
 
-  return attempts.slice(0, MAX_QUERY_ATTEMPTS);
+  return [
+    ...attempts.slice(0, first),
+    ...attempts.slice(first, first + MAX_QUERY_ATTEMPTS),
+  ];
 }
