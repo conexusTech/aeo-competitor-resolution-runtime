@@ -199,6 +199,34 @@ describe("Costco's own numbers", () => {
     expect(isCostcoInternalUpc("4006381333931", ["1705111"])).toBe(false);
     expect(isCostcoInternalUpc("5099206088719", ["2037132"])).toBe(false);
   });
+
+  it("🔴 on a page stating no item numbers, a 4000001… or 4000002… value is Costco's own (review finding 13)", () => {
+    // With no item to spell, the form alone says it: Costco's `4` and an
+    // item number, zero-padded — absent, never a barcode that disagrees.
+    expect(isCostcoInternalUpc("4000001939040", [])).toBe(true);
+    expect(isCostcoInternalUpc("4000002037132", [])).toBe(true);
+  });
+
+  it("CONTROL: a real 400… EAN-13 is still a barcode, item numbers or none", () => {
+    expect(isCostcoInternalUpc("4006381333931", [])).toBe(false);
+    expect(isCostcoInternalUpc("4005808817603", [])).toBe(false);
+    expect(isCostcoInternalUpc("4000003123456", [])).toBe(false);
+    // Twelve digits is not that form.
+    expect(isCostcoInternalUpc("400000193904", [])).toBe(false);
+  });
+
+  it("🔴 a parent-only page's 4000001… UPC is never published as its barcode", () => {
+    // SYNTHETIC: a product with no child items, whose only UPC is internal.
+    const p = parseProductPage(
+      page({
+        productData: { id: "4000999999", upc: "4000001939040" },
+        priceInfo: priced("4000999999", 19.99),
+      }),
+    );
+    expect(p).not.toBeNull();
+    expect(p?.barcode).toBeNull();
+    expect(p?.additionalBarcodes).toEqual([]);
+  });
 });
 
 describe("readListingPage", () => {

@@ -190,12 +190,20 @@ export function costcoApp(html: string): "search" | "product" | "other" {
  * `4000002094503` beside their real UPCs, and it reported both as UPCs.
  * Neither could have matched a client's barcode, but a reviewer reading them
  * as the listing's barcodes would have been told something false.
+ *
+ * 🔴 **On a page that states no item numbers, the form alone decides**: a
+ * 13-digit `4000001…` or `4000002…` value is Costco's own. With no item to
+ * spell, such a value would otherwise be published as the listing's barcode,
+ * and read as one that DISAGREES with the client's — a mismatch, where the
+ * truth is that the page states none (absent). A real EAN-13 from a GS1
+ * Germany prefix (`400…`) is not that form: `4006381333931` stays a barcode.
  */
 export function isCostcoInternalUpc(
   upc: string,
   itemNumbers: readonly string[],
 ): boolean {
   if (/^49999\d{7}$/.test(upc)) return true;
+  if (itemNumbers.length === 0 && /^400000[12]\d{6}$/.test(upc)) return true;
   return itemNumbers.some(
     (n) => /^\d+$/.test(n) && upc === `4${n.padStart(12, "0")}`,
   );
