@@ -1,5 +1,5 @@
 import { gunzipSync } from "node:zlib";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
@@ -178,9 +178,95 @@ describe("toPublicItemId", () => {
   });
 });
 
+/** `src/<rel>`, as text. */
+const source = (rel: string): string =>
+  readFileSync(
+    fileURLToPath(new URL(`../src/${rel}`, import.meta.url)),
+    "utf8",
+  );
+
+/** Every source file under `src`, relative to it. */
+const sourceFiles = (): string[] =>
+  readdirSync(fileURLToPath(new URL("../src/", import.meta.url)), {
+    recursive: true,
+    encoding: "utf8",
+  })
+    .map((f) => f.split("\\").join("/"))
+    .filter((f) => f.endsWith(".ts"));
+
+/**
+ * Each adapter file, by the slug it states — read from the files, so the next
+ * adapter is covered without anyone adding it here.
+ */
+const adapterFiles = (): { file: string; slug: string; name: string }[] =>
+  sourceFiles()
+    .filter((f) => f.startsWith("adapters/") && f !== "adapters/types.ts")
+    .map((file) => {
+      const text = source(file);
+      const slug = /^\s*slug: "([^"]+)",/m.exec(text)?.[1];
+      const name = /export const (\w+Adapter)\b/.exec(text)?.[1];
+      if (slug === undefined || name === undefined) {
+        throw new Error(`${file} states no slug or exports no adapter`);
+      }
+      return { file, slug, name };
+    });
+
 describe("the adapter's own configuration", () => {
+  /**
+   * 🔴 **A grep, and the weakest check here** — it proves no line names a
+   * retailer or compares a slug, not that no code behaves differently per
+   * retailer. Widened with the third adapter: every adapter's slug, every
+   * source file, and each adapter naming no retailer but its own.
+   */
   it("names the retailer as data, not as a type", () => {
     expect(neweggAdapter.slug).toBe("newegg");
+
+    const adapters = adapterFiles();
+    // Not vacuous: Newegg, Amazon and Best Buy at least.
+    expect(adapters.map((a) => a.slug)).toEqual(
+      expect.arrayContaining(["newegg", "amazon", "bestbuy"]),
+    );
+    const named = new RegExp(
+      `["'\`](?:${adapters.map((a) => a.slug).join("|")}|bh|costco)["'\`]`,
+    );
+    const offending: string[] = [];
+    for (const file of sourceFiles()) {
+      const own = adapters.find((a) => a.file === file)?.slug;
+      for (const [n, line] of source(file).split("\n").entries()) {
+        // Prose is not a code path: a comment may quote the union the seam
+        // exists to refuse.
+        if (/^\s*(?:\*|\/\*|\/\/)/.test(line)) continue;
+        // A comparison against a slug literal, either way round. A `typeof`
+        // test is a type check on the field, not a retailer.
+        const compares =
+          (!/typeof/.test(line) &&
+            /[sS]lug\s*[!=]==?\s*["'`][^"'`]+["'`]/.test(line)) ||
+          /["'`][^"'`]+["'`]\s*[!=]==?\s*\w*[sS]lug\b/.test(line);
+        // A retailer named as a literal — anywhere but its own `slug:` line.
+        const ownSlugLine =
+          own !== undefined && line.includes(`slug: "${own}"`);
+        if (compares || (named.test(line) && !ownSlugLine)) {
+          offending.push(`src/${file}:${n + 1}: ${line.trim()}`);
+        }
+      }
+    }
+    expect(offending).toEqual([]);
+  });
+
+  it("CONTROL: the grep finds a slug compared or named where one is", () => {
+    const named = /["'`](?:newegg|amazon|bestbuy|bh|costco)["'`]/;
+    const compares = /[sS]lug\s*[!=]==?\s*["'`][^"'`]+["'`]/;
+    expect(compares.test('if (adapter.slug === "bestbuy") {')).toBe(true);
+    expect(named.test('const fallback = "bestbuy";')).toBe(true);
+  });
+
+  it("🔴 the image carries every adapter, each keyed by its own slug", () => {
+    const main = source("main.ts");
+    for (const { name } of adapterFiles()) {
+      expect(main, `${name} is not registered`).toContain(
+        `[${name}.slug]: ${name},`,
+      );
+    }
   });
 
   it("builds a search url that survives an awkward query", () => {
