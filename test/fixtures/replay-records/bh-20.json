@@ -1,0 +1,733 @@
+[
+ {
+  "barcode": "731304016298",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "731304016298",
+   "clientSku": "352534",
+   "candidatesSeen": 1,
+   "probes": 1,
+   "match": {
+    "itemId": "228425",
+    "url": "https://www.bhphotovideo.com/c/product/228425-REG/APC_BK350_Back_UPS_350_CS.html",
+    "title": "APC Back-UPS 350 (120V)",
+    "brand": "APC",
+    "model": "BK350",
+    "priceCents": 12899,
+    "inStock": null,
+    "isFirstParty": true,
+    "sellerName": "B&H Photo",
+    "imageUrl": "https://static.bhphoto.com/images/images345x345/1272445591_228425.jpg",
+    "retailerBarcode": "731304016298",
+    "score": 3,
+    "unverifiableReason": null
+   },
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "verified",
+   "identity": null,
+   "queriesTried": [
+    "731304016298"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.bhphotovideo.com/c/search?q=731304016298",
+   "https://www.bhphotovideo.com/c/product/228425-REG/APC_BK350_Back_UPS_350_CS.html"
+  ]
+ },
+ {
+  "barcode": "649532012008",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "649532012008",
+   "clientSku": "219725",
+   "candidatesSeen": 1,
+   "probes": 1,
+   "match": {
+    "itemId": "1247541",
+    "url": "https://www.bhphotovideo.com/c/product/1247541-REG/cyberpower_cp1200avr_avr_mini_tower_ups.html",
+    "title": "CyberPower CP1200AVR AVR Mini-Tower UPS (1200VA/720W)",
+    "brand": "CyberPower",
+    "model": "CP1200AVR",
+    "priceCents": 16995,
+    "inStock": true,
+    "isFirstParty": true,
+    "sellerName": "B&H Photo",
+    "imageUrl": "https://static.bhphoto.com/images/images345x345/1621439309_1247541.jpg",
+    "retailerBarcode": "649532012008",
+    "score": 19,
+    "unverifiableReason": null
+   },
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "verified",
+   "identity": null,
+   "queriesTried": [
+    "649532012008"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.bhphotovideo.com/c/search?q=649532012008",
+   "https://www.bhphotovideo.com/c/product/1247541-REG/cyberpower_cp1200avr_avr_mini_tower_ups.html"
+  ]
+ },
+ {
+  "barcode": "649833101746",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "649833101746",
+   "clientSku": "271361",
+   "candidatesSeen": 9,
+   "probes": 0,
+   "match": null,
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "not-found",
+   "identity": {
+    "partNumber": "10174",
+    "brand": "IMAK Products",
+    "title": null,
+    "provenance": "client-catalogue",
+    "corroboratedBy": [
+     "barcode-derived"
+    ]
+   },
+   "queriesTried": [
+    "649833101746",
+    "10174",
+    "IMAK Products 10174"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.bhphotovideo.com/c/search?q=649833101746",
+   "https://catalogue.test/item/271361",
+   "https://www.bhphotovideo.com/c/search?q=10174",
+   "https://www.bhphotovideo.com/c/search?q=IMAK%20Products%2010174"
+  ]
+ },
+ {
+  "barcode": "035286295383",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "035286295383",
+   "clientSku": "883827",
+   "candidatesSeen": 1,
+   "probes": 0,
+   "match": null,
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "not-found",
+   "identity": {
+    "partNumber": "29538",
+    "brand": "Allsop",
+    "title": null,
+    "provenance": "client-catalogue",
+    "corroboratedBy": [
+     "barcode-derived"
+    ]
+   },
+   "queriesTried": [
+    "035286295383",
+    "29538",
+    "Allsop 29538"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.bhphotovideo.com/c/search?q=035286295383",
+   "https://catalogue.test/item/883827",
+   "https://www.bhphotovideo.com/c/search?q=29538",
+   "https://www.bhphotovideo.com/c/search?q=Allsop%2029538"
+  ]
+ },
+ {
+  "barcode": "813810010431",
+  "kind": "stopped",
+  "missing": "https://www.bhphotovideo.com/c/search?q=SteelSeries%2001043",
+  "asked": [
+   "https://www.bhphotovideo.com/c/search?q=813810010431",
+   "https://catalogue.test/item/314393",
+   "https://www.bhphotovideo.com/c/search?q=63005",
+   "https://www.bhphotovideo.com/c/search?q=SteelSeries%2063005",
+   "https://www.bhphotovideo.com/c/search?q=SteelSeries%2001043"
+  ]
+ },
+ {
+  "barcode": "097855046871",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "097855046871",
+   "clientSku": "668707",
+   "candidatesSeen": 1,
+   "probes": 1,
+   "match": {
+    "itemId": "533300",
+    "url": "https://www.bhphotovideo.com/c/product/533300-REG/Logitech_981_000014_ClearChat_Comfort_USB_Headset.html",
+    "title": "Logitech H390 USB-A Headset (Black)",
+    "brand": "Logitech",
+    "model": "981-000014",
+    "priceCents": 2099,
+    "inStock": true,
+    "isFirstParty": true,
+    "sellerName": "B&H Photo",
+    "imageUrl": "https://static.bhphoto.com/images/images345x345/1746185886_533300.jpg",
+    "retailerBarcode": "097855046871",
+    "score": 4,
+    "unverifiableReason": null
+   },
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "verified",
+   "identity": null,
+   "queriesTried": [
+    "097855046871"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.bhphotovideo.com/c/search?q=097855046871",
+   "https://www.bhphotovideo.com/c/product/533300-REG/Logitech_981_000014_ClearChat_Comfort_USB_Headset.html"
+  ]
+ },
+ {
+  "barcode": "035286296489",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "035286296489",
+   "clientSku": "994905",
+   "candidatesSeen": 1,
+   "probes": 0,
+   "match": null,
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "not-found",
+   "identity": {
+    "partNumber": "29648",
+    "brand": "Allsop",
+    "title": null,
+    "provenance": "client-catalogue",
+    "corroboratedBy": [
+     "barcode-derived"
+    ]
+   },
+   "queriesTried": [
+    "035286296489",
+    "29648",
+    "Allsop 29648"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.bhphotovideo.com/c/search?q=035286296489",
+   "https://catalogue.test/item/994905",
+   "https://www.bhphotovideo.com/c/search?q=29648",
+   "https://www.bhphotovideo.com/c/search?q=Allsop%2029648"
+  ]
+ },
+ {
+  "barcode": "710931610147",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "710931610147",
+   "clientSku": "011833",
+   "candidatesSeen": 1,
+   "probes": 1,
+   "match": {
+    "itemId": "640322",
+    "url": "https://www.bhphotovideo.com/c/product/640322-REG/Trendnet_TEG_S50G_5_Port_Gigabit_GREENnet_Switch.html",
+    "title": "TRENDnet 5-Port Gigabit GREENnet Switch",
+    "brand": "TRENDnet",
+    "model": "TEG-S50G",
+    "priceCents": 1349,
+    "inStock": true,
+    "isFirstParty": true,
+    "sellerName": "B&H Photo",
+    "imageUrl": "https://static.bhphoto.com/images/images345x345/1590399330_640322.jpg",
+    "retailerBarcode": "710931610147",
+    "score": 4,
+    "unverifiableReason": null
+   },
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "verified",
+   "identity": null,
+   "queriesTried": [
+    "710931610147"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.bhphotovideo.com/c/search?q=710931610147",
+   "https://www.bhphotovideo.com/c/product/640322-REG/Trendnet_TEG_S50G_5_Port_Gigabit_GREENnet_Switch.html"
+  ]
+ },
+ {
+  "barcode": "649833101234",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "649833101234",
+   "clientSku": "156034",
+   "candidatesSeen": 24,
+   "probes": 0,
+   "match": null,
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "not-found",
+   "identity": {
+    "partNumber": "10123",
+    "brand": "IMAK Products",
+    "title": null,
+    "provenance": "client-catalogue",
+    "corroboratedBy": [
+     "barcode-derived"
+    ]
+   },
+   "queriesTried": [
+    "649833101234",
+    "10123",
+    "IMAK Products 10123"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.bhphotovideo.com/c/search?q=649833101234",
+   "https://catalogue.test/item/156034",
+   "https://www.bhphotovideo.com/c/search?q=10123",
+   "https://www.bhphotovideo.com/c/search?q=IMAK%20Products%2010123"
+  ]
+ },
+ {
+  "barcode": "188218000453",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "188218000453",
+   "clientSku": "497966",
+   "candidatesSeen": 1,
+   "probes": 1,
+   "match": {
+    "itemId": "812178",
+    "url": "https://www.bhphotovideo.com/c/product/812178-REG/Sabrent_CRW_UINB_7_Slot_USB_2_0_Internal.html",
+    "title": "Sabrent 7-Slot USB 2.0 Internal Memory Card Reader & Writer",
+    "brand": "Sabrent",
+    "model": "CRW-UINB",
+    "priceCents": null,
+    "inStock": false,
+    "isFirstParty": true,
+    "sellerName": "B&H Photo",
+    "imageUrl": "https://static.bhphoto.com/images/images345x345/1311872877_812178.jpg",
+    "retailerBarcode": null,
+    "score": 31,
+    "unverifiableReason": "discontinued at B&H, no UPC published"
+   },
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "unverifiable",
+   "identity": {
+    "partNumber": "CRW-UINB",
+    "brand": "Sabrent",
+    "title": null,
+    "provenance": "client-catalogue",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "188218000453",
+    "CRW-UINB"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.bhphotovideo.com/c/search?q=188218000453",
+   "https://catalogue.test/item/497966",
+   "https://www.bhphotovideo.com/c/search?q=CRW-UINB",
+   "https://www.bhphotovideo.com/c/product/812178-REG/Sabrent_CRW_UINB_7_Slot_USB_2_0_Internal.html"
+  ]
+ },
+ {
+  "barcode": "085896723370",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "085896723370",
+   "clientSku": "540062",
+   "candidatesSeen": 4,
+   "probes": 1,
+   "match": {
+    "itemId": "674256",
+    "url": "https://www.bhphotovideo.com/c/product/674256-REG/Kensington_K72337US_Orbit_Trackball_with_Scroll.html",
+    "title": "Kensington Orbit Trackball with Scroll Ring (Black, Retail Packaging)",
+    "brand": "Kensington",
+    "model": "K72337US",
+    "priceCents": null,
+    "inStock": false,
+    "isFirstParty": true,
+    "sellerName": "B&H Photo",
+    "imageUrl": "https://static.bhphoto.com/images/images345x345/1429523389_674256.jpg",
+    "retailerBarcode": null,
+    "score": 46,
+    "unverifiableReason": "discontinued at B&H, no UPC published"
+   },
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "unverifiable",
+   "identity": {
+    "partNumber": "K72337US",
+    "brand": "Kensington",
+    "title": null,
+    "provenance": "client-catalogue",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "085896723370",
+    "K72337US"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.bhphotovideo.com/c/search?q=085896723370",
+   "https://catalogue.test/item/540062",
+   "https://www.bhphotovideo.com/c/search?q=K72337US",
+   "https://www.bhphotovideo.com/c/product/674256-REG/Kensington_K72337US_Orbit_Trackball_with_Scroll.html"
+  ]
+ },
+ {
+  "barcode": "812348010548",
+  "kind": "stopped",
+  "missing": "https://www.bhphotovideo.com/c/search?q=Kingwin%2001054",
+  "asked": [
+   "https://www.bhphotovideo.com/c/search?q=812348010548",
+   "https://catalogue.test/item/531814",
+   "https://www.bhphotovideo.com/c/search?q=CF-08LB",
+   "https://www.bhphotovideo.com/c/search?q=Kingwin%20CF-08LB",
+   "https://www.bhphotovideo.com/c/search?q=Kingwin%2001054"
+  ]
+ },
+ {
+  "barcode": "812348010555",
+  "kind": "stopped",
+  "missing": "https://www.bhphotovideo.com/c/search?q=Kingwin%2001055",
+  "asked": [
+   "https://www.bhphotovideo.com/c/search?q=812348010555",
+   "https://catalogue.test/item/531822",
+   "https://www.bhphotovideo.com/c/search?q=CF-012LB",
+   "https://www.bhphotovideo.com/c/search?q=Kingwin%20CF-012LB",
+   "https://www.bhphotovideo.com/c/search?q=Kingwin%2001055"
+  ]
+ },
+ {
+  "barcode": "097855066237",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "097855066237",
+   "clientSku": "744334",
+   "candidatesSeen": 1,
+   "probes": 1,
+   "match": {
+    "itemId": "731610",
+    "url": "https://www.bhphotovideo.com/c/product/731610-REG/Logitech_910_001675_M310_Wireless_Mouse.html",
+    "title": "Logitech M310 Wireless Mouse (Silver)",
+    "brand": "Logitech",
+    "model": "910-001675",
+    "priceCents": 2299,
+    "inStock": true,
+    "isFirstParty": true,
+    "sellerName": "B&H Photo",
+    "imageUrl": "https://static.bhphoto.com/images/images345x345/1519230103_731610.jpg",
+    "retailerBarcode": "097855066237",
+    "score": 4,
+    "unverifiableReason": null
+   },
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "verified",
+   "identity": null,
+   "queriesTried": [
+    "097855066237"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.bhphotovideo.com/c/search?q=097855066237",
+   "https://www.bhphotovideo.com/c/product/731610-REG/Logitech_910_001675_M310_Wireless_Mouse.html"
+  ]
+ },
+ {
+  "barcode": "097855067876",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "097855067876",
+   "clientSku": "772269",
+   "candidatesSeen": 1,
+   "probes": 1,
+   "match": {
+    "itemId": "709699",
+    "url": "https://www.bhphotovideo.com/c/product/709699-REG/Logitech_910_001917_M310_Wireless_Mouse.html",
+    "title": "Logitech M310 Wireless Mouse (Blue)",
+    "brand": "Logitech",
+    "model": "910-001917",
+    "priceCents": 2299,
+    "inStock": true,
+    "isFirstParty": true,
+    "sellerName": "B&H Photo",
+    "imageUrl": "https://static.bhphoto.com/images/images345x345/1692611414_709699.jpg",
+    "retailerBarcode": "097855067876",
+    "score": 4,
+    "unverifiableReason": null
+   },
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "verified",
+   "identity": null,
+   "queriesTried": [
+    "097855067876"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.bhphotovideo.com/c/search?q=097855067876",
+   "https://www.bhphotovideo.com/c/product/709699-REG/Logitech_910_001917_M310_Wireless_Mouse.html"
+  ]
+ },
+ {
+  "barcode": "710931505061",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "710931505061",
+   "clientSku": "842641",
+   "candidatesSeen": 1,
+   "probes": 1,
+   "match": {
+    "itemId": "646565",
+    "url": "https://www.bhphotovideo.com/c/product/646565-REG/Trendnet_TPE_S44_8_Port_10_100Mbps_PoE_Switch.html",
+    "title": "TRENDnet 8-Port 10/100Mbps PoE Switch",
+    "brand": "TRENDnet",
+    "model": "TPE-S44",
+    "priceCents": 4799,
+    "inStock": true,
+    "isFirstParty": true,
+    "sellerName": "B&H Photo",
+    "imageUrl": "https://static.bhphoto.com/images/images345x345/1320236710_646565.jpg",
+    "retailerBarcode": "710931505061",
+    "score": 4,
+    "unverifiableReason": null
+   },
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "verified",
+   "identity": null,
+   "queriesTried": [
+    "710931505061"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.bhphotovideo.com/c/search?q=710931505061",
+   "https://www.bhphotovideo.com/c/product/646565-REG/Trendnet_TPE_S44_8_Port_10_100Mbps_PoE_Switch.html"
+  ]
+ },
+ {
+  "barcode": "097855065537",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "097855065537",
+   "clientSku": "930685",
+   "candidatesSeen": 1,
+   "probes": 1,
+   "match": {
+    "itemId": "883073",
+    "url": "https://www.bhphotovideo.com/c/product/883073-REG/Logitech_920_002478_Keyboard_K120.html",
+    "title": "Logitech K120 USB Keyboard",
+    "brand": "Logitech",
+    "model": "920-002478",
+    "priceCents": 1239,
+    "inStock": true,
+    "isFirstParty": true,
+    "sellerName": "B&H Photo",
+    "imageUrl": "https://static.bhphoto.com/images/images345x345/1640185545_883073.jpg",
+    "retailerBarcode": "097855065537",
+    "score": 4,
+    "unverifiableReason": null
+   },
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "verified",
+   "identity": null,
+   "queriesTried": [
+    "097855065537"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.bhphotovideo.com/c/search?q=097855065537",
+   "https://www.bhphotovideo.com/c/product/883073-REG/Logitech_920_002478_Keyboard_K120.html"
+  ]
+ },
+ {
+  "barcode": "097855066466",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "097855066466",
+   "clientSku": "134338",
+   "candidatesSeen": 14,
+   "probes": 1,
+   "match": {
+    "itemId": "736288",
+    "url": "https://www.bhphotovideo.com/c/product/736288-REG/Logitech_980_000402_Z623_THX_Certified_2_1_Speaker.html",
+    "title": "Logitech Z623 THX-Certified 2.1 Speaker System",
+    "brand": "Logitech",
+    "model": "980-000402",
+    "priceCents": null,
+    "inStock": false,
+    "isFirstParty": true,
+    "sellerName": "B&H Photo",
+    "imageUrl": "https://static.bhphoto.com/images/images345x345/1286190948_736288.jpg",
+    "retailerBarcode": null,
+    "score": 31,
+    "unverifiableReason": "discontinued at B&H, no UPC published"
+   },
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "unverifiable",
+   "identity": {
+    "partNumber": "980-000402",
+    "brand": "Logitech",
+    "title": null,
+    "provenance": "client-catalogue",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "097855066466",
+    "980-000402"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.bhphotovideo.com/c/search?q=097855066466",
+   "https://catalogue.test/item/134338",
+   "https://www.bhphotovideo.com/c/search?q=980-000402",
+   "https://www.bhphotovideo.com/c/product/736288-REG/Logitech_980_000402_Z623_THX_Certified_2_1_Speaker.html"
+  ]
+ },
+ {
+  "barcode": "035286302067",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "035286302067",
+   "clientSku": "090142",
+   "candidatesSeen": 8,
+   "probes": 0,
+   "match": null,
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "not-found",
+   "identity": {
+    "partNumber": "30206",
+    "brand": "Allsop",
+    "title": null,
+    "provenance": "client-catalogue",
+    "corroboratedBy": [
+     "barcode-derived"
+    ]
+   },
+   "queriesTried": [
+    "035286302067",
+    "30206",
+    "Allsop 30206"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.bhphotovideo.com/c/search?q=035286302067",
+   "https://catalogue.test/item/090142",
+   "https://www.bhphotovideo.com/c/search?q=30206",
+   "https://www.bhphotovideo.com/c/search?q=Allsop%2030206"
+  ]
+ },
+ {
+  "barcode": "035286301848",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "035286301848",
+   "clientSku": "082081",
+   "candidatesSeen": 2,
+   "probes": 0,
+   "match": null,
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "not-found",
+   "identity": {
+    "partNumber": "30184",
+    "brand": "Allsop",
+    "title": null,
+    "provenance": "client-catalogue",
+    "corroboratedBy": [
+     "barcode-derived"
+    ]
+   },
+   "queriesTried": [
+    "035286301848",
+    "30184",
+    "Allsop 30184"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.bhphotovideo.com/c/search?q=035286301848",
+   "https://catalogue.test/item/082081",
+   "https://www.bhphotovideo.com/c/search?q=30184",
+   "https://www.bhphotovideo.com/c/search?q=Allsop%2030184"
+  ]
+ }
+]

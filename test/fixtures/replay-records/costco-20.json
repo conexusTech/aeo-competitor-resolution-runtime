@@ -1,0 +1,694 @@
+[
+ {
+  "barcode": "731304016298",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "731304016298",
+   "clientSku": "352534",
+   "candidatesSeen": 0,
+   "probes": 0,
+   "match": null,
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "not-found",
+   "identity": {
+    "partNumber": "BK350",
+    "brand": "APC",
+    "title": null,
+    "provenance": "client-catalogue",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "index:APC"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.costco.com/sitemap_lw_index.xml",
+   "https://www.costco.com/sitemap_lw_p_mod_001.xml",
+   "https://catalogue.test/item/352534"
+  ]
+ },
+ {
+  "barcode": "649532012008",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "649532012008",
+   "clientSku": "219725",
+   "candidatesSeen": 2,
+   "probes": 2,
+   "match": null,
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "not-found",
+   "identity": {
+    "partNumber": "CP1200AVR",
+    "brand": "CyberPower Systems",
+    "title": null,
+    "provenance": "client-catalogue",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "index:CyberPower Systems"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://catalogue.test/item/219725",
+   "https://www.costco.com/p/-/cyberpower-1500va--900-watts-true-sine-wave-uninterruptible-power-supply-ups/4000091462",
+   "https://www.costco.com/p/-/cyberpower-900va450w-simulated-sine-wave-slim-ups-battery-backup-with-surge-protection/4000193283"
+  ]
+ },
+ {
+  "barcode": "649833101746",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "649833101746",
+   "clientSku": "271361",
+   "candidatesSeen": 0,
+   "probes": 0,
+   "match": null,
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "not-found",
+   "identity": {
+    "partNumber": "10174",
+    "brand": "IMAK Products",
+    "title": null,
+    "provenance": "client-catalogue",
+    "corroboratedBy": [
+     "barcode-derived"
+    ]
+   },
+   "queriesTried": [
+    "index:IMAK Products"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://catalogue.test/item/271361"
+  ]
+ },
+ {
+  "barcode": "035286295383",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "035286295383",
+   "clientSku": "883827",
+   "candidatesSeen": 0,
+   "probes": 0,
+   "match": null,
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "not-found",
+   "identity": {
+    "partNumber": "29538",
+    "brand": "Allsop",
+    "title": null,
+    "provenance": "client-catalogue",
+    "corroboratedBy": [
+     "barcode-derived"
+    ]
+   },
+   "queriesTried": [
+    "index:Allsop"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://catalogue.test/item/883827"
+  ]
+ },
+ {
+  "barcode": "813810010431",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "813810010431",
+   "clientSku": "314393",
+   "candidatesSeen": 0,
+   "probes": 0,
+   "match": null,
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "not-found",
+   "identity": {
+    "partNumber": "63005",
+    "brand": "SteelSeries",
+    "title": null,
+    "provenance": "client-catalogue",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "index:SteelSeries"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://catalogue.test/item/314393"
+  ]
+ },
+ {
+  "barcode": "097855046871",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "097855046871",
+   "clientSku": "668707",
+   "candidatesSeen": 1,
+   "probes": 1,
+   "match": null,
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "not-found",
+   "identity": {
+    "partNumber": "981-000014",
+    "brand": "Logitech",
+    "title": null,
+    "provenance": "client-catalogue",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "index:Logitech"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://catalogue.test/item/668707",
+   "https://www.costco.com/p/-/logitech-g733-lightspeed-wireless-over-the-ear-gaming-headset-for-playstation-windows---black/4000447843"
+  ]
+ },
+ {
+  "barcode": "035286296489",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "035286296489",
+   "clientSku": "994905",
+   "candidatesSeen": 0,
+   "probes": 0,
+   "match": null,
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "not-found",
+   "identity": {
+    "partNumber": "29648",
+    "brand": "Allsop",
+    "title": null,
+    "provenance": "client-catalogue",
+    "corroboratedBy": [
+     "barcode-derived"
+    ]
+   },
+   "queriesTried": [
+    "index:Allsop"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://catalogue.test/item/994905"
+  ]
+ },
+ {
+  "barcode": "710931610147",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "710931610147",
+   "clientSku": "011833",
+   "candidatesSeen": 0,
+   "probes": 0,
+   "match": null,
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "not-found",
+   "identity": {
+    "partNumber": "TEG-S50G",
+    "brand": "Trendnet",
+    "title": null,
+    "provenance": "client-catalogue",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "index:Trendnet"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://catalogue.test/item/011833"
+  ]
+ },
+ {
+  "barcode": "649833101234",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "649833101234",
+   "clientSku": "156034",
+   "candidatesSeen": 0,
+   "probes": 0,
+   "match": null,
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "not-found",
+   "identity": {
+    "partNumber": "10123",
+    "brand": "IMAK Products",
+    "title": null,
+    "provenance": "client-catalogue",
+    "corroboratedBy": [
+     "barcode-derived"
+    ]
+   },
+   "queriesTried": [
+    "index:IMAK Products"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://catalogue.test/item/156034"
+  ]
+ },
+ {
+  "barcode": "188218000453",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "188218000453",
+   "clientSku": "497966",
+   "candidatesSeen": 0,
+   "probes": 0,
+   "match": null,
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "not-found",
+   "identity": {
+    "partNumber": "CRW-UINB",
+    "brand": "Sabrent",
+    "title": null,
+    "provenance": "client-catalogue",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "index:Sabrent"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://catalogue.test/item/497966"
+  ]
+ },
+ {
+  "barcode": "085896723370",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "085896723370",
+   "clientSku": "540062",
+   "candidatesSeen": 0,
+   "probes": 0,
+   "match": null,
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "not-found",
+   "identity": {
+    "partNumber": "K72337US",
+    "brand": "Kensington",
+    "title": null,
+    "provenance": "client-catalogue",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "index:Kensington"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://catalogue.test/item/540062"
+  ]
+ },
+ {
+  "barcode": "812348010548",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "812348010548",
+   "clientSku": "531814",
+   "candidatesSeen": 0,
+   "probes": 0,
+   "match": null,
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "not-found",
+   "identity": {
+    "partNumber": "CF-08LB",
+    "brand": "Kingwin",
+    "title": null,
+    "provenance": "client-catalogue",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "index:Kingwin"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://catalogue.test/item/531814"
+  ]
+ },
+ {
+  "barcode": "812348010555",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "812348010555",
+   "clientSku": "531822",
+   "candidatesSeen": 0,
+   "probes": 0,
+   "match": null,
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "not-found",
+   "identity": {
+    "partNumber": "CF-012LB",
+    "brand": "Kingwin",
+    "title": null,
+    "provenance": "client-catalogue",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "index:Kingwin"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://catalogue.test/item/531822"
+  ]
+ },
+ {
+  "barcode": "097855066237",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "097855066237",
+   "clientSku": "744334",
+   "candidatesSeen": 4,
+   "probes": 3,
+   "match": null,
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "not-found",
+   "identity": {
+    "partNumber": "910-001675",
+    "brand": "Logitech",
+    "title": null,
+    "provenance": "client-catalogue",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "index:Logitech"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://catalogue.test/item/744334",
+   "https://www.costco.com/p/-/logitech-mx-keyboard-and-mouse-combo/4000362496",
+   "https://www.costco.com/p/-/logitech-mx-master-keyboard-combo---mx-keys-wireless-keyboard--mx-master-2s-wireless-mouse/4000178023",
+   "https://www.costco.com/p/-/logitech-mx-performance-keyboard-and-mouse-combo/4201033147"
+  ]
+ },
+ {
+  "barcode": "097855067876",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "097855067876",
+   "clientSku": "772269",
+   "candidatesSeen": 4,
+   "probes": 3,
+   "match": null,
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "not-found",
+   "identity": {
+    "partNumber": "910-001917",
+    "brand": "Logitech",
+    "title": null,
+    "provenance": "client-catalogue",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "index:Logitech"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://catalogue.test/item/772269",
+   "https://www.costco.com/p/-/logitech-mx-keyboard-and-mouse-combo/4000362496",
+   "https://www.costco.com/p/-/logitech-mx-master-keyboard-combo---mx-keys-wireless-keyboard--mx-master-2s-wireless-mouse/4000178023",
+   "https://www.costco.com/p/-/logitech-mx-performance-keyboard-and-mouse-combo/4201033147"
+  ]
+ },
+ {
+  "barcode": "710931505061",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "710931505061",
+   "clientSku": "842641",
+   "candidatesSeen": 0,
+   "probes": 0,
+   "match": null,
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "not-found",
+   "identity": {
+    "partNumber": "TPE-S44",
+    "brand": "Trendnet",
+    "title": null,
+    "provenance": "client-catalogue",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "index:Trendnet"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://catalogue.test/item/842641"
+  ]
+ },
+ {
+  "barcode": "097855065537",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "097855065537",
+   "clientSku": "930685",
+   "candidatesSeen": 3,
+   "probes": 3,
+   "match": null,
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "not-found",
+   "identity": {
+    "partNumber": "920-002478",
+    "brand": "Logitech",
+    "title": null,
+    "provenance": "client-catalogue",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "index:Logitech"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://catalogue.test/item/930685",
+   "https://www.costco.com/p/-/logitech-mx-keyboard-and-mouse-combo/4000362496",
+   "https://www.costco.com/p/-/logitech-mx-performance-keyboard-and-mouse-combo/4201033147",
+   "https://www.costco.com/p/-/logitech-mx-master-keyboard-combo---mx-keys-wireless-keyboard--mx-master-2s-wireless-mouse/4000178023"
+  ]
+ },
+ {
+  "barcode": "097855066466",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "097855066466",
+   "clientSku": "134338",
+   "candidatesSeen": 0,
+   "probes": 0,
+   "match": null,
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "not-found",
+   "identity": {
+    "partNumber": "980-000402",
+    "brand": "Logitech",
+    "title": null,
+    "provenance": "client-catalogue",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "index:Logitech"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://catalogue.test/item/134338"
+  ]
+ },
+ {
+  "barcode": "035286302067",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "035286302067",
+   "clientSku": "090142",
+   "candidatesSeen": 0,
+   "probes": 0,
+   "match": null,
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "not-found",
+   "identity": {
+    "partNumber": "30206",
+    "brand": "Allsop",
+    "title": null,
+    "provenance": "client-catalogue",
+    "corroboratedBy": [
+     "barcode-derived"
+    ]
+   },
+   "queriesTried": [
+    "index:Allsop"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://catalogue.test/item/090142"
+  ]
+ },
+ {
+  "barcode": "035286301848",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "035286301848",
+   "clientSku": "082081",
+   "candidatesSeen": 0,
+   "probes": 0,
+   "match": null,
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "not-found",
+   "identity": {
+    "partNumber": "30184",
+    "brand": "Allsop",
+    "title": null,
+    "provenance": "client-catalogue",
+    "corroboratedBy": [
+     "barcode-derived"
+    ]
+   },
+   "queriesTried": [
+    "index:Allsop"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://catalogue.test/item/082081"
+  ]
+ },
+ {
+  "barcode": "195949689604",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "195949689604",
+   "clientSku": "757427",
+   "candidatesSeen": 6,
+   "probes": 1,
+   "match": {
+    "itemId": "4000308504",
+    "url": "https://www.costco.com/p/-/airpods-4-with-active-noise-cancellation/4000308504",
+    "title": "airpods 4 with active noise cancellation",
+    "brand": null,
+    "model": null,
+    "priceCents": 9997,
+    "inStock": null,
+    "isFirstParty": true,
+    "sellerName": "Costco",
+    "imageUrl": null,
+    "retailerBarcode": "195949689604",
+    "score": 3,
+    "unverifiableReason": null
+   },
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "verified",
+   "identity": {
+    "partNumber": "MXP93LL/A",
+    "brand": "Apple",
+    "title": null,
+    "provenance": "client-catalogue",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "index:Apple"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://catalogue.test/item/757427",
+   "https://www.costco.com/p/-/airpods-4-with-active-noise-cancellation/4000308504"
+  ]
+ }
+]

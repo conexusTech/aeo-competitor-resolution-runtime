@@ -1,0 +1,523 @@
+[
+ {
+  "barcode": "731304016298",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "731304016298",
+   "clientSku": "352534",
+   "candidatesSeen": 1,
+   "probes": 1,
+   "match": {
+    "itemId": "11521676",
+    "url": "https://www.bestbuy.com/product/apc-6-outlet-rj11-telco-350va-210w-back-ups-cs-tower-1020j-avr-bk350-beige/JXKZP6GJJF/sku/11521676",
+    "title": "APC - 6-Outlet RJ11/Telco 350VA/210W Back-UPS CS Tower, 1020J, AVR, BK350 - Beige",
+    "brand": "APC",
+    "model": "BK350",
+    "priceCents": 12310,
+    "inStock": false,
+    "isFirstParty": false,
+    "sellerName": "IPC-STORE",
+    "imageUrl": "https://pisces.bbystatic.com/image2/BestBuy_US/images/products/b45613a0-f231-44fb-af13-7602fff87657.jpg",
+    "retailerBarcode": "731304016298",
+    "score": 0,
+    "unverifiableReason": null
+   },
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "verified",
+   "identity": null,
+   "queriesTried": [
+    "731304016298"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.bestbuy.com/site/searchpage.jsp?st=731304016298",
+   "https://www.bestbuy.com/product/apc-6-outlet-rj11-telco-350va-210w-back-ups-cs-tower-1020j-avr-bk350-beige/JXKZP6GJJF/sku/11521676"
+  ]
+ },
+ {
+  "barcode": "649532012008",
+  "kind": "stopped",
+  "missing": "https://www.google.com/search?q=%22649532012008%22",
+  "asked": [
+   "https://www.bestbuy.com/site/searchpage.jsp?st=649532012008",
+   "https://www.google.com/search?q=%22649532012008%22"
+  ]
+ },
+ {
+  "barcode": "649833101746",
+  "kind": "stopped",
+  "missing": "https://www.google.com/search?q=%22649833101746%22",
+  "asked": [
+   "https://www.bestbuy.com/site/searchpage.jsp?st=649833101746",
+   "https://www.google.com/search?q=%22649833101746%22"
+  ]
+ },
+ {
+  "barcode": "035286295383",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "035286295383",
+   "clientSku": "883827",
+   "candidatesSeen": 1,
+   "probes": 1,
+   "match": {
+    "itemId": "12604216",
+    "url": "https://www.bestbuy.com/product/allsop-ergo-wrist-assist-29538-1-50-x-4-x-2-50-memory-foam-black/J73K6G55QL/sku/12604216",
+    "title": "Allsop - Ergo Wrist Assist (29538) 1.50 x 4 x 2.50 Memory Foam - Black",
+    "brand": "Allsop",
+    "model": "29538",
+    "priceCents": 2573,
+    "inStock": true,
+    "isFirstParty": false,
+    "sellerName": "Beach Audio Inc",
+    "imageUrl": "https://pisces.bbystatic.com/image2/BestBuy_US/images/products/cc5f1b4c-0680-446a-9162-045a000b7c45.jpg",
+    "retailerBarcode": "035286295383",
+    "score": 16,
+    "unverifiableReason": null
+   },
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "verified",
+   "identity": null,
+   "queriesTried": [
+    "035286295383"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.bestbuy.com/site/searchpage.jsp?st=035286295383",
+   "https://www.bestbuy.com/product/allsop-ergo-wrist-assist-29538-1-50-x-4-x-2-50-memory-foam-black/J73K6G55QL/sku/12604216"
+  ]
+ },
+ {
+  "barcode": "813810010431",
+  "kind": "stopped",
+  "missing": "https://www.google.com/search?q=%22813810010431%22",
+  "asked": [
+   "https://www.bestbuy.com/site/searchpage.jsp?st=813810010431",
+   "https://www.google.com/search?q=%22813810010431%22"
+  ]
+ },
+ {
+  "barcode": "097855046871",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "097855046871",
+   "clientSku": "668707",
+   "candidatesSeen": 1,
+   "probes": 1,
+   "match": {
+    "itemId": "9618932",
+    "url": "https://www.bestbuy.com/product/logitech-h390-wired-usb-a-on-ear-stereo-headphones-with-noise-canceling-microphone-black/J7H7ZL5VV4/sku/9618932",
+    "title": "Logitech - H390 Wired USB-A On-Ear Stereo Headphones with Noise Canceling Microphone - Black",
+    "brand": "Logitech",
+    "model": "981-000014",
+    "priceCents": 2099,
+    "inStock": true,
+    "isFirstParty": true,
+    "sellerName": "Best Buy",
+    "imageUrl": "https://pisces.bbystatic.com/image2/BestBuy_US/images/products/1b3d2264-12a4-4b27-88d6-43f62a864141.jpg",
+    "retailerBarcode": "097855046871",
+    "score": 4,
+    "unverifiableReason": null
+   },
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "verified",
+   "identity": null,
+   "queriesTried": [
+    "097855046871"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.bestbuy.com/site/searchpage.jsp?st=097855046871",
+   "https://www.bestbuy.com/product/logitech-h390-wired-usb-a-on-ear-stereo-headphones-with-noise-canceling-microphone-black/J7H7ZL5VV4/sku/9618932"
+  ]
+ },
+ {
+  "barcode": "035286296489",
+  "kind": "stopped",
+  "missing": "https://www.google.com/search?q=%22035286296489%22",
+  "asked": [
+   "https://www.bestbuy.com/site/searchpage.jsp?st=035286296489",
+   "https://www.google.com/search?q=%22035286296489%22"
+  ]
+ },
+ {
+  "barcode": "710931610147",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "710931610147",
+   "clientSku": "011833",
+   "candidatesSeen": 1,
+   "probes": 1,
+   "match": {
+    "itemId": "11071589",
+    "url": "https://www.bestbuy.com/product/trendnet-5-port-mini-gigabit-switch-teg-s50g-greennet-technology-ndaa-taa-compliant-desktop-metal-ethernet-network-unknown/JXHSVYFJ35/sku/11071589",
+    "title": "Trendnet - 5-Port Mini Gigabit Switch, TEG-S50g, GREENnet Technology, NDAA + TAA Compliant, Desktop Metal Ethernet Network - Unknown",
+    "brand": "Trendnet",
+    "model": null,
+    "priceCents": 2878,
+    "inStock": true,
+    "isFirstParty": false,
+    "sellerName": "antonline",
+    "imageUrl": "https://pisces.bbystatic.com/image2/BestBuy_US/images/products/21da1af9-529d-4d28-b5ac-db3595e0a893.jpg",
+    "retailerBarcode": "710931610147",
+    "score": 1,
+    "unverifiableReason": null
+   },
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "verified",
+   "identity": null,
+   "queriesTried": [
+    "710931610147"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.bestbuy.com/site/searchpage.jsp?st=710931610147",
+   "https://www.bestbuy.com/product/trendnet-5-port-mini-gigabit-switch-teg-s50g-greennet-technology-ndaa-taa-compliant-desktop-metal-ethernet-network-unknown/JXHSVYFJ35/sku/11071589"
+  ]
+ },
+ {
+  "barcode": "649833101234",
+  "kind": "stopped",
+  "missing": "https://www.google.com/search?q=%22649833101234%22",
+  "asked": [
+   "https://www.bestbuy.com/site/searchpage.jsp?st=649833101234",
+   "https://www.google.com/search?q=%22649833101234%22"
+  ]
+ },
+ {
+  "barcode": "188218000453",
+  "kind": "stopped",
+  "missing": "https://www.google.com/search?q=%22188218000453%22",
+  "asked": [
+   "https://www.bestbuy.com/site/searchpage.jsp?st=188218000453",
+   "https://www.google.com/search?q=%22188218000453%22"
+  ]
+ },
+ {
+  "barcode": "085896723370",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "085896723370",
+   "clientSku": "540062",
+   "candidatesSeen": 1,
+   "probes": 1,
+   "match": {
+    "itemId": "10117379",
+    "url": "https://www.bestbuy.com/product/kensington-orbit-72337-optical-gaming-ambidextrous-mouse-with-scroll-ring-wired-black-and-blue/J7RJZZQGYZ/sku/10117379",
+    "title": "Kensington - Orbit 72337 Optical Gaming Ambidextrous Mouse with Scroll Ring - Wired - Black and Blue",
+    "brand": "Kensington",
+    "model": "K72337US",
+    "priceCents": 5797,
+    "inStock": true,
+    "isFirstParty": false,
+    "sellerName": "Beach Audio Inc",
+    "imageUrl": "https://pisces.bbystatic.com/image2/BestBuy_US/images/products/be20a8a1-3f29-4f38-8d96-29355bf0f0b1.jpg",
+    "retailerBarcode": "085896723370",
+    "score": 16,
+    "unverifiableReason": null
+   },
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "verified",
+   "identity": null,
+   "queriesTried": [
+    "085896723370"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.bestbuy.com/site/searchpage.jsp?st=085896723370",
+   "https://www.bestbuy.com/product/kensington-orbit-72337-optical-gaming-ambidextrous-mouse-with-scroll-ring-wired-black-and-blue/J7RJZZQGYZ/sku/10117379"
+  ]
+ },
+ {
+  "barcode": "812348010548",
+  "kind": "stopped",
+  "missing": "https://www.google.com/search?q=%22812348010548%22",
+  "asked": [
+   "https://www.bestbuy.com/site/searchpage.jsp?st=812348010548",
+   "https://www.google.com/search?q=%22812348010548%22"
+  ]
+ },
+ {
+  "barcode": "812348010555",
+  "kind": "stopped",
+  "missing": "https://www.google.com/search?q=%22812348010555%22",
+  "asked": [
+   "https://www.bestbuy.com/site/searchpage.jsp?st=812348010555",
+   "https://www.google.com/search?q=%22812348010555%22"
+  ]
+ },
+ {
+  "barcode": "097855066237",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "097855066237",
+   "clientSku": "744334",
+   "candidatesSeen": 1,
+   "probes": 1,
+   "match": {
+    "itemId": "1297054",
+    "url": "https://www.bestbuy.com/product/logitech-m310-wireless-optical-ambidextrous-mouse-wireless-silver/J7H7ZLV3V9/sku/1297054",
+    "title": "Logitech - M310 Wireless Optical Ambidextrous Mouse - Wireless - Silver",
+    "brand": "Logitech",
+    "model": "910-001675",
+    "priceCents": 1699,
+    "inStock": true,
+    "isFirstParty": true,
+    "sellerName": "Best Buy",
+    "imageUrl": "https://pisces.bbystatic.com/image2/BestBuy_US/images/products/28f549b4-f614-4865-abd0-4f571508851f.jpg",
+    "retailerBarcode": "097855066237",
+    "score": 4,
+    "unverifiableReason": null
+   },
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "verified",
+   "identity": null,
+   "queriesTried": [
+    "097855066237"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.bestbuy.com/site/searchpage.jsp?st=097855066237",
+   "https://www.bestbuy.com/product/logitech-m310-wireless-optical-ambidextrous-mouse-wireless-silver/J7H7ZLV3V9/sku/1297054"
+  ]
+ },
+ {
+  "barcode": "097855067876",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "097855067876",
+   "clientSku": "772269",
+   "candidatesSeen": 1,
+   "probes": 1,
+   "match": {
+    "itemId": "9927955",
+    "url": "https://www.bestbuy.com/product/logitech-m310-wireless-optical-ambidextrous-mouse-wireless-peacock-blue/J7H7ZLVLQJ/sku/9927955",
+    "title": "Logitech - M310 Wireless Optical Ambidextrous Mouse - Wireless - Peacock Blue",
+    "brand": "Logitech",
+    "model": "910-001917",
+    "priceCents": 2299,
+    "inStock": true,
+    "isFirstParty": true,
+    "sellerName": "Best Buy",
+    "imageUrl": "https://pisces.bbystatic.com/image2/BestBuy_US/images/products/4ee2cdb0-ff01-467d-bb33-ca5f93e035cb.jpg",
+    "retailerBarcode": "097855067876",
+    "score": 4,
+    "unverifiableReason": null
+   },
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "verified",
+   "identity": null,
+   "queriesTried": [
+    "097855067876"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.bestbuy.com/site/searchpage.jsp?st=097855067876",
+   "https://www.bestbuy.com/product/logitech-m310-wireless-optical-ambidextrous-mouse-wireless-peacock-blue/J7H7ZLVLQJ/sku/9927955"
+  ]
+ },
+ {
+  "barcode": "710931505061",
+  "kind": "stopped",
+  "missing": "https://www.google.com/search?q=%22710931505061%22",
+  "asked": [
+   "https://www.bestbuy.com/site/searchpage.jsp?st=710931505061",
+   "https://www.google.com/search?q=%22710931505061%22"
+  ]
+ },
+ {
+  "barcode": "097855065537",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "097855065537",
+   "clientSku": "930685",
+   "candidatesSeen": 1,
+   "probes": 1,
+   "match": {
+    "itemId": "1053557",
+    "url": "https://www.bestbuy.com/product/logitech-k120-full-size-wired-membrane-keyboard-for-pc-with-spill-resistant-design-black/J7H7ZLVX49/sku/1053557",
+    "title": "Logitech - K120 Full-size Wired Membrane Keyboard for PC with Spill-Resistant Design - Black",
+    "brand": "Logitech",
+    "model": "920-002478",
+    "priceCents": 1299,
+    "inStock": true,
+    "isFirstParty": true,
+    "sellerName": "Best Buy",
+    "imageUrl": "https://pisces.bbystatic.com/image2/BestBuy_US/images/products/a588d446-5678-40ae-86b8-1f15e0026e66.jpg",
+    "retailerBarcode": "097855065537",
+    "score": 4,
+    "unverifiableReason": null
+   },
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "verified",
+   "identity": null,
+   "queriesTried": [
+    "097855065537"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.bestbuy.com/site/searchpage.jsp?st=097855065537",
+   "https://www.bestbuy.com/product/logitech-k120-full-size-wired-membrane-keyboard-for-pc-with-spill-resistant-design-black/J7H7ZLVX49/sku/1053557"
+  ]
+ },
+ {
+  "barcode": "097855066466",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "097855066466",
+   "clientSku": "134338",
+   "candidatesSeen": 1,
+   "probes": 1,
+   "match": {
+    "itemId": "1231979",
+    "url": "https://www.bestbuy.com/product/logitech-z623-2-1-speaker-system-3-piece-for-pc-black/J7H7ZLV8LH/sku/1231979",
+    "title": "Logitech - Z623 2.1 Speaker System (3-Piece) for PC - Black",
+    "brand": "Logitech",
+    "model": "980-000402",
+    "priceCents": 18199,
+    "inStock": true,
+    "isFirstParty": true,
+    "sellerName": "Best Buy",
+    "imageUrl": "https://pisces.bbystatic.com/image2/BestBuy_US/images/products/1231/1231979_sd.jpg",
+    "retailerBarcode": "097855066466",
+    "score": 4,
+    "unverifiableReason": null
+   },
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "verified",
+   "identity": null,
+   "queriesTried": [
+    "097855066466"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.bestbuy.com/site/searchpage.jsp?st=097855066466",
+   "https://www.bestbuy.com/product/logitech-z623-2-1-speaker-system-3-piece-for-pc-black/J7H7ZLV8LH/sku/1231979"
+  ]
+ },
+ {
+  "barcode": "035286302067",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "035286302067",
+   "clientSku": "090142",
+   "candidatesSeen": 1,
+   "probes": 1,
+   "match": {
+    "itemId": "11441634",
+    "url": "https://www.bestbuy.com/product/allsop-memory-foam-mouse-pad-w-wrist-rest-blue/J73K6GFLGT/sku/11441634",
+    "title": "Allsop - Memory Foam Mouse Pad w/ Wrist Rest - Blue",
+    "brand": "Allsop",
+    "model": null,
+    "priceCents": 1806,
+    "inStock": true,
+    "isFirstParty": false,
+    "sellerName": "PopMarket",
+    "imageUrl": "https://pisces.bbystatic.com/image2/BestBuy_US/images/products/09c2a17d-51f5-467d-8ef5-e7435adfff66.jpg",
+    "retailerBarcode": "035286302067",
+    "score": 1,
+    "unverifiableReason": null
+   },
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "verified",
+   "identity": null,
+   "queriesTried": [
+    "035286302067"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.bestbuy.com/site/searchpage.jsp?st=035286302067",
+   "https://www.bestbuy.com/product/allsop-memory-foam-mouse-pad-w-wrist-rest-blue/J73K6GFLGT/sku/11441634"
+  ]
+ },
+ {
+  "barcode": "035286301848",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "035286301848",
+   "clientSku": "082081",
+   "candidatesSeen": 1,
+   "probes": 1,
+   "match": {
+    "itemId": "13159113",
+    "url": "https://www.bestbuy.com/product/allsop-mouse-pad-cloth-surface-natural-rubber-back-60-recycled-content-kittens-design-7-5-x-9-in-model-30184-multicolor/J73K6GFGFF/sku/13159113",
+    "title": "Allsop - Mouse Pad Cloth Surface Natural Rubber Back 60% Recycled Content Kittens Design 7.5 x 9 in Model 30184 - Multicolor",
+    "brand": "Allsop",
+    "model": "30184",
+    "priceCents": 1816,
+    "inStock": true,
+    "isFirstParty": false,
+    "sellerName": "Staples, Inc.",
+    "imageUrl": "https://pisces.bbystatic.com/image2/BestBuy_US/images/products/3a2a76a8-1d23-4a2c-aba7-4b19ca5b408f.jpg",
+    "retailerBarcode": "035286301848",
+    "score": 16,
+    "unverifiableReason": null
+   },
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "verified",
+   "identity": null,
+   "queriesTried": [
+    "035286301848"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.bestbuy.com/site/searchpage.jsp?st=035286301848",
+   "https://www.bestbuy.com/product/allsop-mouse-pad-cloth-surface-natural-rubber-back-60-recycled-content-kittens-design-7-5-x-9-in-model-30184-multicolor/J73K6GFGFF/sku/13159113"
+  ]
+ }
+]

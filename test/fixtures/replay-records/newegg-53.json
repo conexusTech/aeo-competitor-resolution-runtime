@@ -1,0 +1,3120 @@
+[
+ {
+  "barcode": "649532609635",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "649532609635",
+   "clientSku": "",
+   "candidatesSeen": 1,
+   "probes": 1,
+   "match": {
+    "itemId": "N82E16842102133",
+    "url": "https://www.newegg.com/cyberpower-cp1350pfclcd-nema-5-15r/p/N82E16842102133",
+    "title": "CyberPower CP1350PFCLCD PFC Sinewave UPS Systems - 1350VA/880W, 120 VAC, NEMA 5-15P, Mini-Tower, Sine Wave, 12 Outlets, LCD, PowerPanel",
+    "brand": "CyberPower",
+    "model": "CP1350PFCLCD",
+    "priceCents": 21995,
+    "inStock": true,
+    "isFirstParty": true,
+    "sellerName": null,
+    "imageUrl": null,
+    "retailerBarcode": "649532609635",
+    "score": 39,
+    "unverifiableReason": null
+   },
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "verified",
+   "identity": {
+    "partNumber": "60963",
+    "brand": "CyberPower",
+    "title": "CyberPower PFC Sinewave UPS Series CP1350PFCLCD",
+    "provenance": "barcode-derived",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "CyberPower CP1350PFCLCD"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.google.com/search?q=%22649532609635%22",
+   "https://www.newegg.com/p/pl?d=CyberPower%20CP1350PFCLCD",
+   "https://www.newegg.com/cyberpower-cp1350pfclcd-nema-5-15r/p/N82E16842102133"
+  ]
+ },
+ {
+  "barcode": "663296413697",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "663296413697",
+   "clientSku": "",
+   "candidatesSeen": 16,
+   "probes": 1,
+   "match": {
+    "itemId": "N82E16879337003",
+    "url": "https://www.newegg.com/black-thrustmaster-t-flight-hotas-x-joystick/p/N82E16879337003",
+    "title": "Thrustmaster T-Flight Hotas X Flight Stick (PS3 & PC)",
+    "brand": "Thrustmaster",
+    "model": "2960703",
+    "priceCents": 8299,
+    "inStock": true,
+    "isFirstParty": true,
+    "sellerName": null,
+    "imageUrl": null,
+    "retailerBarcode": "663296413697",
+    "score": 10,
+    "unverifiableReason": null
+   },
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "verified",
+   "identity": {
+    "partNumber": "41369",
+    "brand": "Control",
+    "title": "Control System - Thrustmaster T-Flight HOTAS X - Multicolor",
+    "provenance": "barcode-derived",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "Control 41369",
+    "Thrustmaster T-Flight HOTAS"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.google.com/search?q=%22663296413697%22",
+   "https://www.newegg.com/p/pl?d=Control%2041369",
+   "https://www.newegg.com/p/pl?d=Thrustmaster%20T-Flight%20HOTAS",
+   "https://www.newegg.com/black-thrustmaster-t-flight-hotas-x-joystick/p/N82E16879337003"
+  ]
+ },
+ {
+  "barcode": "035286302005",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "035286302005",
+   "clientSku": "",
+   "candidatesSeen": 0,
+   "probes": 0,
+   "match": null,
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "not-found",
+   "identity": {
+    "partNumber": "30200",
+    "brand": "Allsop",
+    "title": "Allsop Accutrack Slimline Mousepad - XL - (30200)",
+    "provenance": "barcode-derived",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "Allsop ASP30200",
+    "ASP30200",
+    "Allsop 30200",
+    "Allsop ALLSOP-30200-",
+    "ALLSOP-30200-",
+    "Allsop Accutrack Slimline XL"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.google.com/search?q=%22035286302005%22",
+   "https://www.newegg.com/p/pl?d=Allsop%20ASP30200",
+   "https://www.newegg.com/p/pl?d=ASP30200",
+   "https://www.newegg.com/p/pl?d=Allsop%2030200",
+   "https://www.newegg.com/p/pl?d=Allsop%20ALLSOP-30200-",
+   "https://www.newegg.com/p/pl?d=ALLSOP-30200-",
+   "https://www.newegg.com/p/pl?d=Allsop%20Accutrack%20Slimline%20XL"
+  ]
+ },
+ {
+  "barcode": "035286302012",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "035286302012",
+   "clientSku": "",
+   "candidatesSeen": 0,
+   "probes": 0,
+   "match": null,
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "not-found",
+   "identity": {
+    "partNumber": "30201",
+    "brand": "Allsop",
+    "title": "Allsop Accutrack Slimline Mousepad, Graphite, 8 x 8.75 ...",
+    "provenance": "barcode-derived",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "Allsop 120269786-AC",
+    "120269786-AC",
+    "Allsop 30201",
+    "Allsop ALLSOP-30201",
+    "ALLSOP-30201",
+    "Allsop Accutrack Slimline Graphite"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.google.com/search?q=%22035286302012%22",
+   "https://www.newegg.com/p/pl?d=Allsop%20120269786-AC",
+   "https://www.newegg.com/p/pl?d=120269786-AC",
+   "https://www.newegg.com/p/pl?d=Allsop%2030201",
+   "https://www.newegg.com/p/pl?d=Allsop%20ALLSOP-30201",
+   "https://www.newegg.com/p/pl?d=ALLSOP-30201",
+   "https://www.newegg.com/p/pl?d=Allsop%20Accutrack%20Slimline%20Graphite"
+  ]
+ },
+ {
+  "barcode": "046838064258",
+  "kind": "stopped",
+  "missing": "https://www.google.com/search?q=%22046838064258%22",
+  "asked": [
+   "https://www.google.com/search?q=%22046838064258%22"
+  ]
+ },
+ {
+  "barcode": "085854213196",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "085854213196",
+   "clientSku": "",
+   "candidatesSeen": 1,
+   "probes": 1,
+   "match": {
+    "itemId": "0Z2-0025-00006",
+    "url": "https://www.newegg.com/p/0Z2-0025-00006",
+    "title": "Case Logic DCB-306 SLR Camera Holster (Black)",
+    "brand": "Case Logic",
+    "model": "085854213196",
+    "priceCents": 3371,
+    "inStock": true,
+    "isFirstParty": false,
+    "sellerName": "NothingButSavings",
+    "imageUrl": null,
+    "retailerBarcode": "085854213196",
+    "score": 25,
+    "unverifiableReason": null
+   },
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "verified",
+   "identity": {
+    "partNumber": "21319",
+    "brand": "Case",
+    "title": "Case Logic DCB-306 SLR Camera Holster (Black) Large",
+    "provenance": "barcode-derived",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "Case DCB-306",
+    "DCB-306"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.google.com/search?q=%22085854213196%22",
+   "https://www.newegg.com/p/pl?d=Case%20DCB-306",
+   "https://www.newegg.com/p/pl?d=DCB-306",
+   "https://www.newegg.com/p/0Z2-0025-00006"
+  ]
+ },
+ {
+  "barcode": "035286302050",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "035286302050",
+   "clientSku": "",
+   "candidatesSeen": 2,
+   "probes": 1,
+   "match": {
+    "itemId": "2RC-0089-00007",
+    "url": "https://www.newegg.com/allsop-30205/p/2RC-0089-00007",
+    "title": "Allsop Memory Foam Wrist Rests 2 7/8\" x 18\" x 1 Black 30205",
+    "brand": "ALLSOP",
+    "model": "30205",
+    "priceCents": 2907,
+    "inStock": true,
+    "isFirstParty": false,
+    "sellerName": "NothingButSavings",
+    "imageUrl": null,
+    "retailerBarcode": "035286302050",
+    "score": 26,
+    "unverifiableReason": null
+   },
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "verified",
+   "identity": {
+    "partNumber": "30205",
+    "brand": "Allsop",
+    "title": "Allsop Memory Foam Wrist Rests 2 7/8 x 18 x 1 30205 Black",
+    "provenance": "barcode-derived",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "Allsop 120240127-M",
+    "120240127-M",
+    "Allsop 30205"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.google.com/search?q=%22035286302050%22",
+   "https://www.newegg.com/p/pl?d=Allsop%20120240127-M",
+   "https://www.newegg.com/p/pl?d=120240127-M",
+   "https://www.newegg.com/p/pl?d=Allsop%2030205",
+   "https://www.newegg.com/allsop-30205/p/2RC-0089-00007"
+  ]
+ },
+ {
+  "barcode": "710931610239",
+  "kind": "stopped",
+  "missing": "https://www.newegg.com/p/0XP-06HB-000C2",
+  "asked": [
+   "https://www.google.com/search?q=%22710931610239%22",
+   "https://www.newegg.com/p/pl?d=TRENDnet%20TEG-S16G",
+   "https://www.newegg.com/p/pl?d=TEG-S16G",
+   "https://www.newegg.com/p/pl?d=TRENDnet%2061023",
+   "https://www.newegg.com/p/pl?d=TRENDnet%2016-PORT",
+   "https://www.newegg.com/p/pl?d=16-PORT",
+   "https://www.newegg.com/trendnet-teg-s17d-networking/p/0XP-001A-008U0",
+   "https://www.newegg.com/trendnet-teg-s3160/p/0XP-001A-00976",
+   "https://www.newegg.com/trendnet-teg-s16g/p/0XP-001A-009C7",
+   "https://www.newegg.com/p/3C6-00B3-00552",
+   "https://www.newegg.com/p/3C6-00B3-005A5",
+   "https://www.newegg.com/p/0XP-001A-00B90",
+   "https://www.newegg.com/p/0XP-06HB-000C2"
+  ]
+ },
+ {
+  "barcode": "897337030295",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "897337030295",
+   "clientSku": "",
+   "candidatesSeen": 12,
+   "probes": 6,
+   "match": null,
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "not-found",
+   "identity": {
+    "partNumber": "03029",
+    "brand": "PrimoChill",
+    "title": "PrimoChill 60 cc Cooling System Fill Syringe",
+    "provenance": "barcode-derived",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "PrimoChill PRIMOCHILL-60",
+    "PRIMOCHILL-60",
+    "PrimoChill 03029",
+    "PrimoChill 60 cc Cooling System Fill Syringe"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.google.com/search?q=%22897337030295%22",
+   "https://www.newegg.com/p/pl?d=PrimoChill%20PRIMOCHILL-60",
+   "https://www.newegg.com/p/pl?d=PRIMOCHILL-60",
+   "https://www.newegg.com/p/pl?d=PrimoChill%2003029",
+   "https://www.newegg.com/p/pl?d=PrimoChill%2060%20cc%20Cooling%20System%20Fill%20Syringe",
+   "https://www.newegg.com/p/2YM-000S-003B2",
+   "https://www.newegg.com/p/3C6-00TN-008G9",
+   "https://www.newegg.com/p/3C6-00TN-008R3",
+   "https://www.newegg.com/p/3C6-00TN-00842",
+   "https://www.newegg.com/p/3C6-00TN-006F5",
+   "https://www.newegg.com/p/3C6-00TN-006S0"
+  ]
+ },
+ {
+  "barcode": "710931505184",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "710931505184",
+   "clientSku": "",
+   "candidatesSeen": 9,
+   "probes": 1,
+   "match": {
+    "itemId": "N82E16833156419",
+    "url": "https://www.newegg.com/trendnet-tpe-tg44g-4-x-gigabit-4-x-gigabit-poe-port/p/N82E16833156419",
+    "title": "TRENDnet 8-Port Gigabit GREENnet PoE+ Switch, 4 x Gigabit PoE-PoE+ Ports, 4 x Gigabit Ports, 61W Power Budget, 16 Gbps Switch Capacity, Ethernet Unmanaged Switch, Black, TPE-TG44G",
+    "brand": "TRENDnet",
+    "model": "TPE-TG44G",
+    "priceCents": 6960,
+    "inStock": true,
+    "isFirstParty": false,
+    "sellerName": "NothingButSavings",
+    "imageUrl": null,
+    "retailerBarcode": "710931505184",
+    "score": 36,
+    "unverifiableReason": null
+   },
+   "alternatives": [
+    {
+     "itemId": "0XP-001A-009E3",
+     "url": "https://www.newegg.com/trendnet-tpe-tg44g/p/0XP-001A-009E3",
+     "title": "TRENDnet 8-Port Gigabit GREENnet PoE+ Switch,TPETG44G, 4 x Gigabit PoE+  Ports, 4 x Gigabit Ports, 60W Power Budget, 16 Gbps Switch Capacity, NAA TAA  Compliant, Lifetime Protection, Black",
+     "brand": "TRENDnet",
+     "model": "TPE-TG44g v4.0R",
+     "priceCents": 5399,
+     "inStock": true,
+     "isFirstParty": false,
+     "sellerName": "Tech Provisions",
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 24,
+     "reasonRankedLower": "its model number is not the client's part number, and the chosen listing's is — its page was never opened, so nothing about its barcode is known"
+    },
+    {
+     "itemId": "0XP-03KE-00002",
+     "url": "https://www.newegg.com/p/0XP-03KE-00002",
+     "title": "8-Port Gigabit GREENnet PoE+ Switch,TPE-TG44G, 4 x Gigabit PoE/PoE+ Up to 30 Watts/Port, 4 x Gigabit, 61W Power Budget, 16 Gbps Switch Capacity, Ethernet Unmanaged Switch, Lifetime Protection Black",
+     "brand": "StatPacks, Inc",
+     "model": "80HDk-B008VK2XXS",
+     "priceCents": 13999,
+     "inStock": true,
+     "isFirstParty": false,
+     "sellerName": "B-IN Electronics",
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 18,
+     "reasonRankedLower": "its model number is not the client's part number, and the chosen listing's is — its page was never opened, so nothing about its barcode is known"
+    },
+    {
+     "itemId": "0XP-06VA-00055",
+     "url": "https://www.newegg.com/p/0XP-06VA-00055",
+     "title": "TRENDnet 8-Port Gigabit GREENnet PoE+ Switch, TPE-TG44G, 4 x Gigabit PoE/PoE+ Up to 30 W/Port, 4 x Gigabit, 61 W Power Budget, 16 Gbps Switch Capacity, Ethernet Unmanaged Switch",
+     "brand": "SOYE",
+     "model": "SOYE457053718237WEI",
+     "priceCents": 11839,
+     "inStock": true,
+     "isFirstParty": false,
+     "sellerName": "Zeorillniky",
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 18,
+     "reasonRankedLower": "its model number is not the client's part number, and the chosen listing's is — its page was never opened, so nothing about its barcode is known"
+    },
+    {
+     "itemId": "0XP-06VB-00062",
+     "url": "https://www.newegg.com/p/0XP-06VB-00062",
+     "title": "TRENDnet 8-Port Gigabit GREENnet PoE+ Switch, TPE-TG44G, 4 x Gigabit PoE/PoE+ Up to 30 W/Port, 4 x Gigabit, 61 W Power Budget, 16 Gbps Switch Capacity, Ethernet Unmanaged Switch",
+     "brand": "WOOJONG",
+     "model": "C1R8482776545914",
+     "priceCents": 10778,
+     "inStock": true,
+     "isFirstParty": false,
+     "sellerName": "ElectroVille",
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 18,
+     "reasonRankedLower": "its model number is not the client's part number, and the chosen listing's is — its page was never opened, so nothing about its barcode is known"
+    },
+    {
+     "itemId": "0XP-001A-00B80",
+     "url": "https://www.newegg.com/p/0XP-001A-00B80",
+     "title": "TRENDnet 8-Port Gigabit GREENnet PoE+ Switch, TPE-TG44G, 4 x Gigabit PoE/PoE+ Up to 30 W/Port, 4 x Gigabit, 61 W Power Budget, 16 Gbps Switch Capacity, Ethernet Unmanaged Switch",
+     "brand": "TRENDnet",
+     "model": "RCCWB008VK2XXS",
+     "priceCents": 10899,
+     "inStock": true,
+     "isFirstParty": false,
+     "sellerName": "E-Transit Limited",
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 18,
+     "reasonRankedLower": "its model number is not the client's part number, and the chosen listing's is — its page was never opened, so nothing about its barcode is known"
+    }
+   ],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "verified",
+   "identity": {
+    "partNumber": "50518",
+    "brand": null,
+    "title": "مفتاح شبكة نقل الطاقة عبر الايثرنت بـ8 منافذ (TPE-TG44g) ...",
+    "provenance": "barcode-derived",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "TPE-TG44G"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.google.com/search?q=%22710931505184%22",
+   "https://www.newegg.com/p/pl?d=TPE-TG44G",
+   "https://www.newegg.com/trendnet-tpe-tg44g-4-x-gigabit-4-x-gigabit-poe-port/p/N82E16833156419"
+  ]
+ },
+ {
+  "barcode": "884102021862",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "884102021862",
+   "clientSku": "",
+   "candidatesSeen": 16,
+   "probes": 8,
+   "match": {
+    "itemId": "2AM-000W-003D7",
+    "url": "https://www.newegg.com/cooler-master-micro-atx-cases-computer-cases-atx-form-black/p/2AM-000W-003D7",
+    "title": "Cooler Master N200 Mini Tower mATX Black Gaming Computer Case Mesh Front Panel",
+    "brand": "Cooler Master",
+    "model": "NSE-200-KKN1",
+    "priceCents": 5299,
+    "inStock": true,
+    "isFirstParty": false,
+    "sellerName": "Computer Headquarters",
+    "imageUrl": null,
+    "retailerBarcode": null,
+    "score": 30,
+    "unverifiableReason": null
+   },
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "unverifiable",
+   "identity": {
+    "partNumber": "02186",
+    "brand": "Cooler",
+    "title": "Cooler Master N200 - Mini Tower Computer Case with ...",
+    "provenance": "barcode-derived",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "Cooler N200"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.google.com/search?q=%22884102021862%22",
+   "https://www.newegg.com/p/pl?d=Cooler%20N200",
+   "https://www.newegg.com/cooler-master-micro-atx-cases-computer-cases-atx-form-black/p/2AM-000W-003D7",
+   "https://www.newegg.com/p/2S7-09HN-02673",
+   "https://www.newegg.com/p/0SS-0236-00AZ0",
+   "https://www.newegg.com/p/0SS-0236-00AV9",
+   "https://www.newegg.com/p/0SS-0230-002Y4",
+   "https://www.newegg.com/p/0SS-0230-00304",
+   "https://www.newegg.com/p/2S7-09PC-01BN8",
+   "https://www.newegg.com/p/0VE-05H1-00CT0"
+  ]
+ },
+ {
+  "barcode": "034447044723",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "034447044723",
+   "clientSku": "",
+   "candidatesSeen": 1,
+   "probes": 1,
+   "match": null,
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "not-found",
+   "identity": {
+    "partNumber": "04472",
+    "brand": "Dot",
+    "title": "Dot Line SmartPhone Tripod Mount",
+    "provenance": "barcode-derived",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "Dot 04472",
+    "Dot Line SmartPhone Tripod Mount"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.google.com/search?q=%22034447044723%22",
+   "https://www.newegg.com/p/pl?d=Dot%2004472",
+   "https://www.newegg.com/p/pl?d=Dot%20Line%20SmartPhone%20Tripod%20Mount",
+   "https://www.newegg.com/p/0UP-004J-000U9"
+  ]
+ },
+ {
+  "barcode": "097855100665",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "097855100665",
+   "clientSku": "",
+   "candidatesSeen": 9,
+   "probes": 1,
+   "match": {
+    "itemId": "0S6-003U-00015",
+    "url": "https://www.newegg.com/black-logitech-z150-wired/p/0S6-003U-00015",
+    "title": "Logitech Multimedia Speakers Z150 with Stereo Sound for Multiple Devices, Black",
+    "brand": "Logitech",
+    "model": "980-000802",
+    "priceCents": 3799,
+    "inStock": true,
+    "isFirstParty": true,
+    "sellerName": null,
+    "imageUrl": null,
+    "retailerBarcode": "097855100665",
+    "score": 19,
+    "unverifiableReason": null
+   },
+   "alternatives": [
+    {
+     "itemId": "19S-001J-005D2",
+     "url": "https://www.newegg.com/p/19S-001J-005D2",
+     "title": "Logitech Z150 Multimedia Speakers Black 980000802",
+     "brand": "Logitech",
+     "model": "LOG980000802*",
+     "priceCents": 3560,
+     "inStock": true,
+     "isFirstParty": false,
+     "sellerName": "Cloud Computing LLC",
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 16,
+     "reasonRankedLower": "it is a marketplace listing rather than sold by the retailer itself — its page was never opened, so nothing about its barcode is known"
+    },
+    {
+     "itemId": "19S-001J-006V3",
+     "url": "https://www.newegg.com/black-logitech-z150-multimedia-speakers-wired/p/19S-001J-006V3",
+     "title": "Logitech Z150 Multimedia Speakers with Stereo Sound for Multiple Devices",
+     "brand": "Logitech",
+     "model": "9800080002",
+     "priceCents": 5490,
+     "inStock": true,
+     "isFirstParty": false,
+     "sellerName": "TopRockMarketing",
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 16,
+     "reasonRankedLower": "it is a marketplace listing rather than sold by the retailer itself — its page was never opened, so nothing about its barcode is known"
+    },
+    {
+     "itemId": "3C6-0064-007D5",
+     "url": "https://www.newegg.com/p/3C6-0064-007D5",
+     "title": "Logitech Multimedia Speakers Z150 with Stereo Sound for Multiple Devices, Black",
+     "brand": "Logitech",
+     "model": "322002875111",
+     "priceCents": 5899,
+     "inStock": true,
+     "isFirstParty": false,
+     "sellerName": "HyperCore",
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 16,
+     "reasonRankedLower": "it is a marketplace listing rather than sold by the retailer itself — its page was never opened, so nothing about its barcode is known"
+    },
+    {
+     "itemId": "14R-02A5-09HR7",
+     "url": "https://www.newegg.com/p/14R-02A5-09HR7",
+     "title": "ABLEGRID 5V Charger For Logitech Multimedia Speakers Z150 Z200 Z207 2.0 Portable Computer Speakers Ac Dc Adapter Y08FE-050-1500U, Y07FF-050-088U Power Supply Cord",
+     "brand": "ABLEGRID",
+     "model": "483D672D499",
+     "priceCents": 1199,
+     "inStock": true,
+     "isFirstParty": false,
+     "sellerName": "AbleGrid® Brand",
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 10,
+     "reasonRankedLower": "it is a different brand from the one identified for this item — its page was never opened, so nothing about its barcode is known"
+    }
+   ],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "verified",
+   "identity": {
+    "partNumber": "10066",
+    "brand": "Logitech",
+    "title": "Logitech Multimedia Speakers Z150 with Stereo Sound for ...",
+    "provenance": "barcode-derived",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "Logitech Z150",
+    "Z150",
+    "Logitech 10066",
+    "Logitech 1012233-REG",
+    "1012233-REG",
+    "Logitech LOGITECH-Z150-2"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.google.com/search?q=%22097855100665%22",
+   "https://www.newegg.com/p/pl?d=Logitech%20Z150",
+   "https://www.newegg.com/p/pl?d=Z150",
+   "https://www.newegg.com/p/pl?d=Logitech%2010066",
+   "https://www.newegg.com/p/pl?d=Logitech%201012233-REG",
+   "https://www.newegg.com/p/pl?d=1012233-REG",
+   "https://www.newegg.com/p/pl?d=Logitech%20LOGITECH-Z150-2",
+   "https://www.newegg.com/black-logitech-z150-wired/p/0S6-003U-00015"
+  ]
+ },
+ {
+  "barcode": "897337025918",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "897337025918",
+   "clientSku": "",
+   "candidatesSeen": 0,
+   "probes": 0,
+   "match": null,
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "not-found",
+   "identity": {
+    "partNumber": "02591",
+    "brand": "PrimoChill",
+    "title": "PrimoChill Intensifier UV Coolant Concentrate 15 ml",
+    "provenance": "barcode-derived",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "PrimoChill 02591",
+    "PrimoChill Intensifier UV Coolant Concentrate 15"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.google.com/search?q=%22897337025918%22",
+   "https://www.newegg.com/p/pl?d=PrimoChill%2002591",
+   "https://www.newegg.com/p/pl?d=PrimoChill%20Intensifier%20UV%20Coolant%20Concentrate%2015"
+  ]
+ },
+ {
+  "barcode": "619659102180",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "619659102180",
+   "clientSku": "",
+   "candidatesSeen": 72,
+   "probes": 8,
+   "match": {
+    "itemId": "0BD-000B-00BX9",
+    "url": "https://www.newegg.com/sandisk-ultra-fit-64gb-usb-3-1-black/p/0BD-000B-00BX9",
+    "title": "SanDisk 64GB USB 3.1 64G SDCZ430 CZ430 Ultra Fit 130MB/s SDCZ430-064G Flash Pen Drive with Lanyard",
+    "brand": "SanDisk",
+    "model": "SDCZ430-064G",
+    "priceCents": 2299,
+    "inStock": true,
+    "isFirstParty": false,
+    "sellerName": "3C Expert",
+    "imageUrl": null,
+    "retailerBarcode": null,
+    "score": 28,
+    "unverifiableReason": null
+   },
+   "alternatives": [
+    {
+     "itemId": "N82E16820173395",
+     "url": "https://www.newegg.com/sandisk-ultra-fit-64gb-usb-3-1-gen-1-black/p/N82E16820173395",
+     "title": "Sandisk 64GB Ultra Fit USB 3.1 Flash Drive, Speed Up to 130MB/s (SDCZ430-064G-G46)",
+     "brand": "SanDisk",
+     "model": "SDCZ430-064G-G46",
+     "priceCents": 2119,
+     "inStock": true,
+     "isFirstParty": false,
+     "sellerName": "3C Expert",
+     "retailerBarcode": "619659163730",
+     "barcodeState": "disagreed",
+     "score": 28,
+     "reasonRankedLower": "it matched the same signals as the chosen listing and lost a tie on discovery order — and the barcode it publishes disagrees with the client's"
+    },
+    {
+     "itemId": "N82E16820171980",
+     "url": "https://www.newegg.com/sandisk-ultra-64gb-usb-3-0/p/N82E16820171980",
+     "title": "SanDisk 64GB Ultra CZ48 USB 3.0 Flash Drive, Speed Up to 130MB/s (SDCZ48-064G-UAM46)",
+     "brand": "SanDisk",
+     "model": "SDCZ48-064G-UAM46",
+     "priceCents": 1979,
+     "inStock": true,
+     "isFirstParty": false,
+     "sellerName": "BioStar",
+     "retailerBarcode": "061965912754",
+     "barcodeState": "disagreed",
+     "score": 28,
+     "reasonRankedLower": "it matched the same signals as the chosen listing and lost a tie on discovery order — and the barcode it publishes disagrees with the client's"
+    },
+    {
+     "itemId": "N82E16820173419",
+     "url": "https://www.newegg.com/sandisk-ultra-64gb-usb-3-1-gen-1-black/p/N82E16820173419",
+     "title": "SanDisk 64GB Ultra USB Type-C Flash Drive, Speed Up to 150MB/s (SDCZ460-064G-G46)",
+     "brand": "SanDisk",
+     "model": "SDCZ460-064G-G46",
+     "priceCents": 2135,
+     "inStock": true,
+     "isFirstParty": false,
+     "sellerName": "OEMPCWORLD",
+     "retailerBarcode": "619659167141",
+     "barcodeState": "disagreed",
+     "score": 28,
+     "reasonRankedLower": "it matched the same signals as the chosen listing and lost a tie on discovery order — and the barcode it publishes disagrees with the client's"
+    },
+    {
+     "itemId": "0BD-000B-00RV2",
+     "url": "https://www.newegg.com/sandisk-ultra-shift-64gb-usb-3-0-black/p/0BD-000B-00RV2",
+     "title": "SanDisk 64GB Ultra Shift USB 3.0 Flash Drive, Speed Up to 100MB/s (SDCZ410-064G-G46)",
+     "brand": "SanDisk",
+     "model": "SDCZ410-064G-G46",
+     "priceCents": 2295,
+     "inStock": true,
+     "isFirstParty": false,
+     "sellerName": "BioStar",
+     "retailerBarcode": "619659181918",
+     "barcodeState": "disagreed",
+     "score": 28,
+     "reasonRankedLower": "it matched the same signals as the chosen listing and lost a tie on discovery order — and the barcode it publishes disagrees with the client's"
+    },
+    {
+     "itemId": "0BD-000B-00RW0",
+     "url": "https://www.newegg.com/sandisk-ultra-shift-64gb-usb-3-0-black/p/0BD-000B-00RW0",
+     "title": "SanDisk 64GB Ultra Shift USB 3.0 SDCZ410 SD CZ410 64G Flash Drive, Speed Up to 100MB/s SDCZ410-064G-G46 with OEM USB Lanyard",
+     "brand": "SanDisk",
+     "model": "SDCZ410-064G",
+     "priceCents": 2950,
+     "inStock": true,
+     "isFirstParty": false,
+     "sellerName": "3C Expert",
+     "retailerBarcode": null,
+     "barcodeState": "absent",
+     "score": 28,
+     "reasonRankedLower": "it matched the same signals as the chosen listing and lost a tie on discovery order — it publishes no barcode, so a swap cannot be verified either"
+    }
+   ],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "unverifiable",
+   "identity": {
+    "partNumber": "10218",
+    "brand": "SanDisk",
+    "title": "SanDisk Ultra USB 3.0 Flash Drive, 64GB New Sealed",
+    "provenance": "barcode-derived",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "SanDisk 64GB",
+    "64GB"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.google.com/search?q=%22619659102180%22",
+   "https://www.newegg.com/p/pl?d=SanDisk%2064GB",
+   "https://www.newegg.com/p/pl?d=64GB",
+   "https://www.newegg.com/sandisk-ultra-fit-64gb-usb-3-1-gen-1-black/p/N82E16820173395",
+   "https://www.newegg.com/sandisk-ultra-64gb-usb-3-0/p/N82E16820171980",
+   "https://www.newegg.com/sandisk-ultra-64gb-usb-3-1-gen-1-black/p/N82E16820173419",
+   "https://www.newegg.com/sandisk-ultra-fit-64gb-usb-3-1-black/p/0BD-000B-00BX9",
+   "https://www.newegg.com/sandisk-ultra-shift-64gb-usb-3-0-black/p/0BD-000B-00RV2",
+   "https://www.newegg.com/sandisk-ultra-shift-64gb-usb-3-0-black/p/0BD-000B-00RW0",
+   "https://www.newegg.com/sandisk-ultra-fit-320gb-usb-3-1-black/p/N82E16820173572",
+   "https://www.newegg.com/sandisk-ultra-dual-drive-luxe-64gb-usb-3-2-gen-1-gray-silver/p/N82E16820173481"
+  ]
+ },
+ {
+  "barcode": "897337025970",
+  "kind": "stopped",
+  "missing": "https://www.google.com/search?q=%22897337025970%22",
+  "asked": [
+   "https://www.google.com/search?q=%22897337025970%22"
+  ]
+ },
+ {
+  "barcode": "897337025956",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "897337025956",
+   "clientSku": "",
+   "candidatesSeen": 3,
+   "probes": 3,
+   "match": null,
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "not-found",
+   "identity": {
+    "partNumber": "02595",
+    "brand": "PrimoChill",
+    "title": "PrimoChill Intensifier Transparent Fluid Dye - UV Pink",
+    "provenance": "barcode-derived",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "PrimoChill B00AG243IM",
+    "B00AG243IM",
+    "PrimoChill 02595",
+    "PrimoChill Intensifier Transparent Fluid Dye UV"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.google.com/search?q=%22897337025956%22",
+   "https://www.newegg.com/p/pl?d=PrimoChill%20B00AG243IM",
+   "https://www.newegg.com/p/pl?d=B00AG243IM",
+   "https://www.newegg.com/p/pl?d=PrimoChill%2002595",
+   "https://www.newegg.com/p/pl?d=PrimoChill%20Intensifier%20Transparent%20Fluid%20Dye%20UV",
+   "https://www.newegg.com/p/1B4-01S8-00005",
+   "https://www.newegg.com/p/3C6-00TN-00AV3",
+   "https://www.newegg.com/p/3C6-00TN-00AG9"
+  ]
+ },
+ {
+  "barcode": "897337025925",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "897337025925",
+   "clientSku": "",
+   "candidatesSeen": 36,
+   "probes": 8,
+   "match": null,
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "not-found",
+   "identity": {
+    "partNumber": "02592",
+    "brand": "PrimoChill",
+    "title": "PrimoChill Corante fluido transparente intensificador - azul UV ...",
+    "provenance": "barcode-derived",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "PrimoChill B00AG245JE",
+    "B00AG245JE",
+    "PrimoChill 02592",
+    "PrimoChill UV"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.google.com/search?q=%22897337025925%22",
+   "https://www.newegg.com/p/pl?d=PrimoChill%20B00AG245JE",
+   "https://www.newegg.com/p/pl?d=B00AG245JE",
+   "https://www.newegg.com/p/pl?d=PrimoChill%2002592",
+   "https://www.newegg.com/p/pl?d=PrimoChill%20UV",
+   "https://www.newegg.com/primochill-ice-coolant/p/13K-008F-001D5",
+   "https://www.newegg.com/p/2YM-000S-002M6",
+   "https://www.newegg.com/p/2YM-000S-00028",
+   "https://www.newegg.com/p/2YM-000S-003R5",
+   "https://www.newegg.com/p/2YM-000S-003N6",
+   "https://www.newegg.com/p/1B4-01S8-00005",
+   "https://www.newegg.com/p/2YM-000S-00390",
+   "https://www.newegg.com/p/2YM-000S-003N3"
+  ]
+ },
+ {
+  "barcode": "747464127859",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "747464127859",
+   "clientSku": "",
+   "candidatesSeen": 36,
+   "probes": 1,
+   "match": {
+    "itemId": "N82E16822165589",
+    "url": "https://www.newegg.com/buffalo-ls210d0201/p/N82E16822165589",
+    "title": "BUFFALO LinkStation 210 1-Bay Personal Cloud Network Storage 2TB (1x2TB) with Hard Drives Included",
+    "brand": "Buffalo Technology",
+    "model": "LS210D0201",
+    "priceCents": 18167,
+    "inStock": true,
+    "isFirstParty": false,
+    "sellerName": "BeachAudio",
+    "imageUrl": null,
+    "retailerBarcode": "747464127859",
+    "score": 30,
+    "unverifiableReason": null
+   },
+   "alternatives": [
+    {
+     "itemId": "N82E16822165591",
+     "url": "https://www.newegg.com/buffalo-ls210d0401/p/N82E16822165591",
+     "title": "BUFFALO LinkStation 210 1-Bay Personal Cloud Network Storage 4TB (1x4TB) with Hard Drives Included",
+     "brand": "Buffalo Technology",
+     "model": "LS210D0401",
+     "priceCents": 19299,
+     "inStock": true,
+     "isFirstParty": true,
+     "sellerName": null,
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 25,
+     "reasonRankedLower": "its model number is not the client's part number, and the chosen listing's is — its page was never opened, so nothing about its barcode is known"
+    },
+    {
+     "itemId": "14P-001P-000C9",
+     "url": "https://www.newegg.com/buffalo-ls210d0601-1-bay-dual-issue-arm-800mhz-processor-processor-6tb/p/14P-001P-000C9",
+     "title": "BUFFALO LinkStation 210 1-Bay Personal Cloud Network Storage 6TB (1x6TB) with Hard Drives Included",
+     "brand": "Buffalo Technology",
+     "model": "LS210D0601",
+     "priceCents": 23498,
+     "inStock": true,
+     "isFirstParty": true,
+     "sellerName": null,
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 25,
+     "reasonRankedLower": "its model number is not the client's part number, and the chosen listing's is — its page was never opened, so nothing about its barcode is known"
+    },
+    {
+     "itemId": "N82E16822165859",
+     "url": "https://www.newegg.com/buffalo-ls710d0401/p/N82E16822165859",
+     "title": "BUFFALO LinkStation 710 1-Bay Professional Network Storage 4TB (1x4TB) with Hard Drives Included",
+     "brand": "Buffalo Technology",
+     "model": "LS710D0401",
+     "priceCents": 24598,
+     "inStock": true,
+     "isFirstParty": true,
+     "sellerName": null,
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 13,
+     "reasonRankedLower": "its model number is not the client's part number, and the chosen listing's is — its page was never opened, so nothing about its barcode is known"
+    },
+    {
+     "itemId": "N82E16822165860",
+     "url": "https://www.newegg.com/buffalo-ls710d0801/p/N82E16822165860",
+     "title": "BUFFALO LinkStation 710 1-Bay Professional Network Storage 8TB (1x8TB) with Hard Drives Included",
+     "brand": "Buffalo Technology",
+     "model": "LS710D0801",
+     "priceCents": 31899,
+     "inStock": true,
+     "isFirstParty": true,
+     "sellerName": null,
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 13,
+     "reasonRankedLower": "its model number is not the client's part number, and the chosen listing's is — its page was never opened, so nothing about its barcode is known"
+    },
+    {
+     "itemId": "N82E16822165858",
+     "url": "https://www.newegg.com/buffalo-ls710d0201/p/N82E16822165858",
+     "title": "BUFFALO LinkStation 710 1-Bay Professional Network Storage 2TB (1X2TB) with Hard Drives Included",
+     "brand": "Buffalo Technology",
+     "model": "LS710D0201",
+     "priceCents": 23099,
+     "inStock": true,
+     "isFirstParty": true,
+     "sellerName": null,
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 13,
+     "reasonRankedLower": "its model number is not the client's part number, and the chosen listing's is — its page was never opened, so nothing about its barcode is known"
+    }
+   ],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "verified",
+   "identity": {
+    "partNumber": "12785",
+    "brand": "Buffalo",
+    "title": "Buffalo LinkStation 210 2TB 1-Bay NAS Server ...",
+    "provenance": "barcode-derived",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "Buffalo 1-BAY"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.google.com/search?q=%22747464127859%22",
+   "https://www.newegg.com/p/pl?d=Buffalo%201-BAY",
+   "https://www.newegg.com/buffalo-ls210d0201/p/N82E16822165589"
+  ]
+ },
+ {
+  "barcode": "747464127873",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "747464127873",
+   "clientSku": "",
+   "candidatesSeen": 2,
+   "probes": 1,
+   "match": {
+    "itemId": "N82E16822165591",
+    "url": "https://www.newegg.com/buffalo-ls210d0401/p/N82E16822165591",
+    "title": "BUFFALO LinkStation 210 1-Bay Personal Cloud Network Storage 4TB (1x4TB) with Hard Drives Included",
+    "brand": "Buffalo Technology",
+    "model": "LS210D0401",
+    "priceCents": 19299,
+    "inStock": true,
+    "isFirstParty": true,
+    "sellerName": null,
+    "imageUrl": null,
+    "retailerBarcode": "747464127873",
+    "score": 33,
+    "unverifiableReason": null
+   },
+   "alternatives": [
+    {
+     "itemId": "14R-02A5-06Y48",
+     "url": "https://www.newegg.com/p/14R-02A5-06Y48",
+     "title": "ABLEGRID AC Adapter for Buffalo LinkStation 210 LS210D0201 LS210D0301 LS210D0401 Switching Power Supply Cord Wall Home Battery Charger Mains PSU AC 100-240V, 50/60Hz",
+     "brand": "ABLEGRID",
+     "model": "480C9AD7C4",
+     "priceCents": 1249,
+     "inStock": true,
+     "isFirstParty": false,
+     "sellerName": "AbleGrid® Brand",
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 10,
+     "reasonRankedLower": "its model number is not the client's part number, and the chosen listing's is — its page was never opened, so nothing about its barcode is known"
+    }
+   ],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "verified",
+   "identity": {
+    "partNumber": "12787",
+    "brand": "Buffalo",
+    "title": "Buffalo 4TB LinkStation 210",
+    "provenance": "barcode-derived",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "Buffalo LS210D0401"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.google.com/search?q=%22747464127873%22",
+   "https://www.newegg.com/p/pl?d=Buffalo%20LS210D0401",
+   "https://www.newegg.com/buffalo-ls210d0401/p/N82E16822165591"
+  ]
+ },
+ {
+  "barcode": "747464128634",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "747464128634",
+   "clientSku": "",
+   "candidatesSeen": 2,
+   "probes": 1,
+   "match": {
+    "itemId": "N82E16822165596",
+    "url": "https://www.newegg.com/buffalo-ls220d0402/p/N82E16822165596",
+    "title": "BUFFALO LinkStation 220 2-Bay Personal Cloud Network Storage 4TB (2x2TB) with Hard Drives Included",
+    "brand": "Buffalo Technology",
+    "model": "LS220D0402",
+    "priceCents": 28599,
+    "inStock": true,
+    "isFirstParty": true,
+    "sellerName": null,
+    "imageUrl": null,
+    "retailerBarcode": "747464128634",
+    "score": 33,
+    "unverifiableReason": null
+   },
+   "alternatives": [
+    {
+     "itemId": "N82E16822165598",
+     "url": "https://www.newegg.com/buffalo-ls220d0802/p/N82E16822165598",
+     "title": "BUFFALO LinkStation 220 2-Bay Personal Cloud Network Storage 8TB (2x4TB) with Hard Drives Included",
+     "brand": "Buffalo Technology",
+     "model": "LS220D0802",
+     "priceCents": 36299,
+     "inStock": true,
+     "isFirstParty": true,
+     "sellerName": null,
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 23,
+     "reasonRankedLower": "its model number is not the client's part number, and the chosen listing's is — its page was never opened, so nothing about its barcode is known"
+    }
+   ],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "verified",
+   "identity": {
+    "partNumber": "12863",
+    "brand": "Buffalo",
+    "title": "Buffalo 4TB LinkStation 220 NAS Server (2 x 2TB)",
+    "provenance": "barcode-derived",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "Buffalo LS220D0402"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.google.com/search?q=%22747464128634%22",
+   "https://www.newegg.com/p/pl?d=Buffalo%20LS220D0402",
+   "https://www.newegg.com/buffalo-ls220d0402/p/N82E16822165596"
+  ]
+ },
+ {
+  "barcode": "606449101515",
+  "kind": "stopped",
+  "missing": "https://www.google.com/search?q=%22606449101515%22",
+  "asked": [
+   "https://www.google.com/search?q=%22606449101515%22"
+  ]
+ },
+ {
+  "barcode": "747464128658",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "747464128658",
+   "clientSku": "",
+   "candidatesSeen": 2,
+   "probes": 1,
+   "match": {
+    "itemId": "N82E16822165598",
+    "url": "https://www.newegg.com/buffalo-ls220d0802/p/N82E16822165598",
+    "title": "BUFFALO LinkStation 220 2-Bay Personal Cloud Network Storage 8TB (2x4TB) with Hard Drives Included",
+    "brand": "Buffalo Technology",
+    "model": "LS220D0802",
+    "priceCents": 36299,
+    "inStock": true,
+    "isFirstParty": true,
+    "sellerName": null,
+    "imageUrl": null,
+    "retailerBarcode": "747464128658",
+    "score": 33,
+    "unverifiableReason": null
+   },
+   "alternatives": [
+    {
+     "itemId": "N82E16822165596",
+     "url": "https://www.newegg.com/buffalo-ls220d0402/p/N82E16822165596",
+     "title": "BUFFALO LinkStation 220 2-Bay Personal Cloud Network Storage 4TB (2x2TB) with Hard Drives Included",
+     "brand": "Buffalo Technology",
+     "model": "LS220D0402",
+     "priceCents": 28599,
+     "inStock": true,
+     "isFirstParty": true,
+     "sellerName": null,
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 23,
+     "reasonRankedLower": "its model number is not the client's part number, and the chosen listing's is — its page was never opened, so nothing about its barcode is known"
+    }
+   ],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "verified",
+   "identity": {
+    "partNumber": "12865",
+    "brand": "Buffalo",
+    "title": "Buffalo 8TB LinkStation 220 NAS Server (2 x 4TB)",
+    "provenance": "barcode-derived",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "Buffalo LS220D0802"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.google.com/search?q=%22747464128658%22",
+   "https://www.newegg.com/p/pl?d=Buffalo%20LS220D0802",
+   "https://www.newegg.com/buffalo-ls220d0802/p/N82E16822165598"
+  ]
+ },
+ {
+  "barcode": "021299187203",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "021299187203",
+   "clientSku": "",
+   "candidatesSeen": 1,
+   "probes": 1,
+   "match": {
+    "itemId": "N82E16826263223",
+    "url": "https://www.newegg.com/black-koss-keb6ik-earbud/p/N82E16826263223",
+    "title": "KOSS Black KEB6IK Earbud Headphones - In Ear Bud",
+    "brand": "Koss",
+    "model": "KEB6IK",
+    "priceCents": 3170,
+    "inStock": true,
+    "isFirstParty": false,
+    "sellerName": "BeachAudio",
+    "imageUrl": null,
+    "retailerBarcode": "021299187203",
+    "score": 31,
+    "unverifiableReason": null
+   },
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "verified",
+   "identity": {
+    "partNumber": "18720",
+    "brand": "On-ear",
+    "title": "On-ear Headphones 1 Pk - KOSS",
+    "provenance": "barcode-derived",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "On-ear KEB6IK",
+    "KEB6IK"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.google.com/search?q=%22021299187203%22",
+   "https://www.newegg.com/p/pl?d=On-ear%20KEB6IK",
+   "https://www.newegg.com/p/pl?d=KEB6IK",
+   "https://www.newegg.com/black-koss-keb6ik-earbud/p/N82E16826263223"
+  ]
+ },
+ {
+  "barcode": "606449070156",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "606449070156",
+   "clientSku": "",
+   "candidatesSeen": 36,
+   "probes": 1,
+   "match": {
+    "itemId": "12K-008X-00026",
+    "url": "https://www.newegg.com/netgear-gs108-400nas-8-x-rj45/p/12K-008X-00026",
+    "title": "Netgear GS108 8-Port Gigabit Ethernet Unmanaged Switch, GS108-400NAS",
+    "brand": "Netgear Inc.",
+    "model": "GS108-400NAS",
+    "priceCents": 4999,
+    "inStock": true,
+    "isFirstParty": true,
+    "sellerName": null,
+    "imageUrl": null,
+    "retailerBarcode": "606449070156",
+    "score": 41,
+    "unverifiableReason": null
+   },
+   "alternatives": [
+    {
+     "itemId": "N82E16833222013",
+     "url": "https://www.newegg.com/netgear-gs108t-300nas-8-x-rj45/p/N82E16833222013",
+     "title": "Netgear GS108T 8-Port Gigabit Ethernet Smart Switch with Cloud Management, GS108T-300NAS",
+     "brand": "Netgear Inc.",
+     "model": "GS108T-300NAS",
+     "priceCents": 8399,
+     "inStock": true,
+     "isFirstParty": true,
+     "sellerName": null,
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 33,
+     "reasonRankedLower": "its model number is not the client's part number, and the chosen listing's is — its page was never opened, so nothing about its barcode is known"
+    },
+    {
+     "itemId": "N82E16833122965",
+     "url": "https://www.newegg.com/netgear-gs108pp-100nas-8-x-rj45/p/N82E16833122965",
+     "title": "Netgear GS108PP 8-Port Gigabit Ethernet High-Power PoE+ Unmanaged Switch with FlexPoE (123W), GS108PP-100NAS",
+     "brand": "Netgear Inc.",
+     "model": "GS108PP-100NAS",
+     "priceCents": 13999,
+     "inStock": true,
+     "isFirstParty": true,
+     "sellerName": null,
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 33,
+     "reasonRankedLower": "its model number is not the client's part number, and the chosen listing's is — its page was never opened, so nothing about its barcode is known"
+    },
+    {
+     "itemId": "0XP-001M-00HS1",
+     "url": "https://www.newegg.com/p/0XP-001M-00HS1",
+     "title": "Netgear GS108MX 8-Port 10 Gigabit Ethernet Unmanaged Switch, GS108MX-100NAS",
+     "brand": "Netgear Inc.",
+     "model": "GS108MX-100NAS",
+     "priceCents": 11999,
+     "inStock": true,
+     "isFirstParty": true,
+     "sellerName": null,
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 33,
+     "reasonRankedLower": "its model number is not the client's part number, and the chosen listing's is — its page was never opened, so nothing about its barcode is known"
+    },
+    {
+     "itemId": "N82E16833222353",
+     "url": "https://www.newegg.com/p/N82E16833222353",
+     "title": "Netgear GS108E 8-Port Gigabit Ethernet Switch, GS108E-400NAS",
+     "brand": "Netgear Inc.",
+     "model": "GS108E-400NAS",
+     "priceCents": 5999,
+     "inStock": true,
+     "isFirstParty": true,
+     "sellerName": null,
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 33,
+     "reasonRankedLower": "its model number is not the client's part number, and the chosen listing's is — its page was never opened, so nothing about its barcode is known"
+    },
+    {
+     "itemId": "1VH-01A2-00013",
+     "url": "https://www.newegg.com/netgear-gs108lp-100nas-8-x-rj45/p/1VH-01A2-00013",
+     "title": "Netgear GS108LP 8-Port PoE/PoE+ Gigabit Ethernet Unmanaged Switch with FlexPoE, GS108LP-100NAS",
+     "brand": "Netgear Inc.",
+     "model": "GS108LP-100NAS",
+     "priceCents": 10999,
+     "inStock": true,
+     "isFirstParty": true,
+     "sellerName": null,
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 33,
+     "reasonRankedLower": "its model number is not the client's part number, and the chosen listing's is — its page was never opened, so nothing about its barcode is known"
+    }
+   ],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "verified",
+   "identity": {
+    "partNumber": "07015",
+    "brand": "NETGEAR",
+    "title": "NETGEAR GS108-400NAS ProSAFE 8-Port Gigabit Switch",
+    "provenance": "barcode-derived",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "NETGEAR 8-PORT"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.google.com/search?q=%22606449070156%22",
+   "https://www.newegg.com/p/pl?d=NETGEAR%208-PORT",
+   "https://www.newegg.com/netgear-gs108-400nas-8-x-rj45/p/12K-008X-00026"
+  ]
+ },
+ {
+  "barcode": "649833202153",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "649833202153",
+   "clientSku": "",
+   "candidatesSeen": 0,
+   "probes": 0,
+   "match": null,
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "not-found",
+   "identity": {
+    "partNumber": "20215",
+    "brand": "IMAK",
+    "title": "IMAK Products Ergo Glider - Black",
+    "provenance": "barcode-derived",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "IMAK A20215",
+    "A20215",
+    "IMAK 20215",
+    "IMAK IMA20215",
+    "IMA20215",
+    "IMAK Ergo Glider Black"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.google.com/search?q=%22649833202153%22",
+   "https://www.newegg.com/p/pl?d=IMAK%20A20215",
+   "https://www.newegg.com/p/pl?d=A20215",
+   "https://www.newegg.com/p/pl?d=IMAK%2020215",
+   "https://www.newegg.com/p/pl?d=IMAK%20IMA20215",
+   "https://www.newegg.com/p/pl?d=IMA20215",
+   "https://www.newegg.com/p/pl?d=IMAK%20Ergo%20Glider%20Black"
+  ]
+ },
+ {
+  "barcode": "852552006050",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "852552006050",
+   "clientSku": "",
+   "candidatesSeen": 0,
+   "probes": 0,
+   "match": null,
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "not-found",
+   "identity": {
+    "partNumber": "00605",
+    "brand": "Avue",
+    "title": "Avue BNC Male Twist On Connector (8 Pack)",
+    "provenance": "barcode-derived",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "Avue ACN-BMTO081",
+    "ACN-BMTO081",
+    "Avue 00605",
+    "Avue BNC Male Twist On Connector (8 Pack)"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.google.com/search?q=%22852552006050%22",
+   "https://www.newegg.com/p/pl?d=Avue%20ACN-BMTO081",
+   "https://www.newegg.com/p/pl?d=ACN-BMTO081",
+   "https://www.newegg.com/p/pl?d=Avue%2000605",
+   "https://www.newegg.com/p/pl?d=Avue%20BNC%20Male%20Twist%20On%20Connector%20(8%20Pack)"
+  ]
+ },
+ {
+  "barcode": "766623560641",
+  "kind": "stopped",
+  "missing": "https://www.newegg.com/ubiquiti-networks-usw-pro-8-poe-gbe-rj45-ports-10g-sfp-ports/p/2WK-00B4-00001",
+  "asked": [
+   "https://www.google.com/search?q=%22766623560641%22",
+   "https://www.newegg.com/p/pl?d=Intellinet%208-PORT",
+   "https://www.newegg.com/p/pl?d=8-PORT",
+   "https://www.newegg.com/p/pl?d=Intellinet%2056064",
+   "https://www.newegg.com/p/pl?d=Intellinet%20INTELLINET-EN-8-P",
+   "https://www.newegg.com/p/pl?d=INTELLINET-EN-8-P",
+   "https://www.newegg.com/p/pl?d=Intellinet%20ITL-560641",
+   "https://www.newegg.com/intellinet-523318/p/0TH-006Y-00010",
+   "https://www.newegg.com/intellinet-530347-8-x-rj45/p/N82E16833425014",
+   "https://www.newegg.com/netgear-gs308e-8-x-rj45/p/N82E16833222346",
+   "https://www.newegg.com/ubiquiti-usw-lite-8-poe-8-x-rj45/p/N82E16833664066",
+   "https://www.newegg.com/ubiquiti-networks-usw-pro-8-poe-gbe-rj45-ports-10g-sfp-ports/p/2WK-00B4-00001"
+  ]
+ },
+ {
+  "barcode": "810830022031",
+  "kind": "stopped",
+  "missing": "https://www.newegg.com/ubquiti-uvc-ai-turret-w/p/0Z2-00DE-00062",
+  "asked": [
+   "https://www.google.com/search?q=%22810830022031%22",
+   "https://www.newegg.com/p/pl?d=Night%20B00WMJE3IM",
+   "https://www.newegg.com/p/pl?d=B00WMJE3IM",
+   "https://www.newegg.com/p/pl?d=Night%2002203",
+   "https://www.newegg.com/p/pl?d=Night%209-WAY",
+   "https://www.newegg.com/p/pl?d=9-WAY",
+   "https://www.newegg.com/ubquiti-uvc-ai-turret-w/p/0Z2-00DE-00062"
+  ]
+ },
+ {
+  "barcode": "852552006197",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "852552006197",
+   "clientSku": "",
+   "candidatesSeen": 0,
+   "probes": 0,
+   "match": null,
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "not-found",
+   "identity": {
+    "partNumber": "00619",
+    "brand": "Avue",
+    "title": "Avue BNC Female to RNC Male Adapter (8 Pack)",
+    "provenance": "barcode-derived",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "Avue 00619",
+    "Avue BNC Female to RNC Male Adapter (8 Pack)"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.google.com/search?q=%22852552006197%22",
+   "https://www.newegg.com/p/pl?d=Avue%2000619",
+   "https://www.newegg.com/p/pl?d=Avue%20BNC%20Female%20to%20RNC%20Male%20Adapter%20(8%20Pack)"
+  ]
+ },
+ {
+  "barcode": "852552006258",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "852552006258",
+   "clientSku": "",
+   "candidatesSeen": 0,
+   "probes": 0,
+   "match": null,
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "not-found",
+   "identity": {
+    "partNumber": "00625",
+    "brand": "Avue",
+    "title": "Avue BNC Female to Female Adapter (8 Pack)",
+    "provenance": "barcode-derived",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "Avue 00625",
+    "Avue BNC Female to Female Adapter (8 Pack)"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.google.com/search?q=%22852552006258%22",
+   "https://www.newegg.com/p/pl?d=Avue%2000625",
+   "https://www.newegg.com/p/pl?d=Avue%20BNC%20Female%20to%20Female%20Adapter%20(8%20Pack)"
+  ]
+ },
+ {
+  "barcode": "852552006333",
+  "kind": "stopped",
+  "missing": "https://www.google.com/search?q=%22852552006333%22",
+  "asked": [
+   "https://www.google.com/search?q=%22852552006333%22"
+  ]
+ },
+ {
+  "barcode": "855597003992",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "855597003992",
+   "clientSku": "",
+   "candidatesSeen": 0,
+   "probes": 0,
+   "match": null,
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "not-found",
+   "identity": {
+    "partNumber": "00399",
+    "brand": "Avue",
+    "title": "Avue Passive Video Transceiver with Pigtail",
+    "provenance": "barcode-derived",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "Avue 00399",
+    "Avue Passive Video Transceiver with Pigtail"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.google.com/search?q=%22855597003992%22",
+   "https://www.newegg.com/p/pl?d=Avue%2000399",
+   "https://www.newegg.com/p/pl?d=Avue%20Passive%20Video%20Transceiver%20with%20Pigtail"
+  ]
+ },
+ {
+  "barcode": "855597003169",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "855597003169",
+   "clientSku": "",
+   "candidatesSeen": 0,
+   "probes": 0,
+   "match": null,
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "not-found",
+   "identity": {
+    "partNumber": "00316",
+    "brand": "Avue",
+    "title": "Avue DC12V 1A Power Adapter",
+    "provenance": "barcode-derived",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "Avue APW-D1210A",
+    "APW-D1210A",
+    "Avue 00316",
+    "Avue DC12V 1A Power Adapter"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.google.com/search?q=%22855597003169%22",
+   "https://www.newegg.com/p/pl?d=Avue%20APW-D1210A",
+   "https://www.newegg.com/p/pl?d=APW-D1210A",
+   "https://www.newegg.com/p/pl?d=Avue%2000316",
+   "https://www.newegg.com/p/pl?d=Avue%20DC12V%201A%20Power%20Adapter"
+  ]
+ },
+ {
+  "barcode": "606449106657",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "606449106657",
+   "clientSku": "",
+   "candidatesSeen": 26,
+   "probes": 1,
+   "match": {
+    "itemId": "N82E16825124013",
+    "url": "https://www.newegg.com/netgear-c7000-100nas-cable-modem/p/N82E16825124013",
+    "title": "Netgear Nighthawk AC1900 DOCSIS 3.0 Two-in-One Cable Modem + WiFi Router, C7000-100NAS",
+    "brand": "Netgear Inc.",
+    "model": "C7000-100NAS",
+    "priceCents": 14900,
+    "inStock": true,
+    "isFirstParty": true,
+    "sellerName": null,
+    "imageUrl": null,
+    "retailerBarcode": "606449106657",
+    "score": 45,
+    "unverifiableReason": null
+   },
+   "alternatives": [
+    {
+     "itemId": "2S7-07JP-16K45",
+     "url": "https://www.newegg.com/p/2S7-07JP-16K45",
+     "title": "Adaptador de CA/CC de la UE, cargador de fuente de alimentación para NETGEAR nightawk AC1900, enrutador Wi-Fi",
+     "brand": "Graviton",
+     "model": "ZZL-RNU-ASD1063406",
+     "priceCents": 3757,
+     "inStock": true,
+     "isFirstParty": false,
+     "sellerName": "Shengkedianzi",
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 10,
+     "reasonRankedLower": "its model number is not the client's part number, and the chosen listing's is — its page was never opened, so nothing about its barcode is known"
+    },
+    {
+     "itemId": "0ZK-026J-000Y2",
+     "url": "https://www.newegg.com/cameron-sino-ds-cs-cpb013rx-home-electronics-battery/p/0ZK-026J-000Y2",
+     "title": "Battery for Netgear Nighthawk AC1900 Cisco FOXLINK 4033435 PB013 SMPCM1 3400mAh",
+     "brand": "Cameron & Co",
+     "model": "CS-CPB013RX",
+     "priceCents": 5469,
+     "inStock": true,
+     "isFirstParty": false,
+     "sellerName": "Centenex Electronics",
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 10,
+     "reasonRankedLower": "its model number is not the client's part number, and the chosen listing's is — its page was never opened, so nothing about its barcode is known"
+    },
+    {
+     "itemId": "14R-02A5-084U1",
+     "url": "https://www.newegg.com/p/14R-02A5-084U1",
+     "title": "ABLEGRID AC Adapter Charger Power For Netgear AC1900 C6900-100NAS Gigabit Wireless Router",
+     "brand": "ABLEGRID",
+     "model": "48A5CBB9FE",
+     "priceCents": 1748,
+     "inStock": true,
+     "isFirstParty": false,
+     "sellerName": "AbleGrid® Brand",
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 10,
+     "reasonRankedLower": "its model number is not the client's part number, and the chosen listing's is — its page was never opened, so nothing about its barcode is known"
+    },
+    {
+     "itemId": "14R-02A5-084J7",
+     "url": "https://www.newegg.com/p/14R-02A5-084J7",
+     "title": "ABLEGRID 12V AC Adapter Charger Power For Netgear AC1900 WiFi Cable Modem Router C7000 v2",
+     "brand": "ABLEGRID",
+     "model": "4809BDBFEB",
+     "priceCents": 1948,
+     "inStock": true,
+     "isFirstParty": false,
+     "sellerName": "AbleGrid® Brand",
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 10,
+     "reasonRankedLower": "its model number is not the client's part number, and the chosen listing's is — its page was never opened, so nothing about its barcode is known"
+    },
+    {
+     "itemId": "16J-01MS-015T1",
+     "url": "https://www.newegg.com/p/16J-01MS-015T1",
+     "title": "AC Adapter for NETGEAR Nighthawk AC1900 C7000 Wireless Modem Router 12V Power Supply Cord Cable PS Wall Home Battery Charger Mains PSU",
+     "brand": "WAWEIS",
+     "model": "4741640639279",
+     "priceCents": 2198,
+     "inStock": true,
+     "isFirstParty": false,
+     "sellerName": "EPtech Power Store",
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 10,
+     "reasonRankedLower": "its model number is not the client's part number, and the chosen listing's is — its page was never opened, so nothing about its barcode is known"
+    }
+   ],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "verified",
+   "identity": {
+    "partNumber": "10665",
+    "brand": "NETGEAR",
+    "title": "NETGEAR Nighthawk Cable Modem and WiFi 5 Router ...",
+    "provenance": "barcode-derived",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "NETGEAR AC1900"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.google.com/search?q=%22606449106657%22",
+   "https://www.newegg.com/p/pl?d=NETGEAR%20AC1900",
+   "https://www.newegg.com/netgear-c7000-100nas-cable-modem/p/N82E16825124013"
+  ]
+ },
+ {
+  "barcode": "855597003985",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "855597003985",
+   "clientSku": "",
+   "candidatesSeen": 4,
+   "probes": 4,
+   "match": null,
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "not-found",
+   "identity": {
+    "partNumber": "00398",
+    "brand": "Transceptor",
+    "title": "Transceptor de vídeo HD pasivo de un solo canal HDTVI, HDCVI ...",
+    "provenance": "barcode-derived",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "Transceptor AVB300P",
+    "AVB300P",
+    "Transceptor 00398",
+    "AVUE Video"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.google.com/search?q=%22855597003985%22",
+   "https://www.newegg.com/p/pl?d=Transceptor%20AVB300P",
+   "https://www.newegg.com/p/pl?d=AVB300P",
+   "https://www.newegg.com/p/pl?d=Transceptor%2000398",
+   "https://www.newegg.com/p/pl?d=AVUE%20Video",
+   "https://www.newegg.com/p/0J2-00B8-00022",
+   "https://www.newegg.com/p/3C6-03HG-00010",
+   "https://www.newegg.com/p/0YH-0301-004V2",
+   "https://www.newegg.com/avue-hm34c-camera/p/0YH-0301-004K2"
+  ]
+ },
+ {
+  "barcode": "897337049235",
+  "kind": "stopped",
+  "missing": "https://www.google.com/search?q=%22897337049235%22",
+  "asked": [
+   "https://www.google.com/search?q=%22897337049235%22"
+  ]
+ },
+ {
+  "barcode": "619659113551",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "619659113551",
+   "clientSku": "",
+   "candidatesSeen": 72,
+   "probes": 8,
+   "match": {
+    "itemId": "0BD-000B-002P0",
+    "url": "https://www.newegg.com/sandisk-ultra-128gb-usb-3-0/p/0BD-000B-002P0",
+    "title": "SanDisk 128GB Ultra CZ48 USB 3.0 Flash Drive, Speed Up to 130MB/s (SDCZ48-128G-U46)",
+    "brand": "SanDisk",
+    "model": "SDCZ48-128G-U46",
+    "priceCents": 2598,
+    "inStock": true,
+    "isFirstParty": false,
+    "sellerName": "BioStar",
+    "imageUrl": null,
+    "retailerBarcode": null,
+    "score": 33,
+    "unverifiableReason": null
+   },
+   "alternatives": [
+    {
+     "itemId": "N82E16820173396",
+     "url": "https://www.newegg.com/sandisk-ultra-fit-128gb-usb-3-2-gen-1-black/p/N82E16820173396",
+     "title": "Sandisk 128GB Ultra Fit USB 3.1 Flash Drive, Speed Up to 400MB/s (SDCZ430-128G-G46)",
+     "brand": "SanDisk",
+     "model": "SDCZ430-128G-G46",
+     "priceCents": 2658,
+     "inStock": true,
+     "isFirstParty": false,
+     "sellerName": "BioStar",
+     "retailerBarcode": "619659163761",
+     "barcodeState": "disagreed",
+     "score": 28,
+     "reasonRankedLower": "it matched the same signals as the chosen listing and lost a tie on discovery order — and the barcode it publishes disagrees with the client's"
+    },
+    {
+     "itemId": "N82E16820173573",
+     "url": "https://www.newegg.com/sandisk-ultra-fit-640gb-usb-3-2-gen-1-black/p/N82E16820173573",
+     "title": "Sandisk 128GB 5-Pack Ultra Fit USB 3.1 Flash Drive, Speed Up to 400MB/s (SDCZ430-128G-B5CT)",
+     "brand": "SanDisk",
+     "model": "SDCZ430-128G-B5CT",
+     "priceCents": 15995,
+     "inStock": true,
+     "isFirstParty": false,
+     "sellerName": "3C Expert",
+     "retailerBarcode": "619659194864",
+     "barcodeState": "disagreed",
+     "score": 28,
+     "reasonRankedLower": "it matched the same signals as the chosen listing and lost a tie on discovery order — and the barcode it publishes disagrees with the client's"
+    },
+    {
+     "itemId": "0BD-000B-00RV3",
+     "url": "https://www.newegg.com/sandisk-ultra-shift-128gb-usb-3-0-black/p/0BD-000B-00RV3",
+     "title": "SanDisk 128GB Ultra Shift USB 3.0 Flash Drive, Speed Up to 100MB/s (SDCZ410-128G-G46)",
+     "brand": "SanDisk",
+     "model": "SDCZ410-128G-G46",
+     "priceCents": 2990,
+     "inStock": true,
+     "isFirstParty": false,
+     "sellerName": "BioStar",
+     "retailerBarcode": "619659182328",
+     "barcodeState": "disagreed",
+     "score": 28,
+     "reasonRankedLower": "it matched the same signals as the chosen listing and lost a tie on discovery order — and the barcode it publishes disagrees with the client's"
+    },
+    {
+     "itemId": "N82E16820173135",
+     "url": "https://www.newegg.com/sandisk-ultra-flair-128gb-usb-3-0/p/N82E16820173135",
+     "title": "SanDisk 128GB Ultra Flair CZ73 USB 3.0 Flash Drive, Speed Up to 150MB/s (SDCZ73-128G-G46)",
+     "brand": "SanDisk",
+     "model": "SDCZ73-128G-G46",
+     "priceCents": 2739,
+     "inStock": true,
+     "isFirstParty": false,
+     "sellerName": "3C Expert",
+     "retailerBarcode": "619659136710",
+     "barcodeState": "disagreed",
+     "score": 16,
+     "reasonRankedLower": "its model number does not share a long prefix with the client's part number — and the barcode it publishes disagrees with the client's"
+    },
+    {
+     "itemId": "N82E16820173482",
+     "url": "https://www.newegg.com/sandisk-ultra-dual-drive-luxe-128gb-usb-3-2-gen-1-gray-silver/p/N82E16820173482",
+     "title": "SanDisk 128GB Ultra Dual Drive Luxe USB Type-C Flash Drive (SDDDC4-128G-G46)",
+     "brand": "SanDisk",
+     "model": "SDDDC4-128G-G46",
+     "priceCents": 3204,
+     "inStock": true,
+     "isFirstParty": false,
+     "sellerName": "BioStar",
+     "retailerBarcode": "619659179069",
+     "barcodeState": "disagreed",
+     "score": 16,
+     "reasonRankedLower": "its model number does not share a long prefix with the client's part number — and the barcode it publishes disagrees with the client's"
+    }
+   ],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "unconfirmed",
+   "identity": {
+    "partNumber": "11355",
+    "brand": "Sandisk",
+    "title": "Sandisk Ultra USB Flash Drive, 128 GB, Black (SDCZ48- ...",
+    "provenance": "barcode-derived",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "Sandisk 128GB",
+    "128GB"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.google.com/search?q=%22619659113551%22",
+   "https://www.newegg.com/p/pl?d=Sandisk%20128GB",
+   "https://www.newegg.com/p/pl?d=128GB",
+   "https://www.newegg.com/sandisk-ultra-128gb-usb-3-0/p/0BD-000B-002P0",
+   "https://www.newegg.com/sandisk-ultra-fit-128gb-usb-3-2-gen-1-black/p/N82E16820173396",
+   "https://www.newegg.com/sandisk-ultra-fit-640gb-usb-3-2-gen-1-black/p/N82E16820173573",
+   "https://www.newegg.com/sandisk-ultra-shift-128gb-usb-3-0-black/p/0BD-000B-00RV3",
+   "https://www.newegg.com/sandisk-ultra-flair-128gb-usb-3-0/p/N82E16820173135",
+   "https://www.newegg.com/sandisk-ultra-dual-drive-luxe-128gb-usb-3-2-gen-1-gray-silver/p/N82E16820173482",
+   "https://www.newegg.com/sandisk-ultra-dual-drive-go-128gb-usb-3-2-gen-1-black/p/N82E16820173464",
+   "https://www.newegg.com/sandisk-128gb-usb-3-2-gen-1-5-gbps/p/N82E16820173690"
+  ]
+ },
+ {
+  "barcode": "6933337311393",
+  "kind": "stopped",
+  "missing": "https://www.newegg.com/p/pl?d=TURNIQ-TX-4-HI",
+  "asked": [
+   "https://www.google.com/search?q=%226933337311393%22",
+   "https://www.newegg.com/p/pl?d=Tuniq%20TX-4",
+   "https://www.newegg.com/p/pl?d=TX-4",
+   "https://www.newegg.com/p/pl?d=Tuniq%20TUNIQ-TX-4-HI",
+   "https://www.newegg.com/p/pl?d=TUNIQ-TX-4-HI",
+   "https://www.newegg.com/p/pl?d=Tuniq%20TURNIQ-TX-4-HI",
+   "https://www.newegg.com/p/pl?d=TURNIQ-TX-4-HI"
+  ]
+ },
+ {
+  "barcode": "812348012672",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "812348012672",
+   "clientSku": "",
+   "candidatesSeen": 40,
+   "probes": 8,
+   "match": {
+    "itemId": "3C6-01FW-001C4",
+    "url": "https://www.newegg.com/p/3C6-01FW-001C4",
+    "title": "Kingwin 7-Port USB 3.0 Hub Offers 5Gbps speeds, Powered Expansion, and a Durable mountable Aluminum Design. Ideal for PC, Laptop, POS, and Server Racks. Plug & Play.",
+    "brand": "Kingwin Inc.",
+    "model": "404669062902",
+    "priceCents": 10698,
+    "inStock": true,
+    "isFirstParty": false,
+    "sellerName": "Luhang",
+    "imageUrl": null,
+    "retailerBarcode": null,
+    "score": 10,
+    "unverifiableReason": null
+   },
+   "alternatives": [
+    {
+     "itemId": "N82E16817707143",
+     "url": "https://www.newegg.com/startech-st7202usb/p/N82E16817707143",
+     "title": "StarTech.com ST7202USB 7 Port Compact Black USB 2.0 Hub - 7-Port USB Hub - Portable USB 2.0 Hub - Includes Optional Power Adapter",
+     "brand": "STARTECH",
+     "model": "ST7202USB",
+     "priceCents": 3799,
+     "inStock": true,
+     "isFirstParty": true,
+     "sellerName": null,
+     "retailerBarcode": "065030823814",
+     "barcodeState": "disagreed",
+     "score": 11,
+     "reasonRankedLower": "it matched the same signals as the chosen listing and lost a tie on discovery order — and the barcode it publishes disagrees with the client's"
+    },
+    {
+     "itemId": "N82E16817707514",
+     "url": "https://www.newegg.com/startech-com-5g7as-usb-a-hub/p/N82E16817707514",
+     "title": "StarTech.com 5G7AS-USB-A-HUB 7-Port USB Hub with On/Off Switch - USB 3.0 5Gbps - USB-A to 7x USB-A - Compact Self Powered USB-A Hub w/ 35W Power Supply - Desktop/Laptop USB Hub - USB Expansion Hub",
+     "brand": "STARTECH",
+     "model": "5G7AS-USB-A-HUB",
+     "priceCents": 6199,
+     "inStock": true,
+     "isFirstParty": true,
+     "sellerName": null,
+     "retailerBarcode": "065030894722",
+     "barcodeState": "disagreed",
+     "score": 11,
+     "reasonRankedLower": "it matched the same signals as the chosen listing and lost a tie on discovery order — and the barcode it publishes disagrees with the client's"
+    },
+    {
+     "itemId": "2WM-04B7-00001",
+     "url": "https://www.newegg.com/p/2WM-04B7-00001",
+     "title": "Kingwin Powered USB Hub 3.0 w/ 1 USB-C Port, SD Card Reader & Micro SD Card Reader - Sata Power Port w/Lightning Speed Data Transfer Up to 5Gbps - 5.25\" Computer Case Front Bay, black (KW525-3U3CR)",
+     "brand": "Kingwin Inc.",
+     "model": "DEEUB01K0RPTN0",
+     "priceCents": 6899,
+     "inStock": true,
+     "isFirstParty": false,
+     "sellerName": "Deep Source Trading Shop",
+     "retailerBarcode": null,
+     "barcodeState": "absent",
+     "score": 10,
+     "reasonRankedLower": "it matched the same signals as the chosen listing and lost a tie on discovery order — it publishes no barcode, so a swap cannot be verified either"
+    },
+    {
+     "itemId": "3C6-00WU-00185",
+     "url": "https://www.newegg.com/p/3C6-00WU-00185",
+     "title": "Kingwin Powered USB Hub 3.0 w/ 1 USB-C Port, SD Card Reader & Micro SD Card Reader - Sata Power Port w/Lightning Speed Data Transfer Up to 5Gbps - 5.25\" Computer Case Front Bay, black (KW525-3U3CR)",
+     "brand": "Dm Enterprises Inc",
+     "model": "356571552708",
+     "priceCents": 7499,
+     "inStock": true,
+     "isFirstParty": false,
+     "sellerName": "Tactifans Outdoor Sport Goods",
+     "retailerBarcode": null,
+     "barcodeState": "absent",
+     "score": 10,
+     "reasonRankedLower": "it matched the same signals as the chosen listing and lost a tie on discovery order — it publishes no barcode, so a swap cannot be verified either"
+    }
+   ],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "unverifiable",
+   "identity": {
+    "partNumber": "01267",
+    "brand": "Kingwin",
+    "title": "Kingwin Front Panel USB 3.0 Hub 7 Port & One Fast Charging ...",
+    "provenance": "barcode-derived",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "Kingwin KW525-7U3C",
+    "KW525-7U3C",
+    "Kingwin 01267",
+    "Kingwin 7-PORT",
+    "7-PORT",
+    "Kingwin KW525"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.google.com/search?q=%22812348012672%22",
+   "https://www.newegg.com/p/pl?d=Kingwin%20KW525-7U3C",
+   "https://www.newegg.com/p/pl?d=KW525-7U3C",
+   "https://www.newegg.com/p/pl?d=Kingwin%2001267",
+   "https://www.newegg.com/p/pl?d=Kingwin%207-PORT",
+   "https://www.newegg.com/p/pl?d=7-PORT",
+   "https://www.newegg.com/p/pl?d=Kingwin%20KW525",
+   "https://www.newegg.com/startech-st7202usb/p/N82E16817707143",
+   "https://www.newegg.com/startech-com-5g7as-usb-a-hub/p/N82E16817707514",
+   "https://www.newegg.com/p/3C6-01FW-001C4",
+   "https://www.newegg.com/p/2WM-04B7-00001",
+   "https://www.newegg.com/p/3C6-00WU-00185",
+   "https://www.newegg.com/rosonway-rsh-a107c/p/0J2-06Z5-00011",
+   "https://www.newegg.com/glotrends-u3057/p/37G-0075-00002",
+   "https://www.newegg.com/orico-h7928-u3-bk-usb/p/0J2-001S-00016"
+  ]
+ },
+ {
+  "barcode": "097855114693",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "097855114693",
+   "clientSku": "",
+   "candidatesSeen": 72,
+   "probes": 1,
+   "match": {
+    "itemId": "N82E16826197074",
+    "url": "https://www.newegg.com/black-logitech-g920-wheel-pedals/p/N82E16826197074",
+    "title": "Logitech G920 Driving Force Racing Wheel for Xbox Series X|S, Xbox One and PC",
+    "brand": "Logitech",
+    "model": "941-000121",
+    "priceCents": 19999,
+    "inStock": true,
+    "isFirstParty": true,
+    "sellerName": null,
+    "imageUrl": null,
+    "retailerBarcode": "00097855114693",
+    "score": 19,
+    "unverifiableReason": null
+   },
+   "alternatives": [
+    {
+     "itemId": "232-0009-00165",
+     "url": "https://www.newegg.com/logitech-002-g920-black-wheel/p/232-0009-00165",
+     "title": "Logitech G920 Gaming Steering Wheel, 900 Degrees of Rotation, Dual Motor Force Feedback Technology, Patented Non-Slip System, Non-Linear Brake Pedal, Thermal Protection, USB Compatible, Black",
+     "brand": "Logitech",
+     "model": "002 G920 black",
+     "priceCents": 42999,
+     "inStock": true,
+     "isFirstParty": false,
+     "sellerName": "TECH EDGE",
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 19,
+     "reasonRankedLower": "the client's part number does not appear in its listing text — its page was never opened, so nothing about its barcode is known"
+    },
+    {
+     "itemId": "N82E16826197072",
+     "url": "https://www.newegg.com/black-logitech-941-000119-driving-force-shifter/p/N82E16826197072",
+     "title": "Logitech G Driving Force Shifter Compatible with G923, G29 and G920 Racing Wheels",
+     "brand": "Logitech",
+     "model": "941-000119",
+     "priceCents": 6999,
+     "inStock": true,
+     "isFirstParty": false,
+     "sellerName": "Electronic Express",
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 16,
+     "reasonRankedLower": "it is a marketplace listing rather than sold by the retailer itself — its page was never opened, so nothing about its barcode is known"
+    },
+    {
+     "itemId": "2WK-008R-00067",
+     "url": "https://www.newegg.com/p/2WK-008R-00067",
+     "title": "Minneer Racing Simulator Cockpit Racing Wheel Stand with Racing Seat Display Bracket fit Logitech G25 G27 G29 G920 G923 Thrustmaster Fanatec, Steering Wheel Stand NO Wheel Pedals",
+     "brand": "Minneer",
+     "model": "37HZJDXSQDHSZY",
+     "priceCents": 28999,
+     "inStock": true,
+     "isFirstParty": false,
+     "sellerName": "Minneer",
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 10,
+     "reasonRankedLower": "it is a different brand from the one identified for this item — its page was never opened, so nothing about its barcode is known"
+    },
+    {
+     "itemId": "3EF-001Z-00044",
+     "url": "https://www.newegg.com/p/3EF-001Z-00044",
+     "title": "Minneer F1 3060 Aluminum Racing Simulator Cockpit Stand Fit for Logitech/Thrustmaster/Fanatec/Moza/PXN G29 G920 G923 T128 T300,Adjustable Steering Wheel Stand",
+     "brand": "Minneer",
+     "model": "95HZJ",
+     "priceCents": 21399,
+     "inStock": true,
+     "isFirstParty": false,
+     "sellerName": "Minneer",
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 10,
+     "reasonRankedLower": "it is a different brand from the one identified for this item — its page was never opened, so nothing about its barcode is known"
+    },
+    {
+     "itemId": "2WK-008R-00019",
+     "url": "https://www.newegg.com/p/2WK-008R-00019",
+     "title": "Minneer Racing Simulation Cockpit with Pulley Chair Fixing for Fanatec Thrustmaster Logitech G25 G27 G920 Gaming Racing Wheel Stand Shifter Wheel Pedals Not Included",
+     "brand": "Minneer",
+     "model": "29HSJKBGYZJ000000D0",
+     "priceCents": 9999,
+     "inStock": true,
+     "isFirstParty": false,
+     "sellerName": "Minneer",
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 10,
+     "reasonRankedLower": "it is a different brand from the one identified for this item — its page was never opened, so nothing about its barcode is known"
+    }
+   ],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "verified",
+   "identity": {
+    "partNumber": "11469",
+    "brand": "Logitech",
+    "title": "Logitech G920 Driving Force Racing Wheel for Xbox One/PC",
+    "provenance": "barcode-derived",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "Logitech G920",
+    "G920",
+    "Logitech 11469",
+    "Logitech 1374570-REG",
+    "1374570-REG",
+    "Logitech G920-DRI"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.google.com/search?q=%22097855114693%22",
+   "https://www.newegg.com/p/pl?d=Logitech%20G920",
+   "https://www.newegg.com/p/pl?d=G920",
+   "https://www.newegg.com/p/pl?d=Logitech%2011469",
+   "https://www.newegg.com/p/pl?d=Logitech%201374570-REG",
+   "https://www.newegg.com/p/pl?d=1374570-REG",
+   "https://www.newegg.com/p/pl?d=Logitech%20G920-DRI",
+   "https://www.newegg.com/black-logitech-g920-wheel-pedals/p/N82E16826197074"
+  ]
+ },
+ {
+  "barcode": "097855112859",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "097855112859",
+   "clientSku": "",
+   "candidatesSeen": 144,
+   "probes": 1,
+   "match": {
+    "itemId": "N82E16826197072",
+    "url": "https://www.newegg.com/black-logitech-941-000119-driving-force-shifter/p/N82E16826197072",
+    "title": "Logitech G Driving Force Shifter Compatible with G923, G29 and G920 Racing Wheels",
+    "brand": "Logitech",
+    "model": "941-000119",
+    "priceCents": 6999,
+    "inStock": true,
+    "isFirstParty": false,
+    "sellerName": "Electronic Express",
+    "imageUrl": null,
+    "retailerBarcode": "00097855112859",
+    "score": 31,
+    "unverifiableReason": null
+   },
+   "alternatives": [
+    {
+     "itemId": "N82E16826197074",
+     "url": "https://www.newegg.com/black-logitech-g920-wheel-pedals/p/N82E16826197074",
+     "title": "Logitech G920 Driving Force Racing Wheel for Xbox Series X|S, Xbox One and PC",
+     "brand": "Logitech",
+     "model": "941-000121",
+     "priceCents": 19999,
+     "inStock": true,
+     "isFirstParty": true,
+     "sellerName": null,
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 19,
+     "reasonRankedLower": "its model number neither contains nor is contained by the client's part number — its page was never opened, so nothing about its barcode is known"
+    },
+    {
+     "itemId": "N82E16826197432",
+     "url": "https://www.newegg.com/p/N82E16826197432",
+     "title": "Logitech G923 TRUEFORCE Sim Racing Wheel for Xbox Series S|X, Xbox One & PC",
+     "brand": "Logitech",
+     "model": "941-000156",
+     "priceCents": 29999,
+     "inStock": true,
+     "isFirstParty": true,
+     "sellerName": null,
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 19,
+     "reasonRankedLower": "its model number neither contains nor is contained by the client's part number — its page was never opened, so nothing about its barcode is known"
+    },
+    {
+     "itemId": "232-0009-00165",
+     "url": "https://www.newegg.com/logitech-002-g920-black-wheel/p/232-0009-00165",
+     "title": "Logitech G920 Gaming Steering Wheel, 900 Degrees of Rotation, Dual Motor Force Feedback Technology, Patented Non-Slip System, Non-Linear Brake Pedal, Thermal Protection, USB Compatible, Black",
+     "brand": "Logitech",
+     "model": "002 G920 black",
+     "priceCents": 42999,
+     "inStock": true,
+     "isFirstParty": false,
+     "sellerName": "TECH EDGE",
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 19,
+     "reasonRankedLower": "the client's part number does not appear in its listing text — its page was never opened, so nothing about its barcode is known"
+    },
+    {
+     "itemId": "2WK-008R-00067",
+     "url": "https://www.newegg.com/p/2WK-008R-00067",
+     "title": "Minneer Racing Simulator Cockpit Racing Wheel Stand with Racing Seat Display Bracket fit Logitech G25 G27 G29 G920 G923 Thrustmaster Fanatec, Steering Wheel Stand NO Wheel Pedals",
+     "brand": "Minneer",
+     "model": "37HZJDXSQDHSZY",
+     "priceCents": 28999,
+     "inStock": true,
+     "isFirstParty": false,
+     "sellerName": "Minneer",
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 17,
+     "reasonRankedLower": "its model number neither contains nor is contained by the client's part number — its page was never opened, so nothing about its barcode is known"
+    },
+    {
+     "itemId": "3EF-001Z-00044",
+     "url": "https://www.newegg.com/p/3EF-001Z-00044",
+     "title": "Minneer F1 3060 Aluminum Racing Simulator Cockpit Stand Fit for Logitech/Thrustmaster/Fanatec/Moza/PXN G29 G920 G923 T128 T300,Adjustable Steering Wheel Stand",
+     "brand": "Minneer",
+     "model": "95HZJ",
+     "priceCents": 21399,
+     "inStock": true,
+     "isFirstParty": false,
+     "sellerName": "Minneer",
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 17,
+     "reasonRankedLower": "its model number neither contains nor is contained by the client's part number — its page was never opened, so nothing about its barcode is known"
+    }
+   ],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "verified",
+   "identity": {
+    "partNumber": "11285",
+    "brand": "Logitech",
+    "title": "Logitech G Driving Force Shifter – Compatible with G29 ...",
+    "provenance": "barcode-derived",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "Logitech G920",
+    "G920",
+    "Logitech 11285",
+    "Logitech G923",
+    "G923",
+    "Logitech LOG-941-000119-B"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.google.com/search?q=%22097855112859%22",
+   "https://www.newegg.com/p/pl?d=Logitech%20G920",
+   "https://www.newegg.com/p/pl?d=G920",
+   "https://www.newegg.com/p/pl?d=Logitech%2011285",
+   "https://www.newegg.com/p/pl?d=Logitech%20G923",
+   "https://www.newegg.com/p/pl?d=G923",
+   "https://www.newegg.com/p/pl?d=Logitech%20LOG-941-000119-B",
+   "https://www.newegg.com/black-logitech-941-000119-driving-force-shifter/p/N82E16826197072"
+  ]
+ },
+ {
+  "barcode": "619659075538",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "619659075538",
+   "clientSku": "",
+   "candidatesSeen": 36,
+   "probes": 1,
+   "match": {
+    "itemId": "N82E16820171764",
+    "url": "https://www.newegg.com/sandisk-cruzer-glide-64gb-usb-2-0/p/N82E16820171764",
+    "title": "SanDisk Cruzer Glide 64GB Flash Drive",
+    "brand": "SanDisk",
+    "model": "SDCZ60-064G-A46",
+    "priceCents": 3251,
+    "inStock": true,
+    "isFirstParty": false,
+    "sellerName": "Technology Galaxy",
+    "imageUrl": null,
+    "retailerBarcode": "0619659075538",
+    "score": 36,
+    "unverifiableReason": null
+   },
+   "alternatives": [
+    {
+     "itemId": "0BD-000B-00966",
+     "url": "https://www.newegg.com/sandisk-cruzer-glide-64gb-usb-3-0/p/0BD-000B-00966",
+     "title": "SanDisk 64GB Cruzer Glide USB 3.0 Flash Drive",
+     "brand": "SanDisk",
+     "model": "SDCZ600-064G-G35",
+     "priceCents": 1975,
+     "inStock": true,
+     "isFirstParty": false,
+     "sellerName": "3C Expert",
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 28,
+     "reasonRankedLower": "its model number is not the client's part number, and the chosen listing's is — its page was never opened, so nothing about its barcode is known"
+    },
+    {
+     "itemId": "N82E16820171654",
+     "url": "https://www.newegg.com/sandisk-cruzer-glide-64gb-usb-2-0-black-red/p/N82E16820171654",
+     "title": "SanDisk 64GB Cruzer Glide CZ60 USB 2.0 Flash Drive (SDCZ60-064G-B35)",
+     "brand": "SanDisk",
+     "model": "SDCZ60-064G-B35",
+     "priceCents": 1980,
+     "inStock": true,
+     "isFirstParty": false,
+     "sellerName": "OEMPCWORLD",
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 28,
+     "reasonRankedLower": "its model number is not the client's part number, and the chosen listing's is — its page was never opened, so nothing about its barcode is known"
+    },
+    {
+     "itemId": "0BD-000B-005T2",
+     "url": "https://www.newegg.com/p/0BD-000B-005T2",
+     "title": "SanDisk 64GB Cruzer Glide  USB 2.0 Flash Drive Model SDCZ60-064G-B35",
+     "brand": "SanDisk",
+     "model": "SDCZ60-064G-B35.",
+     "priceCents": 1980,
+     "inStock": true,
+     "isFirstParty": false,
+     "sellerName": "OEMPCWORLD",
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 28,
+     "reasonRankedLower": "its model number is not the client's part number, and the chosen listing's is — its page was never opened, so nothing about its barcode is known"
+    },
+    {
+     "itemId": "N82E16820173481",
+     "url": "https://www.newegg.com/sandisk-ultra-dual-drive-luxe-64gb-usb-3-2-gen-1-gray-silver/p/N82E16820173481",
+     "title": "SanDisk 64GB Ultra Dual Drive Luxe USB Type-C Flash Drive (SDDDC4-064G-G46)",
+     "brand": "SanDisk",
+     "model": "SDDDC4-064G-G46",
+     "priceCents": 2394,
+     "inStock": true,
+     "isFirstParty": false,
+     "sellerName": "BioStar",
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 16,
+     "reasonRankedLower": "its model number is not the client's part number, and the chosen listing's is — its page was never opened, so nothing about its barcode is known"
+    },
+    {
+     "itemId": "N82E16820173691",
+     "url": "https://www.newegg.com/sandisk-64gb-usb-3-2-gen-1-5-gbps/p/N82E16820173691",
+     "title": "SANDISK Extreme Fit USB-C Flash Drive, up to 300MB/s read speeds, plug-and-stay storage, 64GB, SDCZ530-064G",
+     "brand": "SanDisk",
+     "model": "SDCZ530-064G-G46",
+     "priceCents": 4450,
+     "inStock": true,
+     "isFirstParty": false,
+     "sellerName": "3C Expert",
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 16,
+     "reasonRankedLower": "its model number is not the client's part number, and the chosen listing's is — its page was never opened, so nothing about its barcode is known"
+    }
+   ],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "verified",
+   "identity": {
+    "partNumber": "07553",
+    "brand": "Sandisk",
+    "title": "Sandisk USB Cruzer Glide 64GB 3.0 Flash Drive",
+    "provenance": "barcode-derived",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "Sandisk 64GB"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.google.com/search?q=%22619659075538%22",
+   "https://www.newegg.com/p/pl?d=Sandisk%2064GB",
+   "https://www.newegg.com/sandisk-cruzer-glide-64gb-usb-2-0/p/N82E16820171764"
+  ]
+ },
+ {
+  "barcode": "848354017011",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "848354017011",
+   "clientSku": "",
+   "candidatesSeen": 41,
+   "probes": 1,
+   "match": {
+    "itemId": "N82E16820232091",
+    "url": "https://www.newegg.com/g-skill-ripjaws-v-series-32gb-ddr4-3200-cas-latency-cl16-desktop-memory-black/p/N82E16820232091",
+    "title": "G.SKILL Ripjaws V Series 32GB (2 x 16GB) 288-Pin PC RAM DDR4 3200 (PC4 25600) Desktop Memory Model F4-3200C16D-32GVK",
+    "brand": "G.SKILL",
+    "model": "F4-3200C16D-32GVK",
+    "priceCents": 20999,
+    "inStock": true,
+    "isFirstParty": true,
+    "sellerName": null,
+    "imageUrl": null,
+    "retailerBarcode": "848354017011",
+    "score": 31,
+    "unverifiableReason": null
+   },
+   "alternatives": [
+    {
+     "itemId": "0RN-00MB-000W4",
+     "url": "https://www.newegg.com/v-color-manta-xfinity-rgb-32gb-2-x-16gb-ddr5-6000-pc5-48000-cas-latency-cl30-memory-desktop-memory-black/p/0RN-00MB-000W4",
+     "title": "V-COLOR Manta XFinity RGB DDR5 32GB (16GBx2) 6000MHz XMP 3.0 & AMD EXPO CL30 1.35V RGB Gaming Desktop Upgrade RAM U-DIMM Memory Module SK Hynix IC - BLACK (TMXFL1660830KWK)",
+     "brand": "V-color",
+     "model": "TMXFL1660830KWK",
+     "priceCents": 41999,
+     "inStock": true,
+     "isFirstParty": true,
+     "sellerName": null,
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 11,
+     "reasonRankedLower": "its model number is not the client's part number, and the chosen listing's is — its page was never opened, so nothing about its barcode is known"
+    },
+    {
+     "itemId": "0RN-00MB-000T5",
+     "url": "https://www.newegg.com/v-color-32gb-2-x-16gb-ddr5-6000-pc5-48000-cas-latency-cl30-memory-desktop-memory/p/0RN-00MB-000T5",
+     "title": "V-COLOR Manta XSky DDR5 32GB (2x16GB) 6000MHz CL30 SK Hynix IC RGB Gaming Desktop Memory Module Black, for AMD EXPO TMXSAL1660830KWK",
+     "brand": "V-color",
+     "model": "TMXSAL1660830KWK",
+     "priceCents": 41999,
+     "inStock": true,
+     "isFirstParty": true,
+     "sellerName": null,
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 11,
+     "reasonRankedLower": "its model number is not the client's part number, and the chosen listing's is — its page was never opened, so nothing about its barcode is known"
+    },
+    {
+     "itemId": "N82E16820982277",
+     "url": "https://www.newegg.com/corsair-vengeance-rgb-32gb-2-x-16gb-ddr5-6000-pc5-48000-cas-latency-cl30-desktop-memory-white/p/N82E16820982277",
+     "title": "CORSAIR Vengeance RGB 32GB (2 x 16GB) 288-Pin PC RAM DDR5 6000 (PC5 48000) Custom Lab Cherry Blossom Desktop Memory Model CMH32GX5M2B6000Z30WCB - White",
+     "brand": "Corsair",
+     "model": "CMH32GX5M2B6000Z30WCB",
+     "priceCents": 59999,
+     "inStock": true,
+     "isFirstParty": true,
+     "sellerName": null,
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 11,
+     "reasonRankedLower": "its model number is not the client's part number, and the chosen listing's is — its page was never opened, so nothing about its barcode is known"
+    },
+    {
+     "itemId": "0RN-00MB-000W3",
+     "url": "https://www.newegg.com/v-color-manta-xfinity-rgb-32gb-2-x-16gb-ddr5-6000-pc5-48000-cas-latency-cl30-memory-desktop-memory-white/p/0RN-00MB-000W3",
+     "title": "V-COLOR Manta XFinity RGB DDR5 32GB (16GBx2) 6000MHz XMP 3.0 & AMD EXPO CL30 1.35V RGB Gaming Desktop Upgrade RAM U-DIMM Memory Module SK Hynix IC - WHITE (TMXFL1660830WWK)",
+     "brand": "V-color",
+     "model": "TMXFL1660830WWK",
+     "priceCents": 41999,
+     "inStock": true,
+     "isFirstParty": true,
+     "sellerName": null,
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 11,
+     "reasonRankedLower": "its model number is not the client's part number, and the chosen listing's is — its page was never opened, so nothing about its barcode is known"
+    },
+    {
+     "itemId": "N82E16820236570",
+     "url": "https://www.newegg.com/corsair-vengeance-rgb-pro-32gb-ddr4-3200-cas-latency-cl16-desktop-memory-black/p/N82E16820236570",
+     "title": "CORSAIR Vengeance RGB Pro 32GB (2 x 16GB) 288-Pin PC RAM DDR4 3200 (PC4 25600) Desktop Memory Model CMW32GX4M2E3200C16",
+     "brand": "Corsair",
+     "model": "CMW32GX4M2E3200C16",
+     "priceCents": 25999,
+     "inStock": true,
+     "isFirstParty": true,
+     "sellerName": null,
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 11,
+     "reasonRankedLower": "its model number is not the client's part number, and the chosen listing's is — its page was never opened, so nothing about its barcode is known"
+    }
+   ],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "verified",
+   "identity": {
+    "partNumber": "01701",
+    "brand": null,
+    "title": "G.SKILL RipjawsV Series DDR4 RAM (XMP) 32GB ...",
+    "provenance": "barcode-derived",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "32GB"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.google.com/search?q=%22848354017011%22",
+   "https://www.newegg.com/p/pl?d=32GB",
+   "https://www.newegg.com/g-skill-ripjaws-v-series-32gb-ddr4-3200-cas-latency-cl16-desktop-memory-black/p/N82E16820232091"
+  ]
+ },
+ {
+  "barcode": "619659082321",
+  "kind": "stopped",
+  "missing": "https://www.newegg.com/sandisk-ultra-luxe-128gb-usb-3-2-gen-1-silver/p/0BD-000B-00YZ1",
+  "asked": [
+   "https://www.google.com/search?q=%22619659082321%22",
+   "https://www.newegg.com/p/pl?d=Sandisk%20128GB",
+   "https://www.newegg.com/p/pl?d=128GB",
+   "https://www.newegg.com/sandisk-cruzer-glide-128gb-usb-3-0/p/N82E16820173198",
+   "https://www.newegg.com/sandisk-ultra-flair-128gb-usb-3-0/p/N82E16820173135",
+   "https://www.newegg.com/sandisk-ultra-fit-128gb-usb-3-2-gen-1-black/p/N82E16820173396",
+   "https://www.newegg.com/sandisk-ultra-dual-drive-luxe-128gb-usb-3-2-gen-1-gray-silver/p/N82E16820173482",
+   "https://www.newegg.com/sandisk-ultra-128gb-usb-3-0/p/0BD-000B-002P0",
+   "https://www.newegg.com/sandisk-ultra-dual-drive-go-128gb-usb-3-2-gen-1-black/p/N82E16820173464",
+   "https://www.newegg.com/sandisk-128gb-usb-3-2-gen-1-5-gbps/p/N82E16820173690",
+   "https://www.newegg.com/sandisk-ultra-luxe-128gb-usb-3-2-gen-1-silver/p/0BD-000B-00YZ1"
+  ]
+ },
+ {
+  "barcode": "663296420367",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "663296420367",
+   "clientSku": "",
+   "candidatesSeen": 36,
+   "probes": 8,
+   "match": null,
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "not-found",
+   "identity": {
+    "partNumber": "42036",
+    "brand": "Thrustmaster",
+    "title": "Thrustmaster T.Flight Rudder Pedals",
+    "provenance": "barcode-derived",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "Thrustmaster RJ12",
+    "RJ12",
+    "Thrustmaster 42036",
+    "Thrustmaster 1250384-REG",
+    "1250384-REG",
+    "Thrustmaster QCHGV1Z00-6632"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.google.com/search?q=%22663296420367%22",
+   "https://www.newegg.com/p/pl?d=Thrustmaster%20RJ12",
+   "https://www.newegg.com/p/pl?d=RJ12",
+   "https://www.newegg.com/p/pl?d=Thrustmaster%2042036",
+   "https://www.newegg.com/p/pl?d=Thrustmaster%201250384-REG",
+   "https://www.newegg.com/p/pl?d=1250384-REG",
+   "https://www.newegg.com/p/pl?d=Thrustmaster%20QCHGV1Z00-6632",
+   "https://www.newegg.com/monoprice-6-200-others/p/27U-002U-00015",
+   "https://www.newegg.com/lumenzi-tc-strt-3-gry-1-telephone-line-cord/p/0Y1-06XP-00001",
+   "https://www.newegg.com/lumenzi-tc-strt-14-gry-1-telephone-line-cord/p/0Y1-06XP-00009",
+   "https://www.newegg.com/lumenzi-tc-strt-7-gry-1-telephone-line-cord/p/0Y1-06XP-00005",
+   "https://www.newegg.com/p/0Y1-006N-00372",
+   "https://www.newegg.com/p/0Y1-006N-00AJ7",
+   "https://www.newegg.com/p/0Y1-006N-00439",
+   "https://www.newegg.com/p/0XP-06JE-001T0"
+  ]
+ },
+ {
+  "barcode": "097855124197",
+  "kind": "stopped",
+  "missing": "https://www.newegg.com/p/pl?d=Logitech%20RECEIVER-12",
+  "asked": [
+   "https://www.google.com/search?q=%22097855124197%22",
+   "https://www.newegg.com/p/pl?d=Logitech%20M170",
+   "https://www.newegg.com/p/pl?d=M170",
+   "https://www.newegg.com/p/pl?d=Logitech%2012419",
+   "https://www.newegg.com/p/pl?d=Logitech%20RECEIVER-12"
+  ]
+ },
+ {
+  "barcode": "097855124180",
+  "kind": "stopped",
+  "missing": "https://www.newegg.com/p/0TP-000C-01MT9",
+  "asked": [
+   "https://www.google.com/search?q=%22097855124180%22",
+   "https://www.newegg.com/p/pl?d=Logitech%20M170",
+   "https://www.newegg.com/p/pl?d=M170",
+   "https://www.newegg.com/p/pl?d=Logitech%2012418",
+   "https://www.newegg.com/p/pl?d=Logitech%20LOGITECH-WIRELESS-3-",
+   "https://www.newegg.com/p/0TP-000C-00HG3",
+   "https://www.newegg.com/p/0TP-000C-01MT9"
+  ]
+ },
+ {
+  "barcode": "812348012993",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "812348012993",
+   "clientSku": "",
+   "candidatesSeen": 9,
+   "probes": 5,
+   "match": {
+    "itemId": "2WM-04B7-00001",
+    "url": "https://www.newegg.com/p/2WM-04B7-00001",
+    "title": "Kingwin Powered USB Hub 3.0 w/ 1 USB-C Port, SD Card Reader & Micro SD Card Reader - Sata Power Port w/Lightning Speed Data Transfer Up to 5Gbps - 5.25\" Computer Case Front Bay, black (KW525-3U3CR)",
+    "brand": "Kingwin Inc.",
+    "model": "DEEUB01K0RPTN0",
+    "priceCents": 6899,
+    "inStock": true,
+    "isFirstParty": false,
+    "sellerName": "Deep Source Trading Shop",
+    "imageUrl": null,
+    "retailerBarcode": null,
+    "score": 10,
+    "unverifiableReason": null
+   },
+   "alternatives": [
+    {
+     "itemId": "04P-005W-000U8",
+     "url": "https://www.newegg.com/weiler-01299-sanders/p/04P-005W-000U8",
+     "title": "WEILER 93004 Crimped Wire Wheel Wire Brush, Arbor, 12\"",
+     "brand": "Weiler",
+     "model": "01299",
+     "priceCents": 15299,
+     "inStock": true,
+     "isFirstParty": false,
+     "sellerName": "Zoro",
+     "retailerBarcode": "012382012991",
+     "barcodeState": "disagreed",
+     "score": 18,
+     "reasonRankedLower": "the client's part number does not appear in its listing text — and the barcode it publishes disagrees with the client's"
+    },
+    {
+     "itemId": "0PS-03BU-00132",
+     "url": "https://www.newegg.com/p/0PS-03BU-00132",
+     "title": "Powered USB Hub 3.0 w/ 1 USB-C Port, SD Card Reader & Micro SD Card Reader - Sata Power Port w/Lightning Speed Data Transfer Up to 5Gbps - 5.25\" Computer Case Front Bay, black (KW525-3U3CR)",
+     "brand": "Generic Brand",
+     "model": "179464730903",
+     "priceCents": 6399,
+     "inStock": true,
+     "isFirstParty": false,
+     "sellerName": "YiManYunDongZhuangBeiSHOP",
+     "retailerBarcode": null,
+     "barcodeState": "absent",
+     "score": 10,
+     "reasonRankedLower": "it matched the same signals as the chosen listing and lost a tie on discovery order — it publishes no barcode, so a swap cannot be verified either"
+    },
+    {
+     "itemId": "0X6-0FA2-00N46",
+     "url": "https://www.newegg.com/p/0X6-0FA2-00N46",
+     "title": "Powered USB Hub 3.0 w/ 1 USB-C Port, SD Card Reader & Micro SD Card Reader - Sata Power Port w/Lightning Speed Data Transfer Up to 5Gbps - 5.25\" Computer Case Front Bay, black (KW525-3U3CR)",
+     "brand": "DIVI",
+     "model": "DIVI3CX12LD1894",
+     "priceCents": 10558,
+     "inStock": true,
+     "isFirstParty": false,
+     "sellerName": "Grandwood Tech Limited",
+     "retailerBarcode": null,
+     "barcodeState": "absent",
+     "score": 10,
+     "reasonRankedLower": "it matched the same signals as the chosen listing and lost a tie on discovery order — it publishes no barcode, so a swap cannot be verified either"
+    },
+    {
+     "itemId": "3C6-00WU-00185",
+     "url": "https://www.newegg.com/p/3C6-00WU-00185",
+     "title": "Kingwin Powered USB Hub 3.0 w/ 1 USB-C Port, SD Card Reader & Micro SD Card Reader - Sata Power Port w/Lightning Speed Data Transfer Up to 5Gbps - 5.25\" Computer Case Front Bay, black (KW525-3U3CR)",
+     "brand": "Dm Enterprises Inc",
+     "model": "356571552708",
+     "priceCents": 7499,
+     "inStock": true,
+     "isFirstParty": false,
+     "sellerName": "Tactifans Outdoor Sport Goods",
+     "retailerBarcode": null,
+     "barcodeState": "absent",
+     "score": 10,
+     "reasonRankedLower": "it matched the same signals as the chosen listing and lost a tie on discovery order — it publishes no barcode, so a swap cannot be verified either"
+    }
+   ],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "unverifiable",
+   "identity": {
+    "partNumber": "01299",
+    "brand": "Powered",
+    "title": "Powered USB Hub 3.0 w/ 1 USB-C Port, SD Card Reader ...",
+    "provenance": "barcode-derived",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "Powered KW525-3U3CR",
+    "KW525-3U3CR",
+    "Powered 01299"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.google.com/search?q=%22812348012993%22",
+   "https://www.newegg.com/p/pl?d=Powered%20KW525-3U3CR",
+   "https://www.newegg.com/p/pl?d=KW525-3U3CR",
+   "https://www.newegg.com/p/pl?d=Powered%2001299",
+   "https://www.newegg.com/weiler-01299-sanders/p/04P-005W-000U8",
+   "https://www.newegg.com/p/2WM-04B7-00001",
+   "https://www.newegg.com/p/0PS-03BU-00132",
+   "https://www.newegg.com/p/0X6-0FA2-00N46",
+   "https://www.newegg.com/p/3C6-00WU-00185"
+  ]
+ },
+ {
+  "barcode": "097855122834",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "097855122834",
+   "clientSku": "",
+   "candidatesSeen": 10,
+   "probes": 1,
+   "match": {
+    "itemId": "N82E16823126476",
+    "url": "https://www.newegg.com/logitech-k780-920-008149-usb-bluetooth-wireless/p/N82E16823126476",
+    "title": "Logitech K780 Multi-Device Wireless Keyboard for Computer, Phone & Tablet",
+    "brand": "Logitech",
+    "model": "920-008149",
+    "priceCents": 6999,
+    "inStock": true,
+    "isFirstParty": true,
+    "sellerName": null,
+    "imageUrl": null,
+    "retailerBarcode": "097855122834",
+    "score": 19,
+    "unverifiableReason": null
+   },
+   "alternatives": [
+    {
+     "itemId": "0GA-0001-011G8",
+     "url": "https://www.newegg.com/p/0GA-0001-011G8",
+     "title": "Logitech K780 Multi-Device Wireless bluetooth Keyboard, 10 million knocks,  office and comfort.for Windows 10,11 /macOS 10.15 /Linux/Chrome/iPadOS 13.4 /iOS 11/Android 7.0  or later, BLACK",
+     "brand": "Logitech",
+     "model": "021 K780 BLACK",
+     "priceCents": 8999,
+     "inStock": true,
+     "isFirstParty": false,
+     "sellerName": "TECH EDGE",
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 19,
+     "reasonRankedLower": "the client's part number does not appear in its listing text — its page was never opened, so nothing about its barcode is known"
+    },
+    {
+     "itemId": "0GA-0001-011Y0",
+     "url": "https://www.newegg.com/p/0GA-0001-011Y0",
+     "title": "Logitech K780 Wireless Multi-Device Quiet Desktop Keyboard",
+     "brand": "Logitech",
+     "model": null,
+     "priceCents": 7613,
+     "inStock": true,
+     "isFirstParty": false,
+     "sellerName": "NothingButSavings",
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 16,
+     "reasonRankedLower": "it is a marketplace listing rather than sold by the retailer itself — its page was never opened, so nothing about its barcode is known"
+    },
+    {
+     "itemId": "0GA-0001-010D3",
+     "url": "https://www.newegg.com/logitech-k780-multi-device-wireless-keyboard-bluetooth-wireless-logitech-unifying-receiver-bluetoo/p/0GA-0001-010D3",
+     "title": "Logitech K780 Multi-Device Wireless Keyboard for Computer, Phone and Tablet",
+     "brand": "Logitech",
+     "model": "9208020005",
+     "priceCents": 9820,
+     "inStock": true,
+     "isFirstParty": false,
+     "sellerName": "TopRockMarketing",
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 16,
+     "reasonRankedLower": "it is a marketplace listing rather than sold by the retailer itself — its page was never opened, so nothing about its barcode is known"
+    },
+    {
+     "itemId": "0GA-0001-00ZV5",
+     "url": "https://www.newegg.com/logitech-k780-multi-device-wireless-keyboard-usb-rf-wireless/p/0GA-0001-00ZV5",
+     "title": "Logitech K780 Multi-Device Wireless Keyboard for Computer, Phone and Tablet  Speckles",
+     "brand": "Logitech",
+     "model": "920000000000008025",
+     "priceCents": 9900,
+     "inStock": true,
+     "isFirstParty": false,
+     "sellerName": "TopRockMarketing",
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 16,
+     "reasonRankedLower": "it is a marketplace listing rather than sold by the retailer itself — its page was never opened, so nothing about its barcode is known"
+    },
+    {
+     "itemId": "3C6-0064-004T4",
+     "url": "https://www.newegg.com/p/3C6-0064-004T4",
+     "title": "Logitech K780 Multi-Device Wireless Keyboard for Computer, Phone and Tablet - FLOW Cross-Computer Control Compatible - Speckles",
+     "brand": "Logitech",
+     "model": "357237847459",
+     "priceCents": 10799,
+     "inStock": true,
+     "isFirstParty": false,
+     "sellerName": "JMDesign",
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 16,
+     "reasonRankedLower": "it is a marketplace listing rather than sold by the retailer itself — its page was never opened, so nothing about its barcode is known"
+    }
+   ],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "verified",
+   "identity": {
+    "partNumber": "12283",
+    "brand": "Logitech",
+    "title": "Logitech K780 Multi-Device Wireless Keyboard",
+    "provenance": "barcode-derived",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "Logitech K780",
+    "K780",
+    "Logitech 12283",
+    "Logitech 34772439-LOGITE",
+    "34772439-LOGITE",
+    "Logitech PRODUCT115571"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.google.com/search?q=%22097855122834%22",
+   "https://www.newegg.com/p/pl?d=Logitech%20K780",
+   "https://www.newegg.com/p/pl?d=K780",
+   "https://www.newegg.com/p/pl?d=Logitech%2012283",
+   "https://www.newegg.com/p/pl?d=Logitech%2034772439-LOGITE",
+   "https://www.newegg.com/p/pl?d=34772439-LOGITE",
+   "https://www.newegg.com/p/pl?d=Logitech%20PRODUCT115571",
+   "https://www.newegg.com/logitech-k780-920-008149-usb-bluetooth-wireless/p/N82E16823126476"
+  ]
+ },
+ {
+  "barcode": "731304329374",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "731304329374",
+   "clientSku": "",
+   "candidatesSeen": 2,
+   "probes": 1,
+   "match": {
+    "itemId": "N82E16842301682",
+    "url": "https://www.newegg.com/apc-bn450m-nema-5-15r-nema-5-15r/p/N82E16842301682",
+    "title": "APC BN450M UPS 450VA, 120V, 6 NEMA outlets (2 surge), Battery is not user replaceable - 8 Hour Recharge - 120 V Input - 120 V AC Output - Square Wave - 2 x NEMA 5-15R Surge, 4 x NEMA 5-15R Receptacle",
+    "brand": "APC",
+    "model": "BN450M",
+    "priceCents": 5899,
+    "inStock": true,
+    "isFirstParty": true,
+    "sellerName": null,
+    "imageUrl": null,
+    "retailerBarcode": "731304329374",
+    "score": 39,
+    "unverifiableReason": null
+   },
+   "alternatives": [
+    {
+     "itemId": "2FT-0001-002Z0",
+     "url": "https://www.newegg.com/apc-bn450m-ca/p/2FT-0001-002Z0",
+     "title": "APC BN450M UPS (Back Up Power Supply)",
+     "brand": "APC",
+     "model": "BN450M-CA",
+     "priceCents": 11885,
+     "inStock": true,
+     "isFirstParty": false,
+     "sellerName": "BTE Outlet",
+     "retailerBarcode": null,
+     "barcodeState": "unprobed",
+     "score": 19,
+     "reasonRankedLower": "its model number is not the client's part number, and the chosen listing's is — its page was never opened, so nothing about its barcode is known"
+    }
+   ],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "verified",
+   "identity": {
+    "partNumber": "32937",
+    "brand": "APC",
+    "title": "APC UPS 425VA/225W Battery Backup for Router, Small ...",
+    "provenance": "barcode-derived",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "APC BN450M"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.google.com/search?q=%22731304329374%22",
+   "https://www.newegg.com/p/pl?d=APC%20BN450M",
+   "https://www.newegg.com/apc-bn450m-nema-5-15r-nema-5-15r/p/N82E16842301682"
+  ]
+ },
+ {
+  "barcode": "074101944662",
+  "kind": "resolved",
+  "resolution": {
+   "barcode": "074101944662",
+   "clientSku": "",
+   "candidatesSeen": 13,
+   "probes": 8,
+   "match": null,
+   "alternatives": [],
+   "failure": null,
+   "searchesUnfetched": 0,
+   "searchesNotResultsPage": 0,
+   "probesUnanswered": 0,
+   "outcome": "not-found",
+   "identity": {
+    "partNumber": "94466",
+    "brand": "Fujifilm",
+    "title": "Fujifilm instax mini Rainbow Instant Film - 10ct",
+    "provenance": "barcode-derived",
+    "corroboratedBy": []
+   },
+   "queriesTried": [
+    "Fujifilm FUJ16437401",
+    "FUJ16437401",
+    "Fujifilm 94466",
+    "Fujifilm instax mini Rainbow Instant Film"
+   ],
+   "requests": 0
+  },
+  "asked": [
+   "https://www.google.com/search?q=%22074101944662%22",
+   "https://www.newegg.com/p/pl?d=Fujifilm%20FUJ16437401",
+   "https://www.newegg.com/p/pl?d=FUJ16437401",
+   "https://www.newegg.com/p/pl?d=Fujifilm%2094466",
+   "https://www.newegg.com/p/pl?d=Fujifilm%20instax%20mini%20Rainbow%20Instant%20Film",
+   "https://www.newegg.com/p/34G-0001-002F3",
+   "https://www.newegg.com/p/34G-0001-002F9",
+   "https://www.newegg.com/fujifilm-16386016/p/34G-0001-00BC3",
+   "https://www.newegg.com/p/34G-0001-00BM5",
+   "https://www.newegg.com/p/34G-0001-00BM4",
+   "https://www.newegg.com/p/34G-0001-00BC7",
+   "https://www.newegg.com/p/34G-0001-00BC5",
+   "https://www.newegg.com/p/34G-0001-008F0"
+  ]
+ },
+ {
+  "barcode": "663296420732",
+  "kind": "stopped",
+  "missing": "https://www.newegg.com/p/pl?d=Thrustmaster%20888LOTS",
+  "asked": [
+   "https://www.google.com/search?q=%22663296420732%22",
+   "https://www.newegg.com/p/pl?d=Thrustmaster%20T16000M",
+   "https://www.newegg.com/p/pl?d=T16000M",
+   "https://www.newegg.com/p/pl?d=Thrustmaster%2042073",
+   "https://www.newegg.com/p/pl?d=Thrustmaster%2016000M",
+   "https://www.newegg.com/p/pl?d=16000M",
+   "https://www.newegg.com/p/pl?d=Thrustmaster%20888LOTS"
+  ]
+ }
+]
