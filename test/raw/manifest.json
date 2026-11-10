@@ -1,5 +1,5 @@
 {
-  "note": "Real captured pages from the launch retailer, gzipped. Public retailer pages, not customer data. Chosen one per parser case; the facts below were produced by the committed parsers at selection time and are re-asserted by the spec. Amazon fixtures added 2026-09-13 from the PO's second handover package; the search page's session values were redacted on 2026-10-22, the product page is unmodified.",
+  "note": "Real captured pages from the launch retailer, gzipped. Public retailer pages, not customer data. Chosen one per parser case; the facts below were produced by the committed parsers at selection time and are re-asserted by the spec. Amazon fixtures added 2026-09-13 from the PO's second handover package; the search page's session values were redacted on 2026-10-22, the product page is unmodified. Best Buy fixtures added 2026-11-10 from the Best Buy investigation, distilled rather than raw (see each entry's facts.distilled).",
   "capturedBy": "handover recon spike",
   "selectedOn": "2026-09-10",
   "fixtures": [
@@ -98,6 +98,162 @@
         "incidentalUpcStrings": 16
       },
       "gzBytes": 402269
+    },
+    {
+      "name": "bestbuy-search-upc-first-party",
+      "why": "a barcode search Best Buy answers: the M310 silver's UPC returns one text-matched listing, Best Buy's own",
+      "facts": {
+        "query": "097855066237",
+        "url": "https://www.bestbuy.com/site/searchpage.jsp?st=097855066237",
+        "numFound": 1,
+        "recallStrategy": "textMatchOnly",
+        "candidates": 1,
+        "itemId": "1297054",
+        "isFirstParty": true,
+        "sellerName": "Best Buy",
+        "model": "910-001675",
+        "priceCents": 1699,
+        "source": "meriwether-data-scraper recon/captures/bestbuy-upc/cache",
+        "capturedOn": "2026-11-09",
+        "capturedThrough": "the vendor, country us, by the Best Buy investigation (row investigate-bestbuy-competitor)",
+        "distilled": "Distilled by scripts/distil-bestbuy.mjs: only the fields the adapter reads are kept (the GraphQL search and product results, the JSON-LD Product's sku, UPC and seller, and each rendered card's link, title and price), and the adapter's three parsers were proven to give identical output on the raw capture and on this file. Every session value the raw page carried — the vendor's egress addresses in x-forwarded-for, the visitor token, cookies (SID, CTT, __gpi, s_ecid) and analytics ids — is gone by construction, and test/bestbuy-fixtures.spec.ts checks that none remains."
+      },
+      "gzBytes": 814
+    },
+    {
+      "name": "bestbuy-search-upc-marketplace",
+      "why": "a barcode search answered by a marketplace listing that is sold out — the APC BK350's UPC returns one 3P listing whose button reads SOLD_OUT, a state the investigation recorded as unseen",
+      "facts": {
+        "query": "731304016298",
+        "url": "https://www.bestbuy.com/site/searchpage.jsp?st=731304016298",
+        "numFound": 1,
+        "candidates": 1,
+        "itemId": "11521676",
+        "isFirstParty": false,
+        "sellerName": null,
+        "model": "BK350",
+        "priceCents": 12310,
+        "inStock": false,
+        "source": "meriwether-data-scraper recon/captures/bestbuy-upc/cache",
+        "capturedOn": "2026-11-09",
+        "capturedThrough": "the vendor, country us, by the Best Buy investigation (row investigate-bestbuy-competitor)",
+        "distilled": "Distilled by scripts/distil-bestbuy.mjs: only the fields the adapter reads are kept (the GraphQL search and product results, the JSON-LD Product's sku, UPC and seller, and each rendered card's link, title and price), and the adapter's three parsers were proven to give identical output on the raw capture and on this file. Every session value the raw page carried — the vendor's egress addresses in x-forwarded-for, the visitor token, cookies (SID, CTT, __gpi, s_ecid) and analytics ids — is gone by construction, and test/bestbuy-fixtures.spec.ts checks that none remains."
+      },
+      "gzBytes": 848
+    },
+    {
+      "name": "bestbuy-search-upc-no-results",
+      "why": "a barcode search Best Buy answers with nothing — numFound 0 for the CyberPower CP1200AVR's UPC — beside a second search result holding a twelve-ad 'no results' carousel (a Dell laptop among them), which is not a result and is not read",
+      "facts": {
+        "query": "649532012008",
+        "url": "https://www.bestbuy.com/site/searchpage.jsp?st=649532012008",
+        "numFound": 0,
+        "candidates": 0,
+        "source": "meriwether-data-scraper recon/captures/bestbuy-upc/cache",
+        "capturedOn": "2026-11-09",
+        "capturedThrough": "the vendor, country us, by the Best Buy investigation (row investigate-bestbuy-competitor)",
+        "distilled": "Distilled by scripts/distil-bestbuy.mjs: only the fields the adapter reads are kept (the GraphQL search and product results, the JSON-LD Product's sku, UPC and seller, and each rendered card's link, title and price), and the adapter's three parsers were proven to give identical output on the raw capture and on this file. Every session value the raw page carried — the vendor's egress addresses in x-forwarded-for, the visitor token, cookies (SID, CTT, __gpi, s_ecid) and analytics ids — is gone by construction, and test/bestbuy-fixtures.spec.ts checks that none remains.",
+        "adsOnThePage": 12,
+        "oneAdItemId": "6668952"
+      },
+      "gzBytes": 1508
+    },
+    {
+      "name": "bestbuy-search-empty-63005",
+      "why": "a bare-digit part number Best Buy answers with a truly empty page ('No results found')",
+      "facts": {
+        "query": "63005",
+        "numFound": 0,
+        "candidates": 0,
+        "source": "meriwether-data-scraper packages/scraper/test/fixtures",
+        "capturedOn": "2026-11-09",
+        "capturedThrough": "the vendor, country us, by the Best Buy investigation (row investigate-bestbuy-competitor)",
+        "distilled": "Distilled by scripts/distil-bestbuy.mjs: only the fields the adapter reads are kept (the GraphQL search and product results, the JSON-LD Product's sku, UPC and seller, and each rendered card's link, title and price), and the adapter's three parsers were proven to give identical output on the raw capture and on this file. Every session value the raw page carried — the vendor's egress addresses in x-forwarded-for, the visitor token, cookies (SID, CTT, __gpi, s_ecid) and analytics ids — is gone by construction, and test/bestbuy-fixtures.spec.ts checks that none remains."
+      },
+      "gzBytes": 1106
+    },
+    {
+      "name": "bestbuy-search-lookalikes-only",
+      "why": "a part number nothing matches still returns a full page: 22 found, recall dvsOnly, the grid filled with 18 marketplace Filterbuy air filters — look-alikes, not a match",
+      "facts": {
+        "query": "zzqqxx-no-such-part-9",
+        "numFound": 22,
+        "recallStrategy": "dvsOnly",
+        "candidates": 0,
+        "source": "meriwether-data-scraper packages/scraper/test/fixtures",
+        "capturedOn": "2026-11-09",
+        "capturedThrough": "the vendor, country us, by the Best Buy investigation (row investigate-bestbuy-competitor)",
+        "distilled": "Distilled by scripts/distil-bestbuy.mjs: only the fields the adapter reads are kept (the GraphQL search and product results, the JSON-LD Product's sku, UPC and seller, and each rendered card's link, title and price), and the adapter's three parsers were proven to give identical output on the raw capture and on this file. Every session value the raw page carried — the vendor's egress addresses in x-forwarded-for, the visitor token, cookies (SID, CTT, __gpi, s_ecid) and analytics ids — is gone by construction, and test/bestbuy-fixtures.spec.ts checks that none remains."
+      },
+      "gzBytes": 1401
+    },
+    {
+      "name": "bestbuy-search-part-number",
+      "why": "an exact part number on a hybrid page: the M310 silver first, then other Logitech mice; 14 documents Best Buy marks isTermMatch false are dropped",
+      "facts": {
+        "query": "910-001675",
+        "numFound": 20,
+        "recallStrategy": "dvsTextMatchHybrid",
+        "candidates": 4,
+        "firstItemId": "1297054",
+        "droppedAsLookalikes": 14,
+        "source": "meriwether-data-scraper packages/scraper/test/fixtures",
+        "capturedOn": "2026-11-09",
+        "capturedThrough": "the vendor, country us, by the Best Buy investigation (row investigate-bestbuy-competitor)",
+        "distilled": "Distilled by scripts/distil-bestbuy.mjs: only the fields the adapter reads are kept (the GraphQL search and product results, the JSON-LD Product's sku, UPC and seller, and each rendered card's link, title and price), and the adapter's three parsers were proven to give identical output on the raw capture and on this file. Every session value the raw page carried — the vendor's egress addresses in x-forwarded-for, the visitor token, cookies (SID, CTT, __gpi, s_ecid) and analytics ids — is gone by construction, and test/bestbuy-fixtures.spec.ts checks that none remains."
+      },
+      "gzBytes": 2259
+    },
+    {
+      "name": "bestbuy-category-sponsored",
+      "why": "a listing page whose results grid mixes organic and sponsored (Best Buy Ads) listings; its carousel ads are not results",
+      "facts": {
+        "page": "Wireless & Bluetooth Mice, page 1",
+        "numFound": 947,
+        "candidates": 4,
+        "organic": ["6440334", "6630902"],
+        "sponsored": ["6640837", "6640816"],
+        "source": "meriwether-data-scraper packages/scraper/test/fixtures",
+        "capturedOn": "2026-11-09",
+        "capturedThrough": "the vendor, country us, by the Best Buy investigation (row investigate-bestbuy-competitor)",
+        "distilled": "Distilled by scripts/distil-bestbuy.mjs: only the fields the adapter reads are kept (the GraphQL search and product results, the JSON-LD Product's sku, UPC and seller, and each rendered card's link, title and price), and the adapter's three parsers were proven to give identical output on the raw capture and on this file. Every session value the raw page carried — the vendor's egress addresses in x-forwarded-for, the visitor token, cookies (SID, CTT, __gpi, s_ecid) and analytics ids — is gone by construction, and test/bestbuy-fixtures.spec.ts checks that none remains.",
+        "carouselAds": ["6640850", "6594154", "6621858", "6628326"]
+      },
+      "gzBytes": 2280
+    },
+    {
+      "name": "bestbuy-pdp-m310",
+      "why": "Best Buy's own product page: the UPC in all three places it states one (the upc field, the 'UPC' specification row, the JSON-LD additionalProperty), all equal",
+      "facts": {
+        "url": "https://www.bestbuy.com/product/logitech-m310-wireless-optical-ambidextrous-mouse-wireless-silver/J7H7ZLV3V9/sku/1297054",
+        "sku": "1297054",
+        "barcode": "097855066237",
+        "priceCents": 1699,
+        "inStock": true,
+        "sellerName": "Best Buy",
+        "source": "meriwether-data-scraper packages/scraper/test/fixtures",
+        "capturedOn": "2026-11-09",
+        "capturedThrough": "the vendor, country us, by the Best Buy investigation (row investigate-bestbuy-competitor)",
+        "distilled": "Distilled by scripts/distil-bestbuy.mjs: only the fields the adapter reads are kept (the GraphQL search and product results, the JSON-LD Product's sku, UPC and seller, and each rendered card's link, title and price), and the adapter's three parsers were proven to give identical output on the raw capture and on this file. Every session value the raw page carried — the vendor's egress addresses in x-forwarded-for, the visitor token, cookies (SID, CTT, __gpi, s_ecid) and analytics ids — is gone by construction, and test/bestbuy-fixtures.spec.ts checks that none remains."
+      },
+      "gzBytes": 807
+    },
+    {
+      "name": "bestbuy-pdp-marketplace-bk350",
+      "why": "a marketplace listing's product page: the seller's name is on the page (JSON-LD offers.seller) and nowhere on the search card; sold out, with a price",
+      "facts": {
+        "url": "https://www.bestbuy.com/product/apc-6-outlet-rj11-telco-350va-210w-back-ups-cs-tower-1020j-avr-bk350-beige/JXKZP6GJJF/sku/11521676",
+        "sku": "11521676",
+        "barcode": "731304016298",
+        "priceCents": 12310,
+        "inStock": false,
+        "sellerName": "IPC-STORE",
+        "source": "meriwether-data-scraper recon/captures/bestbuy-upc/cache",
+        "capturedOn": "2026-11-09",
+        "capturedThrough": "the vendor, country us, by the Best Buy investigation (row investigate-bestbuy-competitor)",
+        "distilled": "Distilled by scripts/distil-bestbuy.mjs: only the fields the adapter reads are kept (the GraphQL search and product results, the JSON-LD Product's sku, UPC and seller, and each rendered card's link, title and price), and the adapter's three parsers were proven to give identical output on the raw capture and on this file. Every session value the raw page carried — the vendor's egress addresses in x-forwarded-for, the visitor token, cookies (SID, CTT, __gpi, s_ecid) and analytics ids — is gone by construction, and test/bestbuy-fixtures.spec.ts checks that none remains."
+      },
+      "gzBytes": 623
     }
   ]
 }
