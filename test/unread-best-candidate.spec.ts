@@ -15,7 +15,11 @@ import {
   type Fetcher,
   type FetchResult,
 } from "../src/fetcher/types.js";
-import { DEFAULT_OPTIONS, resolveItem } from "../src/resolve.js";
+import {
+  DEFAULT_OPTIONS,
+  resolveItem,
+  type Resolution,
+} from "../src/resolve.js";
 import { RUN_DEFAULTS, runList } from "../src/run.js";
 
 /**
@@ -37,15 +41,17 @@ import { RUN_DEFAULTS, runList } from "../src/run.js";
  * 2. Read now, it settles as any read does: an agreeing barcode verifies, an
  *    empty one is `unverifiable`, a disagreeing one is `unconfirmed` on it.
  * 3. **Read, the best listing is the proposal**, as it always was.
- * 4. **Still unread, it is not proposed.** A LOWER listing is proposed
+ * 4. **Still unread on a first attempt, the item is a failure** — "the best
+ *    candidate's page could not be read" — whatever else was read. Retry
+ *    first (the lead, 2026-11-11): the run retries it after the rest of the
+ *    list, so the best listing gets its second read.
+ * 5. **Still unread on that last attempt**, a LOWER listing is proposed
  *    instead only when its own page was read (so its disagreement is a fact)
  *    and it clears, on its own evidence, the same floor the best had to —
  *    part-number evidence and the reporting score. A reviewer is then shown a
  *    barcode that really disagrees, beside the unread best among the
- *    alternatives.
- * 5. Otherwise the item carries a **failure** — "the best candidate's page
- *    could not be read" — which the run retries after the rest of the list
- *    and the gateway files as an error: never review, never not carried.
+ *    alternatives. With none qualifying it stays a failure, which the
+ *    gateway files as an error: never review, never not carried.
  */
 
 const TRENDNET_UPC = "710931505061";
@@ -241,19 +247,48 @@ describe("the best candidate's page was never read", () => {
     expect(r.failure).toMatch(/^the best candidate's page could not be read/);
   });
 
-  it("a lower listing read and disagreeing is proposed only with part-number evidence of its own", async () => {
-    const adapter = retailer(
+  const withSibling = (
+    siblingRead: boolean,
+  ): {
+    adapter: RetailerAdapter;
+    fetcher: Scripted;
+  } => ({
+    adapter: retailer(
       SEARCH,
       { [QUERY]: [BEST, SIBLING, TG83] },
       DISAGREEING,
       3,
-    );
-    const fetcher = new Scripted({
+    ),
+    fetcher: new Scripted({
       [BEST.url]: [FAIL],
-      [SIBLING.url]: [page(SIBLING.url)],
+      [SIBLING.url]: [siblingRead ? page(SIBLING.url) : FAIL],
       [TG83.url]: [page(TG83.url)],
-    });
+    }),
+  });
+
+  it("🔴 on a first attempt is a failure, even with a read lower listing that qualifies", async () => {
+    // Retry first: the best listing deserves its read, and the failure is
+    // what sends the item to the run's after-run retry.
+    const { adapter, fetcher } = withSibling(true);
     const r = await resolveItem(REQUEST, adapter, fetcher, OPTIONS);
+    expect(r.outcome).toBe("not-found");
+    expect(r.match).toBeNull();
+    expect(r.failure).toMatch(
+      /^the best candidate's page could not be read, so the item is left for the run's retry/,
+    );
+  });
+
+  it("on the last attempt, a lower listing read and naming the part number is proposed", async () => {
+    const { adapter, fetcher } = withSibling(true);
+    const r = await resolveItem(
+      REQUEST,
+      adapter,
+      fetcher,
+      OPTIONS,
+      undefined,
+      undefined,
+      true,
+    );
     expect(r.outcome).toBe("unconfirmed");
     // The sibling's page was read: its disagreement is a fact, and it names
     // the part number. The TPE-TG83 was read too, and does not.
@@ -263,7 +298,24 @@ describe("the best candidate's page was never read", () => {
     expect(r.alternatives.map((a) => a.itemId)).toContain("BEST");
   });
 
-  it("CONTROL: the same sibling, UNREAD, is not proposed either", async () => {
+  it("CONTROL: on the last attempt the same sibling, UNREAD, is not proposed", async () => {
+    const { adapter, fetcher } = withSibling(false);
+    const r = await resolveItem(
+      REQUEST,
+      adapter,
+      fetcher,
+      OPTIONS,
+      undefined,
+      undefined,
+      true,
+    );
+    expect(r.outcome).toBe("not-found");
+    expect(r.failure).toMatch(
+      /^the best candidate's page could not be read, and no listing that was read clears the evidence floor/,
+    );
+  });
+
+  it("CONTROL: on the last attempt, the best read now settles as it always did", async () => {
     const adapter = retailer(
       SEARCH,
       { [QUERY]: [BEST, SIBLING, TG83] },
@@ -271,13 +323,21 @@ describe("the best candidate's page was never read", () => {
       3,
     );
     const fetcher = new Scripted({
-      [BEST.url]: [FAIL],
-      [SIBLING.url]: [FAIL],
+      [BEST.url]: [page(BEST.url)],
+      [SIBLING.url]: [page(SIBLING.url)],
       [TG83.url]: [page(TG83.url)],
     });
-    const r = await resolveItem(REQUEST, adapter, fetcher, OPTIONS);
-    expect(r.outcome).toBe("not-found");
-    expect(r.failure).toMatch(/^the best candidate's page could not be read/);
+    const r = await resolveItem(
+      REQUEST,
+      adapter,
+      fetcher,
+      OPTIONS,
+      undefined,
+      undefined,
+      true,
+    );
+    expect(r.outcome).toBe("unconfirmed");
+    expect(r.match?.itemId).toBe("BEST");
   });
 
   it("is read once more within the budget, and settles on what it says", async () => {
@@ -347,6 +407,64 @@ describe("the best candidate's page was never read", () => {
 });
 
 describe("a run retries the failure after the rest of its list", () => {
+  const runOnce = async (
+    adapter: RetailerAdapter,
+    fetcher: Scripted,
+  ): Promise<readonly Resolution[]> => {
+    const dir = await mkdtemp(path.join(tmpdir(), "resolution-unread-"));
+    try {
+      return await runList([REQUEST], adapter, fetcher, {
+        ...RUN_DEFAULTS,
+        ...OPTIONS,
+        runDir: dir,
+        concurrency: 1,
+      });
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  };
+
+  it("🔴 the best never answering: the retry proposes the read sibling", async () => {
+    const adapter = retailer(
+      SEARCH,
+      { [QUERY]: [BEST, SIBLING, TG83] },
+      DISAGREEING,
+      3,
+    );
+    const fetcher = new Scripted({
+      [BEST.url]: [FAIL],
+      [SIBLING.url]: [page(SIBLING.url)],
+      [TG83.url]: [page(TG83.url)],
+    });
+    const [r] = await runOnce(adapter, fetcher);
+    expect(r?.outcome).toBe("unconfirmed");
+    expect(r?.match?.itemId).toBe("SIB");
+    expect(r?.failure).toBeNull();
+    // Once on each pass: the three listings spend the item's three probes,
+    // so neither pass has one left to read the best a second time — the
+    // after-run retry is the read it gets.
+    expect(fetcher.timesAsked(BEST.url)).toBe(2);
+  });
+
+  it("the best answering in the retry: the retry settles on it", async () => {
+    const adapter = retailer(
+      SEARCH,
+      { [QUERY]: [BEST, SIBLING, TG83] },
+      DISAGREEING,
+      3,
+    );
+    const fetcher = new Scripted({
+      [BEST.url]: [FAIL, page(BEST.url)],
+      [SIBLING.url]: [page(SIBLING.url)],
+      [TG83.url]: [page(TG83.url)],
+    });
+    const [r] = await runOnce(adapter, fetcher);
+    // The first pass's read failed; the retry's answered and disagrees.
+    expect(fetcher.timesAsked(BEST.url)).toBe(2);
+    expect(r?.outcome).toBe("unconfirmed");
+    expect(r?.match?.itemId).toBe("BEST");
+  });
+
   it("🔴 the unread best goes to the after-run retry, and the retry can verify it", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "resolution-unread-"));
     try {

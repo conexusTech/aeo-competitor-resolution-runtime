@@ -428,6 +428,13 @@ export async function resolveItem(
    * = a lone item, which reads the index for itself.
    */
   index?: IndexCache,
+  /**
+   * Whether this is the item's last attempt in the run — `runList`'s
+   * after-run retry. Absent = a first attempt, which a failure here sends to
+   * that retry. See `proposal` in the resolution below for the one rule it
+   * changes.
+   */
+  lastAttempt = false,
 ): Promise<Resolution> {
   // 🔑 Counted as the probes happen and stamped on whatever comes back, so
   // no return below can report a figure from before its last probe.
@@ -440,6 +447,7 @@ export async function resolveItem(
     tally,
     memory,
     index,
+    lastAttempt,
   );
   return {
     ...resolution,
@@ -466,6 +474,7 @@ async function resolveCounted(
   tally: ProbeTally,
   memory?: ProbeMemory,
   index?: IndexCache,
+  lastAttempt = false,
 ): Promise<Resolution> {
   // 🔴 **Every `requests` below used to be `liveRequestCount - startedAt` on
   // the fetcher this was handed — and that is not an attribution.** `runList`
@@ -1271,12 +1280,23 @@ async function resolveCounted(
    * What goes to a person as `unconfirmed`: a listing whose page was READ and
    * whose published barcode disagrees — never one nobody read.
    *
-   * 🔴 **The best listing, where its page was read**, as it always was. Where
-   * it was not — even after the read above — the best listing below it
-   * qualifies only when its page WAS read (so the disagreement a reviewer is
-   * shown is a fact) and it clears, on its own evidence, the floor the best
-   * had to clear: part-number evidence and the reporting score. The unread
-   * best stays among the alternatives for the reviewer to choose instead.
+   * 🔴 **The best listing, where its page was read**, as it always was.
+   *
+   * Where it was not, even after the read above, **retry first** (the lead,
+   * 2026-11-11):
+   *
+   * - **On a first attempt the item is a failure**, whatever else was read.
+   *   Jody's rule is that a failed read is never a finding, and the best
+   *   listing deserves its read: the failure sends the item to `runList`'s
+   *   after-run retry, which reads it again once the run has stopped
+   *   pressing the retailer.
+   * - **On that last attempt**, a listing below the best is proposed instead
+   *   when its page WAS read (so the disagreement a reviewer is shown is a
+   *   fact) and it clears, on its own evidence, the floor the best had to
+   *   clear: part-number evidence and the reporting score. A person then sees
+   *   a real, read listing rather than nothing, with the unread best among
+   *   the alternatives to choose instead. With none qualifying it stays a
+   *   failure.
    *
    * Every read page here disagrees: an agreeing one returned `verified`, and
    * an empty one made this an `unverifiable` above.
@@ -1284,15 +1304,20 @@ async function resolveCounted(
   const proposal =
     bestRead !== null
       ? best
-      : (ranked.slice(1).find((entry) => {
-          const read = probed.get(entry.candidate.url);
-          return (
-            read !== undefined &&
-            read !== null &&
-            entry.score >= MIN_EVIDENCE_TO_REPORT &&
-            hasPartNumberEvidence({ ...rankInput, candidate: entry.candidate })
-          );
-        }) ?? null);
+      : !lastAttempt
+        ? null
+        : (ranked.slice(1).find((entry) => {
+            const read = probed.get(entry.candidate.url);
+            return (
+              read !== undefined &&
+              read !== null &&
+              entry.score >= MIN_EVIDENCE_TO_REPORT &&
+              hasPartNumberEvidence({
+                ...rankInput,
+                candidate: entry.candidate,
+              })
+            );
+          }) ?? null);
 
   if (proposal === null) {
     // 🔴 **A failure, never a proposal and never a miss.** The listing most
@@ -1310,8 +1335,11 @@ async function resolveCounted(
       // The run's own account of what went unread follows, in the words
       // every other miss over an unread page uses.
       failure:
-        `the best candidate's page could not be read, and no listing that ` +
-        `was read clears the evidence floor, so none is proposed: ` +
+        (lastAttempt
+          ? `the best candidate's page could not be read, and no listing ` +
+            `that was read clears the evidence floor, so none is proposed: `
+          : `the best candidate's page could not be read, so the item is ` +
+            `left for the run's retry rather than proposed: `) +
         (missFailure() ??
           `${tally.unanswered} of ${probes} product pages could not be read`),
     };

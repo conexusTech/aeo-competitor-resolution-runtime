@@ -328,6 +328,8 @@ export async function runList(
           options,
           memory,
           index,
+          // The after-run retry is the item's last attempt.
+          isRetry,
         );
       } catch (error) {
         // The pipeline could not complete. Recorded as a failure with its
