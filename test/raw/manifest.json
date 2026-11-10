@@ -1,5 +1,5 @@
 {
-  "note": "Real captured pages from the launch retailer, gzipped. Public retailer pages, not customer data. Chosen one per parser case; the facts below were produced by the committed parsers at selection time and are re-asserted by the spec. Amazon fixtures added 2026-09-13 from the PO's second handover package; the search page's session values were redacted on 2026-10-22, the product page is unmodified. Best Buy fixtures added 2026-11-10 from the Best Buy investigation, distilled rather than raw (see each entry's facts.distilled).",
+  "note": "Real captured pages from the launch retailer, gzipped. Public retailer pages, not customer data. Chosen one per parser case; the facts below were produced by the committed parsers at selection time and are re-asserted by the spec. Amazon fixtures added 2026-09-13 from the PO's second handover package; the search page's session values were redacted on 2026-10-22, the product page is unmodified. Best Buy fixtures added 2026-11-10 from the Best Buy investigation, distilled rather than raw (see each entry's facts.distilled). B&H fixtures added 2026-11-10 from the B&H investigation, distilled rather than raw (see each entry's facts.distilled).",
   "capturedBy": "handover recon spike",
   "selectedOn": "2026-09-10",
   "fixtures": [
@@ -254,6 +254,193 @@
         "distilled": "Distilled by scripts/distil-bestbuy.mjs: only the fields the adapter reads are kept (the GraphQL search and product results, the JSON-LD Product's sku, UPC and seller, and each rendered card's link, title and price), and the adapter's three parsers were proven to give identical output on the raw capture and on this file. Every session value the raw page carried — the vendor's egress addresses in x-forwarded-for, the visitor token, cookies (SID, CTT, __gpi, s_ecid) and analytics ids — is gone by construction, and test/bestbuy-fixtures.spec.ts checks that none remains."
       },
       "gzBytes": 623
+    },
+    {
+      "name": "bh-search-upc-m310",
+      "why": "a barcode search B&H answers with exactly the item: the M310 silver's UPC returns one listing, B&H's own",
+      "facts": {
+        "query": "097855066237",
+        "url": "https://www.bhphotovideo.com/c/search?q=097855066237",
+        "count": 1,
+        "candidates": 1,
+        "itemId": "731610",
+        "model": "910-001675",
+        "brand": "Logitech",
+        "priceCents": 2299,
+        "inStock": true,
+        "statusMessage": "Temporarily Out of Stock",
+        "source": "meriwether-data-scraper packages/scraper/test/fixtures",
+        "capturedOn": "2026-11-10",
+        "capturedThrough": "the vendor, country us, by the B&H investigation (row investigate-bh-competitor)",
+        "distilled": "Distilled by scripts/distil-bh.mjs: only the fields the adapter reads are kept (the preloaded state's listing response and single-item product entry, trimmed to the fields parsed; the JSON-LD Product's url, mpn and gtin fields; the rendered \"UPC:\" lines), and the adapter's parsers were proven to give identical output on the raw capture and on this file. Every session value the raw page carried — bhTraceId, ssrReqId and qasAuthToken in its state, Cloudflare's __CF$cv$params and challenge ray=, the watchdog beacon's reqId= — is gone by construction, and test/bh-fixtures.spec.ts checks that none remains."
+      },
+      "gzBytes": 713
+    },
+    {
+      "name": "bh-search-text-m310",
+      "why": "a text search listing the M310 first, then three other Logitech mice; every card carries its MFR # and price, and no card a UPC",
+      "facts": {
+        "query": "logitech m310",
+        "count": 4,
+        "candidates": 4,
+        "firstItemId": "731610",
+        "source": "meriwether-data-scraper packages/scraper/test/fixtures",
+        "capturedOn": "2026-11-10",
+        "capturedThrough": "the vendor, country us, by the B&H investigation (row investigate-bh-competitor)",
+        "distilled": "Distilled by scripts/distil-bh.mjs: only the fields the adapter reads are kept (the preloaded state's listing response and single-item product entry, trimmed to the fields parsed; the JSON-LD Product's url, mpn and gtin fields; the rendered \"UPC:\" lines), and the adapter's parsers were proven to give identical output on the raw capture and on this file. Every session value the raw page carried — bhTraceId, ssrReqId and qasAuthToken in its state, Cloudflare's __CF$cv$params and challenge ray=, the watchdog beacon's reqId= — is gone by construction, and test/bh-fixtures.spec.ts checks that none remains."
+      },
+      "gzBytes": 952
+    },
+    {
+      "name": "bh-search-no-results-cf-08lb",
+      "why": "a search nothing matches: an explicit no-results page (responseInfo.type NO_RESULTS_SEARCH, status 404 inside a 200), no items, no count — a results page with nothing on it, not a refusal",
+      "facts": {
+        "query": "CF-08LB",
+        "responseInfo": "NO_RESULTS_SEARCH",
+        "candidates": 0,
+        "source": "meriwether-data-scraper packages/scraper/test/fixtures",
+        "capturedOn": "2026-11-10",
+        "capturedThrough": "the vendor, country us, by the B&H investigation (row investigate-bh-competitor)",
+        "distilled": "Distilled by scripts/distil-bh.mjs: only the fields the adapter reads are kept (the preloaded state's listing response and single-item product entry, trimmed to the fields parsed; the JSON-LD Product's url, mpn and gtin fields; the rendered \"UPC:\" lines), and the adapter's parsers were proven to give identical output on the raw capture and on this file. Every session value the raw page carried — bhTraceId, ssrReqId and qasAuthToken in its state, Cloudflare's __CF$cv$params and challenge ray=, the watchdog beacon's reqId= — is gone by construction, and test/bh-fixtures.spec.ts checks that none remains."
+      },
+      "gzBytes": 293
+    },
+    {
+      "name": "bh-search-partial-nonsense",
+      "why": "a part number nothing matches falls back to a partial match (PARTIAL_SEARCH): 28 look-alike cards, 22 of them MAP items whose price B&H withholds",
+      "facts": {
+        "query": "zzqqxx-no-such-part-9",
+        "infoMessage": "PARTIAL_SEARCH",
+        "candidates": 28,
+        "priceWithheld": 22,
+        "source": "meriwether-data-scraper packages/scraper/test/fixtures",
+        "capturedOn": "2026-11-10",
+        "capturedThrough": "the vendor, country us, by the B&H investigation (row investigate-bh-competitor)",
+        "distilled": "Distilled by scripts/distil-bh.mjs: only the fields the adapter reads are kept (the preloaded state's listing response and single-item product entry, trimmed to the fields parsed; the JSON-LD Product's url, mpn and gtin fields; the rendered \"UPC:\" lines), and the adapter's parsers were proven to give identical output on the raw capture and on this file. Every session value the raw page carried — bhTraceId, ssrReqId and qasAuthToken in its state, Cloudflare's __CF$cv$params and challenge ray=, the watchdog beacon's reqId= — is gone by construction, and test/bh-fixtures.spec.ts checks that none remains."
+      },
+      "gzBytes": 2680
+    },
+    {
+      "name": "bh-search-other-brand-29538",
+      "why": "a bare numeric part number answered by ANOTHER brand's item: Allsop's 29538 wrist rest is not carried, and B&H lists a C2G DisplayPort cable whose MFR # is 29538",
+      "facts": {
+        "query": "29538",
+        "url": "https://www.bhphotovideo.com/c/search?q=29538",
+        "count": 1,
+        "candidates": 1,
+        "itemId": "1421339",
+        "model": "29538",
+        "brand": "C2G",
+        "source": "meriwether-data-scraper recon/captures/bh-upc/cache",
+        "capturedOn": "2026-11-10",
+        "capturedThrough": "the vendor, country us, by the B&H investigation (row investigate-bh-competitor)",
+        "distilled": "Distilled by scripts/distil-bh.mjs: only the fields the adapter reads are kept (the preloaded state's listing response and single-item product entry, trimmed to the fields parsed; the JSON-LD Product's url, mpn and gtin fields; the rendered \"UPC:\" lines), and the adapter's parsers were proven to give identical output on the raw capture and on this file. Every session value the raw page carried — bhTraceId, ssrReqId and qasAuthToken in its state, Cloudflare's __CF$cv$params and challenge ray=, the watchdog beacon's reqId= — is gone by construction, and test/bh-fixtures.spec.ts checks that none remains."
+      },
+      "gzBytes": 694
+    },
+    {
+      "name": "bh-pdp-m310",
+      "why": "B&H's product page for the M310 silver: the UPC in all four places it states one (overview, specifications, JSON-LD gtin12, the rendered UPC line), all equal",
+      "facts": {
+        "url": "https://www.bhphotovideo.com/c/product/731610-REG/Logitech_910_001675_M310_Wireless_Mouse.html",
+        "skuNo": "731610",
+        "barcode": "097855066237",
+        "priceCents": 2299,
+        "inStock": true,
+        "sellerName": "B&H Photo",
+        "source": "meriwether-data-scraper packages/scraper/test/fixtures",
+        "capturedOn": "2026-11-10",
+        "capturedThrough": "the vendor, country us, by the B&H investigation (row investigate-bh-competitor)",
+        "distilled": "Distilled by scripts/distil-bh.mjs: only the fields the adapter reads are kept (the preloaded state's listing response and single-item product entry, trimmed to the fields parsed; the JSON-LD Product's url, mpn and gtin fields; the rendered \"UPC:\" lines), and the adapter's parsers were proven to give identical output on the raw capture and on this file. Every session value the raw page carried — bhTraceId, ssrReqId and qasAuthToken in its state, Cloudflare's __CF$cv$params and challenge ray=, the watchdog beacon's reqId= — is gone by construction, and test/bh-fixtures.spec.ts checks that none remains."
+      },
+      "gzBytes": 830
+    },
+    {
+      "name": "bh-pdp-z623-discontinued",
+      "why": "a discontinued item with the right MFR # and brand: B&H lists the Logitech Z623 (980-000402) as Discontinued (NO_LONGER_AVAILABLE, price and cart hidden), states no UPC (upc: null), and its state still holds a last price of $99.99 that is not a current one",
+      "facts": {
+        "url": "https://www.bhphotovideo.com/c/product/736288-REG/Logitech_980_000402_Z623_THX_Certified_2_1_Speaker.html",
+        "skuNo": "736288",
+        "barcode": null,
+        "readerBarcode": "",
+        "priceCents": null,
+        "lastPriceInState": 9999,
+        "inStock": false,
+        "noBarcodeReason": "discontinued at B&H, no UPC published",
+        "source": "meriwether-data-scraper packages/scraper/test/fixtures",
+        "capturedOn": "2026-11-10",
+        "capturedThrough": "the vendor, country us, by the B&H investigation (row investigate-bh-competitor)",
+        "distilled": "Distilled by scripts/distil-bh.mjs: only the fields the adapter reads are kept (the preloaded state's listing response and single-item product entry, trimmed to the fields parsed; the JSON-LD Product's url, mpn and gtin fields; the rendered \"UPC:\" lines), and the adapter's parsers were proven to give identical output on the raw capture and on this file. Every session value the raw page carried — bhTraceId, ssrReqId and qasAuthToken in its state, Cloudflare's __CF$cv$params and challenge ray=, the watchdog beacon's reqId= — is gone by construction, and test/bh-fixtures.spec.ts checks that none remains."
+      },
+      "gzBytes": 796
+    },
+    {
+      "name": "bh-pdp-replacement",
+      "why": "a discontinued item's url served B&H's replacement page (/c/replacement_for/1641699-REG/…): replacementInfo and no item — not a product page",
+      "facts": {
+        "url": "https://www.bhphotovideo.com/c/product/1641699-REG/sibelius_9938_30184_00_photoscore_notateme_ultimate_download.html",
+        "product": null,
+        "source": "meriwether-data-scraper packages/scraper/test/fixtures",
+        "capturedOn": "2026-11-10",
+        "capturedThrough": "the vendor, country us, by the B&H investigation (row investigate-bh-competitor)",
+        "distilled": "Distilled by scripts/distil-bh.mjs: only the fields the adapter reads are kept (the preloaded state's listing response and single-item product entry, trimmed to the fields parsed; the JSON-LD Product's url, mpn and gtin fields; the rendered \"UPC:\" lines), and the adapter's parsers were proven to give identical output on the raw capture and on this file. Every session value the raw page carried — bhTraceId, ssrReqId and qasAuthToken in its state, Cloudflare's __CF$cv$params and challenge ray=, the watchdog beacon's reqId= — is gone by construction, and test/bh-fixtures.spec.ts checks that none remains."
+      },
+      "gzBytes": 263
+    },
+    {
+      "name": "bh-pdp-kit-components",
+      "why": "a kit's product page (a Logitech G mouse-and-charging-pad kit): its overview entries, its JSON-LD gtin12 and both rendered UPC lines state the two COMPONENTS' UPCs, keyed to the components' own items, and none is the kit's",
+      "facts": {
+        "url": "https://www.bhphotovideo.com/c/product/1882239-REG/logitech_g_pro_2_lightspeed_wireless.html",
+        "skuNo": "1882239",
+        "barcode": null,
+        "readerBarcode": "",
+        "componentUpcs": ["097855195760", "097855201270"],
+        "priceCents": 24899,
+        "inStock": true,
+        "source": "meriwether-data-scraper recon/captures/bh-upc/cache",
+        "capturedOn": "2026-11-10",
+        "capturedThrough": "the vendor, country us, by the B&H investigation (row investigate-bh-competitor)",
+        "distilled": "Distilled by scripts/distil-bh.mjs: only the fields the adapter reads are kept (the preloaded state's listing response and single-item product entry, trimmed to the fields parsed; the JSON-LD Product's url, mpn and gtin fields; the rendered \"UPC:\" lines), and the adapter's parsers were proven to give identical output on the raw capture and on this file. Every session value the raw page carried — bhTraceId, ssrReqId and qasAuthToken in its state, Cloudflare's __CF$cv$params and challenge ray=, the watchdog beacon's reqId= — is gone by construction, and test/bh-fixtures.spec.ts checks that none remains."
+      },
+      "gzBytes": 891
+    },
+    {
+      "name": "bh-pdp-bk350-special-order",
+      "why": "a product page whose stock status is DYNAMIC (shown 'Special Order'): orderable but not stated in stock, so stock is unknown; price shown",
+      "facts": {
+        "url": "https://www.bhphotovideo.com/c/product/228425-REG/APC_BK350_Back_UPS_350_CS.html",
+        "skuNo": "228425",
+        "barcode": "731304016298",
+        "priceCents": 12899,
+        "inStock": null,
+        "stockStatus": "DYNAMIC",
+        "source": "meriwether-data-scraper recon/captures/bh-upc/cache",
+        "capturedOn": "2026-11-10",
+        "capturedThrough": "the vendor, country us, by the B&H investigation (row investigate-bh-competitor)",
+        "distilled": "Distilled by scripts/distil-bh.mjs: only the fields the adapter reads are kept (the preloaded state's listing response and single-item product entry, trimmed to the fields parsed; the JSON-LD Product's url, mpn and gtin fields; the rendered \"UPC:\" lines), and the adapter's parsers were proven to give identical output on the raw capture and on this file. Every session value the raw page carried — bhTraceId, ssrReqId and qasAuthToken in its state, Cloudflare's __CF$cv$params and challenge ray=, the watchdog beacon's reqId= — is gone by construction, and test/bh-fixtures.spec.ts checks that none remains."
+      },
+      "gzBytes": 819
+    },
+    {
+      "name": "bh-search-mfr-z623",
+      "why": "the Logitech Z623's MFR # (980-000402) answered with 14 speakers: the discontinued Z623 first, then Logitech's Z313 (980-000382), Z625 (980-001258) and Z533 (980-001053) — a family sharing the 980-00 prefix, none of them the item — beside other brands' speakers",
+      "facts": {
+        "query": "980-000402",
+        "url": "https://www.bhphotovideo.com/c/search?q=980-000402",
+        "count": 14,
+        "candidates": 14,
+        "firstItemId": "736288",
+        "firstModel": "980-000402",
+        "firstPriceCents": null,
+        "firstInStock": false,
+        "sameFamily": ["980-000382", "980-001258", "980-001053"],
+        "source": "meriwether-data-scraper recon/captures/bh-upc/cache",
+        "capturedOn": "2026-11-10",
+        "capturedThrough": "the vendor, country us, by the B&H investigation (row investigate-bh-competitor)",
+        "distilled": "Distilled by scripts/distil-bh.mjs: only the fields the adapter reads are kept (the preloaded state's listing response and single-item product entry, trimmed to the fields parsed; the JSON-LD Product's url, mpn and gtin fields; the rendered \"UPC:\" lines), and the adapter's parsers were proven to give identical output on the raw capture and on this file. Every session value the raw page carried — bhTraceId, ssrReqId and qasAuthToken in its state, Cloudflare's __CF$cv$params and challenge ray=, the watchdog beacon's reqId= — is gone by construction, and test/bh-fixtures.spec.ts checks that none remains."
+      },
+      "gzBytes": 2150
     }
   ]
 }
