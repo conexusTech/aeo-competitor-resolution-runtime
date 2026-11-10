@@ -122,6 +122,15 @@ export interface ParsedProduct {
   readonly priceCents: number | null;
   readonly inStock: boolean | null;
   readonly title: string | null;
+  /**
+   * The seller the page names for its offer, or `null` where it names none.
+   *
+   * 🔑 **Required, because a search result may not say.** Best Buy's search
+   * card names Best Buy's own offers and never a marketplace seller; the
+   * product page does. The pairing's evidence takes this before the search
+   * result's, as it does the price.
+   */
+  readonly sellerName: string | null;
 }
 
 /**

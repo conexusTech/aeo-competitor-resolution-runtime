@@ -913,7 +913,7 @@ function evidence(
     priceCents: page?.priceCents ?? candidate.priceCents,
     inStock: page?.inStock ?? candidate.inStock,
     isFirstParty: candidate.isFirstParty,
-    sellerName: candidate.sellerName,
+    sellerName: page?.sellerName ?? candidate.sellerName,
     imageUrl: candidate.imageUrl,
     retailerBarcode,
     score,

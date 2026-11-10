@@ -64,6 +64,7 @@ function fakeAdapter(
         priceCents: null,
         inStock: null,
         title: null,
+        sellerName: null,
       },
   };
 }
@@ -136,6 +137,7 @@ describe("resolveItem outcomes", () => {
           priceCents: 899,
           inStock: true,
           title: null,
+          sellerName: null,
         },
       },
     );
@@ -174,6 +176,7 @@ describe("resolveItem outcomes", () => {
           priceCents: 899,
           inStock: true,
           title: null,
+          sellerName: null,
         },
       },
     );
@@ -208,6 +211,7 @@ describe("resolveItem outcomes", () => {
           priceCents: 899,
           inStock: true,
           title: null,
+          sellerName: null,
         },
       },
     );
@@ -237,6 +241,7 @@ describe("resolveItem outcomes", () => {
           priceCents: 899,
           inStock: true,
           title: null,
+          sellerName: null,
         },
       },
     );
@@ -265,6 +270,7 @@ describe("resolveItem outcomes", () => {
           priceCents: 899,
           inStock: true,
           title: null,
+          sellerName: null,
         },
       },
     );
@@ -299,6 +305,7 @@ describe("resolveItem outcomes", () => {
           priceCents: 1,
           inStock: true,
           title: null,
+          sellerName: null,
         },
         B: {
           barcode: "099999999999",
@@ -306,6 +313,7 @@ describe("resolveItem outcomes", () => {
           priceCents: 1,
           inStock: true,
           title: null,
+          sellerName: null,
         },
       },
     );
@@ -379,6 +387,7 @@ describe("resolveItem outcomes", () => {
           priceCents: null,
           inStock: null,
           title: null,
+          sellerName: null,
         },
       },
     );
@@ -825,6 +834,7 @@ describe("a barcode read once is known for the rest of the run", () => {
           priceCents: 899,
           inStock: true,
           title: "Kingwin CF-08LB 80mm Fan",
+          sellerName: null,
         },
       },
     );
@@ -990,6 +1000,7 @@ describe("a barcode read once is known for the rest of the run", () => {
           priceCents: 899,
           inStock: true,
           title: "Kingwin CF-08LB 80mm Fan",
+          sellerName: null,
         },
       },
     );

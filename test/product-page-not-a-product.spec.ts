@@ -46,6 +46,7 @@ const NO_BARCODE: ParsedProduct = {
   priceCents: null,
   inStock: null,
   title: null,
+  sellerName: null,
 };
 
 function retailer(

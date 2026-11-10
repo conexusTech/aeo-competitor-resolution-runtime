@@ -86,6 +86,7 @@ function retailer(limit: number): RetailerAdapter {
       priceCents: null,
       inStock: null,
       title: null,
+      sellerName: null,
     }),
   };
 }

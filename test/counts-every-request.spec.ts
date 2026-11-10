@@ -234,6 +234,7 @@ describe("the meter charges failed attempts to the item that made them", () => {
       priceCents: null,
       inStock: null,
       title: null,
+      sellerName: null,
     }),
   };
 

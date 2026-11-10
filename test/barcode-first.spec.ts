@@ -168,6 +168,7 @@ function retailer(support: QuerySupport): RetailerAdapter {
       priceCents: null,
       inStock: null,
       title: null,
+      sellerName: null,
     }),
   };
 }

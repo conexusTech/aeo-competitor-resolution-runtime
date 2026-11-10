@@ -68,6 +68,7 @@ function adapter(): RetailerAdapter {
       priceCents: 899,
       inStock: true,
       title: "Kingwin CF-08LB 80mm Fan",
+      sellerName: null,
     }),
   };
 }

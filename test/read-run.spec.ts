@@ -511,6 +511,8 @@ describe("the adapter reads a product page it already knows", () => {
       priceCents: null,
       inStock: null,
       title: null,
+      // Newegg's page names no seller; its evidence keeps the search's.
+      sellerName: null,
     });
   });
 

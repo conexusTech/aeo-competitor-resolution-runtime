@@ -55,6 +55,7 @@ const page = (over: Partial<ParsedProduct> = {}): ParsedProduct => ({
   priceCents: null,
   inStock: null,
   title: null,
+  sellerName: null,
   ...over,
 });
 
@@ -108,6 +109,21 @@ describe("evidence from the page that proved the pairing", () => {
     expect(r.outcome).toBe("verified");
     expect(r.match?.priceCents).toBe(1299);
     expect(r.match?.inStock).toBe(false);
+  });
+
+  it("🔑 names the seller the page names, where the search result names none", async () => {
+    // Best Buy's search card names Best Buy's own offers and never a
+    // marketplace seller; the product page does.
+    const r = await resolve(
+      card({ isFirstParty: false, sellerName: null }),
+      page({ sellerName: "IPC-STORE" }),
+    );
+    expect(r.match?.sellerName).toBe("IPC-STORE");
+  });
+
+  it("keeps the search result's seller where the page names none", async () => {
+    const r = await resolve(card({ sellerName: "Newegg" }), page());
+    expect(r.match?.sellerName).toBe("Newegg");
   });
 
   it("falls back to the search result where the page states neither", async () => {
@@ -195,6 +211,7 @@ describe("Newegg and Amazon are unchanged", () => {
       expect(parsed).not.toBeNull();
       expect(parsed?.priceCents).toBeNull();
       expect(parsed?.inStock).toBeNull();
+      expect(parsed?.sellerName).toBeNull();
     }
   });
 
@@ -206,6 +223,7 @@ describe("Newegg and Amazon are unchanged", () => {
     expect(parsed?.barcode).not.toBeNull();
     expect(parsed?.priceCents).toBeNull();
     expect(parsed?.inStock).toBeNull();
+    expect(parsed?.sellerName).toBeNull();
   });
 });
 

@@ -289,6 +289,7 @@ export function parseProductPage(html: string): ParsedProduct {
     priceCents: null,
     inStock: null,
     title: null,
+    sellerName: null,
   };
 }
 
