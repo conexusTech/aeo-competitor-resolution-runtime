@@ -36,7 +36,7 @@ import {
   rankCandidates,
   tokenise,
 } from "./ranking.js";
-import type { ParsedCandidate } from "./adapters/types.js";
+import type { ParsedCandidate, ParsedProduct } from "./adapters/types.js";
 
 /**
  * What became of one item.
@@ -69,8 +69,16 @@ export interface ResolutionEvidence {
   readonly title: string;
   readonly brand: string | null;
   readonly model: string | null;
+  /**
+   * The price the page that settled the pairing states, else the search
+   * result's. `null` where neither shows one.
+   */
   readonly priceCents: number | null;
-  readonly inStock: boolean;
+  /**
+   * Stock as that page states it, else as the search result does. `null`
+   * where neither says — unknown, which the gateway stores as `unknown`.
+   */
+  readonly inStock: boolean | null;
   readonly isFirstParty: boolean | null;
   readonly sellerName: string | null;
   /** The retailer's own product photo, absolute http(s) URL, or `null`. */
@@ -428,6 +436,13 @@ export async function resolveItem(
    * already opened is never bought again by the probes after identity.
    */
   const probed = new Map<string, readonly string[] | null>();
+  /**
+   * What each product page this item bought says, by url — where the
+   * evidence's price and stock come from. 🔑 The page that proved a pairing
+   * is fresher than the search result that found it, and for a retailer
+   * whose search shows no price it is the only source.
+   */
+  const pages = new Map<string, ParsedProduct>();
 
   /** Buy one listing's page and read every barcode it publishes. */
   const probe = async (
@@ -455,6 +470,7 @@ export async function resolveItem(
     probeOutcomes.set(candidate.url, {
       retailerBarcode: product.barcode,
     });
+    pages.set(candidate.url, product);
 
     // 🔑 Every barcode the field published, not only the first. One real
     // product page returns two space-separated values in one field and the
@@ -553,7 +569,12 @@ export async function resolveItem(
         candidatesSeen,
         probes,
         requests: fetcher.liveRequestCount,
-        match: evidence(entry.candidate, entry.score, agreeing),
+        match: evidence(
+          entry.candidate,
+          entry.score,
+          agreeing,
+          pages.get(entry.candidate.url),
+        ),
         alternatives: alternativesFor({
           ranked: stageRanked,
           chosen: entry.candidate,
@@ -719,6 +740,7 @@ export async function resolveItem(
         remembered.entry.candidate,
         remembered.entry.score,
         remembered.known,
+        pages.get(remembered.entry.candidate.url),
       ),
       alternatives: alternativesFor({
         ranked,
@@ -756,7 +778,12 @@ export async function resolveItem(
         requests: fetcher.liveRequestCount,
         // The value that AGREED, not the field's first token — otherwise the
         // evidence a reviewer reads names a barcode that did not match.
-        match: evidence(entry.candidate, entry.score, agreeing),
+        match: evidence(
+          entry.candidate,
+          entry.score,
+          agreeing,
+          pages.get(entry.candidate.url),
+        ),
         alternatives: alternativesFor({
           ranked,
           chosen: entry.candidate,
@@ -822,7 +849,12 @@ export async function resolveItem(
       candidatesSeen,
       probes,
       requests: fetcher.liveRequestCount,
-      match: evidence(noBarcodeFound.candidate, noBarcodeFound.score, null),
+      match: evidence(
+        noBarcodeFound.candidate,
+        noBarcodeFound.score,
+        null,
+        pages.get(noBarcodeFound.candidate.url),
+      ),
       alternatives: alternativesFor({
         ranked,
         chosen: noBarcodeFound.candidate,
@@ -840,7 +872,12 @@ export async function resolveItem(
     candidatesSeen,
     probes,
     requests: fetcher.liveRequestCount,
-    match: evidence(best.candidate, best.score, null),
+    match: evidence(
+      best.candidate,
+      best.score,
+      null,
+      pages.get(best.candidate.url),
+    ),
     alternatives: alternativesFor({
       ranked,
       chosen: best.candidate,
@@ -850,10 +887,22 @@ export async function resolveItem(
   };
 }
 
+/**
+ * What a reviewer sees about the chosen listing.
+ *
+ * 🔑 **Price and stock from the page that settled the pairing, where it says**
+ * — the search result's otherwise. Newegg's and Amazon's page parses state
+ * neither, so their evidence is the search result's, as it always was.
+ *
+ * @param page The listing's product page as this item read it, or
+ * `undefined` where it was never read (a pairing proven from the run's memory,
+ * or a match nobody probed).
+ */
 function evidence(
   candidate: ParsedCandidate,
   score: number,
   retailerBarcode: string | null,
+  page: ParsedProduct | undefined,
 ): ResolutionEvidence {
   return {
     itemId: candidate.itemId,
@@ -861,8 +910,8 @@ function evidence(
     title: candidate.title,
     brand: candidate.brand,
     model: candidate.model,
-    priceCents: candidate.priceCents,
-    inStock: candidate.inStock,
+    priceCents: page?.priceCents ?? candidate.priceCents,
+    inStock: page?.inStock ?? candidate.inStock,
     isFirstParty: candidate.isFirstParty,
     sellerName: candidate.sellerName,
     imageUrl: candidate.imageUrl,

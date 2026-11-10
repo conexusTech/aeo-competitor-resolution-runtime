@@ -68,7 +68,8 @@ export interface ResolutionAlternative {
   readonly brand: string | null;
   readonly model: string | null;
   readonly priceCents: number | null;
-  readonly inStock: boolean;
+  /** `null` where the search result states no availability. */
+  readonly inStock: boolean | null;
   readonly isFirstParty: boolean | null;
   readonly sellerName: string | null;
   /** The barcode this listing published, when anybody looked. */

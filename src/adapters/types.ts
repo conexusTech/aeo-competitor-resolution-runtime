@@ -45,7 +45,12 @@ export interface ParsedCandidate {
   readonly title: string;
   readonly brand: string | null;
   readonly priceCents: number | null;
-  readonly inStock: boolean;
+  /**
+   * `null` where the search result states no availability — unknown, never
+   * assumed either way. ⚠️ Scores as not in stock: only a stated `true` earns
+   * the in-stock credit.
+   */
+  readonly inStock: boolean | null;
   /**
    * Sold by the retailer itself rather than by a marketplace seller.
    *

@@ -189,7 +189,8 @@ export function scoreBreakdown(input: ScoreInput): ScoreBreakdown {
   // `null` means the retailer does not expose the distinction, and scores
   // nothing rather than being assumed either way.
   if (candidate.isFirstParty === true) credit("firstParty");
-  if (candidate.inStock) credit("inStock");
+  // Only a stated `true`: unknown stock (`null`) earns nothing.
+  if (candidate.inStock === true) credit("inStock");
 
   // Strongest weight first, so a reader sees the load-bearing signal first.
   const signals = [...fired].sort((a, b) => WEIGHTS[b] - WEIGHTS[a]);
