@@ -1385,11 +1385,15 @@ against Costco, start a run, and delete its Job if it passes 120 requests.
 
 **Expect**
 
-The target: the 20 shared rows are not carried, with 0 failures, and the
-AirPods row is verified on `195949689604` at `$99.97`, stock unknown. Costco's
-product list is read once for the run: its sitemap index, then each product
-file it names, one request each. No search page is requested. Logs show at most
-4 pages in flight.
+The 20 shared rows are not carried, with 0 failures, and the AirPods row is
+verified on `195949689604` at `$99.97`, stock unknown. Costco's product list is
+read once for the run: its sitemap index, then each product file it names, one
+request each. No search page is requested. Logs show at most 4 pages in flight.
+
+Measured 2026-11-11 on runtime `237f240` through the local portal: 21 items,
+1 verified (AirPods, Costco item 4000308504, $99.97 against Micro Center's
+$129.99, stock unknown, sold by Costco), 20 not carried, 0 failures, 6 requests
+sent and 4 delivered, "pages at once: 4".
 
 ---
 
