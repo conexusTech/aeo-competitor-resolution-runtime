@@ -39,7 +39,11 @@ import {
   rankCandidates,
   tokenise,
 } from "./ranking.js";
-import type { ParsedCandidate, ParsedProduct } from "./adapters/types.js";
+import type {
+  ParsedCandidate,
+  ParsedProduct,
+  ProductIndexEntry,
+} from "./adapters/types.js";
 
 /**
  * What became of one item.
@@ -684,6 +688,41 @@ async function resolveCounted(
     }
   }
 
+  /**
+   * Where this retailer lists what it sells instead of answering a search,
+   * read BEFORE the item is identified.
+   *
+   * 🔴 **An index that cannot be read makes every item a failure, so it is
+   * read before anything else is bought for the item.** Read after identity,
+   * a failed index cost each item its client catalogue page — and the retry
+   * at the end of the run bought that page a second time — for an answer the
+   * index read alone had already settled. The read is run-scoped and
+   * single-flight, so reading it first costs a working index nothing.
+   */
+  const productIndex = adapter.productIndex;
+  let indexEntries: readonly ProductIndexEntry[] = [];
+  if (productIndex !== null) {
+    const read = await (
+      index ?? createIndexCache(productIndex, adapter.fetchProfile)
+    ).read(fetcher);
+    if (read.kind === "failed") {
+      return {
+        ...base,
+        outcome: "not-found",
+        // Nothing was bought to identify it, and nothing was looked up.
+        identity: null,
+        queriesTried: tried,
+        candidatesSeen,
+        probes,
+        requests: fetcher.liveRequestCount,
+        failure:
+          `the retailer's product index could not be read, so this item was ` +
+          `never looked up in it: ${read.reason}`,
+      };
+    }
+    indexEntries = read.entries;
+  }
+
   const { identity, partNumbers, phrase, fetchFailed } =
     await establishIdentity(request, fetcher, options);
   const itemBrand = identity?.brand ?? null;
@@ -709,13 +748,10 @@ async function resolveCounted(
       brandAgrees(itemBrand, candidate));
 
   /**
-   * Where this retailer lists what it sells instead of answering a search.
-   *
    * 🔑 **Candidates from the index, then the same probes and the same
    * proof.** Nothing below the gathering step knows where a candidate came
    * from: it is probed, and verified only by a barcode its own page states.
    */
-  const productIndex = adapter.productIndex;
   if (productIndex !== null) {
     const productName = request.productName ?? identity?.title ?? null;
     if (itemBrand === null && productName === null) {
@@ -737,22 +773,7 @@ async function resolveCounted(
       };
     }
     tried.push(`index:${itemBrand ?? productName}`);
-    const read = await (
-      index ?? createIndexCache(productIndex, adapter.fetchProfile)
-    ).read(fetcher);
-    if (read.kind === "failed") {
-      return {
-        ...base,
-        outcome: "not-found",
-        identity,
-        queriesTried: tried,
-        requests: fetcher.liveRequestCount,
-        failure:
-          `the retailer's product index could not be read, so this item was ` +
-          `never looked up in it: ${read.reason}`,
-      };
-    }
-    const found = productIndex.candidates(read.entries, {
+    const found = productIndex.candidates(indexEntries, {
       brand: itemBrand,
       partNumbers,
       productName,

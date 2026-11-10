@@ -276,11 +276,32 @@ describe("an index that cannot be read is a failure, never a miss", () => {
       expect(r.outcome).toBe("not-found");
       expect(r.failure).toMatch(/product index could not be read/);
       expect(r.failure).toContain(LIST);
-      expect(r.queriesTried).toEqual(["index:Acme"]);
+      // Read before the item is identified (finding 7): no brand is known
+      // yet, so nothing was looked up by one.
+      expect(r.queriesTried).toEqual([]);
       expect(r.probes).toBe(0);
     }
     // One read for the whole first pass, one more for the retry: never one per item.
     expect(s.count(LIST)).toBe(2);
+  });
+
+  it("🔴 a failed index read buys nothing else: no identity page, on either pass", async () => {
+    // Review finding 7: the index is read before the item is identified, so
+    // an index that cannot be read costs its own requests and nothing more —
+    // never a client catalogue page per item, twice over with the retry.
+    const s = site({}, new Map([[LIST, 99]]));
+    const results = await run(s);
+    for (const it of ITEMS) {
+      expect(s.count(CATALOGUE.replace("{sku}", it.clientSku))).toBe(0);
+    }
+    // Every request the run made was a read of the list.
+    expect([...s.counts.keys()]).toEqual([LIST]);
+    const charged = results.reduce((sum, r) => sum + r.requests, 0);
+    expect(charged).toBe(s.count(LIST));
+    for (const r of results) {
+      expect(r.failure).toMatch(/product index could not be read/);
+      expect(r.identity).toBeNull();
+    }
   });
 
   it("🔴 a failed product file fails every item too", async () => {
@@ -380,8 +401,11 @@ describe("resolving one item from the index", () => {
       searchEngineUrlTemplate: "https://engine.test/?q={query}",
     });
     expect(r.outcome).toBe("not-found");
-    expect(r.failure).not.toBeNull();
-    expect(s.count(LIST)).toBe(0);
+    expect(r.failure).toMatch(/never looked up/);
+    expect(r.queriesTried).toEqual([]);
+    // 🔑 The index is read before the item is identified (finding 7), so a
+    // lone item reads it; in a run, every item shares the one read.
+    expect(s.count(LIST)).toBe(1);
   });
 
   it("looks an item up by its name when its brand is unknown", async () => {
