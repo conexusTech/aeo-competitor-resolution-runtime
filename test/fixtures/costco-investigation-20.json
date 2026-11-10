@@ -1,0 +1,241 @@
+{
+  "note": "The Costco investigation's 20-row lookup (row investigate-costco-competitor, run 2026-11-10), trimmed field for field from meriwether-data-scraper recon/captures/costco-upc/results-mpn.json on branch feature/CONE-0016-92-investigate-competitors; rows from docs/newegg-upc-test-20.csv. mpn and brand are what the investigation read off Micro Center's own product pages, and productName is those pages' own title (both cached by the Amazon spike, recon/captures/amazon-upc/cache). `probed` are the Costco product ids it read for the row. The AirPods row is its \u00a713 pairing, from recon/captures/costco-upc/find-one-match.json: Micro Center SKU 757427 and Costco item 1611943 both state UPC 195949689604.",
+  "split": {
+    "not-carried": 20
+  },
+  "rows": [
+    {
+      "upc": "731304016298",
+      "microCenterSku": "352534",
+      "mpn": "BK350",
+      "brand": "APC",
+      "productName": "APC Back UPS (BK350); 350 VA, 210 W, 120 V; 6 Outlets; Shutdown Software; Phone Surge Protection; 3-Year & $100K Warranty",
+      "status": "not-carried",
+      "probed": [],
+      "indexCandidates": 0,
+      "reason": "no APC product in Costco's product index (18180 products)"
+    },
+    {
+      "upc": "649532012008",
+      "microCenterSku": "219725",
+      "mpn": "CP1200AVR",
+      "brand": "CyberPower Systems",
+      "productName": "CyberPower Systems AVR Series UPS (CP1200AVR); 1200 VA, 720 W, 120 V; 10 Outlets; GreenPower UPS; Automatic Voltage",
+      "status": "not-carried",
+      "probed": ["4000318695", "4000193283", "4000091462"],
+      "indexCandidates": 5,
+      "reason": "3 CyberPower Systems product(s) of this type probed, none states UPC 649532012008: 4000318695 model CST150UC2-E upc 4000001886377/649532937998; 4000193283 model SL900UC upc 649532936564; 4000091462 model CST1500SUC upc 499995717503/649532935468"
+    },
+    {
+      "upc": "649833101746",
+      "microCenterSku": "271361",
+      "mpn": "10174",
+      "brand": "IMAK Products",
+      "productName": "IMAK Products ErgoBeads Non-skid Mouse Wrist Cushion",
+      "status": "not-carried",
+      "probed": [],
+      "indexCandidates": 0,
+      "reason": "no IMAK Products product in Costco's product index (18180 products)"
+    },
+    {
+      "upc": "035286295383",
+      "microCenterSku": "883827",
+      "mpn": "29538",
+      "brand": "Allsop",
+      "productName": "Allsop Memory Foam Wrist Rest",
+      "status": "not-carried",
+      "probed": [],
+      "indexCandidates": 0,
+      "reason": "no Allsop product in Costco's product index (18180 products)"
+    },
+    {
+      "upc": "813810010431",
+      "microCenterSku": "314393",
+      "mpn": "63005",
+      "brand": "SteelSeries",
+      "productName": "SteelSeries QcK mini Gaming Mouse Pad",
+      "status": "not-carried",
+      "probed": [],
+      "indexCandidates": 0,
+      "reason": "no SteelSeries product in Costco's product index (18180 products)"
+    },
+    {
+      "upc": "097855046871",
+      "microCenterSku": "668707",
+      "mpn": "981-000014",
+      "brand": "Logitech",
+      "productName": "Logitech H390 ClearChat Comfort USB Headset - Black; Noise Cancellation Microphone; Inline Volume; Mute Controls",
+      "status": "not-carried",
+      "probed": ["4000447843"],
+      "indexCandidates": 7,
+      "reason": "1 Logitech product(s) of this type probed, none states UPC 097855046871: 4000447843 model 981-000863 upc 4000002037132/5099206088719"
+    },
+    {
+      "upc": "035286296489",
+      "microCenterSku": "994905",
+      "mpn": "29648",
+      "brand": "Allsop",
+      "productName": "Allsop Widescreen Mouse Pad Raindrop",
+      "status": "not-carried",
+      "probed": [],
+      "indexCandidates": 0,
+      "reason": "no Allsop product in Costco's product index (18180 products)"
+    },
+    {
+      "upc": "710931610147",
+      "microCenterSku": "011833",
+      "mpn": "TEG-S50G",
+      "brand": "Trendnet",
+      "productName": "Trendnet TEG-S50G 5-Port Gigabit GREENnet Switch",
+      "status": "not-carried",
+      "probed": [],
+      "indexCandidates": 0,
+      "reason": "no Trendnet product in Costco's product index (18180 products)"
+    },
+    {
+      "upc": "649833101234",
+      "microCenterSku": "156034",
+      "mpn": "10123",
+      "brand": "IMAK Products",
+      "productName": "IMAK Products Le Petit Cushion ergoBeads Mouse Wrist Rest",
+      "status": "not-carried",
+      "probed": [],
+      "indexCandidates": 0,
+      "reason": "no IMAK Products product in Costco's product index (18180 products)"
+    },
+    {
+      "upc": "188218000453",
+      "microCenterSku": "497966",
+      "mpn": "CRW-UINB",
+      "brand": "Sabrent",
+      "productName": "Sabrent CRW-UINB 75-in-1 Internal Memory Card Reader/Writer USB 2.0 3.5\" Drive Bay Insert - Black",
+      "status": "not-carried",
+      "probed": [],
+      "indexCandidates": 0,
+      "reason": "no Sabrent product in Costco's product index (18180 products)"
+    },
+    {
+      "upc": "085896723370",
+      "microCenterSku": "540062",
+      "mpn": "K72337US",
+      "brand": "Kensington",
+      "productName": "Kensington Orbit Trackball with Scroll Ring",
+      "status": "not-carried",
+      "probed": [],
+      "indexCandidates": 1,
+      "reason": "1 Kensington product(s) in Costco's index, none of this type (mice/mouse/trackballs/trackball) or with K72337US in the slug: kensington-wine--bar-cabinet"
+    },
+    {
+      "upc": "812348010548",
+      "microCenterSku": "531814",
+      "mpn": "CF-08LB",
+      "brand": "Kingwin",
+      "productName": "Kingwin Advance CF-08LB Long Life Bearing 80mm Case Fan",
+      "status": "not-carried",
+      "probed": [],
+      "indexCandidates": 0,
+      "reason": "no Kingwin product in Costco's product index (18180 products)"
+    },
+    {
+      "upc": "812348010555",
+      "microCenterSku": "531822",
+      "mpn": "CF-012LB",
+      "brand": "Kingwin",
+      "productName": "Kingwin Advance CF-12LB Long Life Bearing 120mm Case Fan",
+      "status": "not-carried",
+      "probed": [],
+      "indexCandidates": 0,
+      "reason": "no Kingwin product in Costco's product index (18180 products)"
+    },
+    {
+      "upc": "097855066237",
+      "microCenterSku": "744334",
+      "mpn": "910-001675",
+      "brand": "Logitech",
+      "productName": "Logitech M310 Wireless Laser Mouse - Silver",
+      "status": "not-carried",
+      "probed": ["4201033147", "4000362496", "4000178023"],
+      "indexCandidates": 7,
+      "reason": "3 Logitech product(s) of this type probed, none states UPC 097855066237: 4201033147 model 920-014503 upc 4000002094503/097855218476; 4000362496 model 920-013372 upc 4000001939040/097855206831; 4000178023 model 991-000483 upc 97855192448/097855192448"
+    },
+    {
+      "upc": "097855067876",
+      "microCenterSku": "772269",
+      "mpn": "910-001917",
+      "brand": "Logitech",
+      "productName": "Logitech M310 Wireless Laser Mouse - Peacock Blue",
+      "status": "not-carried",
+      "probed": ["4201033147", "4000362496", "4000178023"],
+      "indexCandidates": 7,
+      "reason": "3 Logitech product(s) of this type probed, none states UPC 097855067876: 4201033147 model 920-014503 upc 4000002094503/097855218476; 4000362496 model 920-013372 upc 4000001939040/097855206831; 4000178023 model 991-000483 upc 97855192448/097855192448"
+    },
+    {
+      "upc": "710931505061",
+      "microCenterSku": "842641",
+      "mpn": "TPE-S44",
+      "brand": "Trendnet",
+      "productName": "Trendnet TPE-S44 8-Port Fast Ethernet Switch with Power Over Ethernet (PoE)",
+      "status": "not-carried",
+      "probed": [],
+      "indexCandidates": 0,
+      "reason": "no Trendnet product in Costco's product index (18180 products)"
+    },
+    {
+      "upc": "097855065537",
+      "microCenterSku": "930685",
+      "mpn": "920-002478",
+      "brand": "Logitech",
+      "productName": "Logitech K120 Wired Keyboard",
+      "status": "not-carried",
+      "probed": ["4000178023", "4201033147", "4000362496"],
+      "indexCandidates": 7,
+      "reason": "3 Logitech product(s) of this type probed, none states UPC 097855065537: 4000178023 model 991-000483 upc 97855192448/097855192448; 4201033147 model 920-014503 upc 4000002094503/097855218476; 4000362496 model 920-013372 upc 4000001939040/097855206831"
+    },
+    {
+      "upc": "097855066466",
+      "microCenterSku": "134338",
+      "mpn": "980-000402",
+      "brand": "Logitech",
+      "productName": "Logitech Z623 2.1 Channel Computer Speakers - Black",
+      "status": "not-carried",
+      "probed": [],
+      "indexCandidates": 7,
+      "reason": "7 Logitech product(s) in Costco's index, none of this type (speakers/speaker) or with 980-000402 in the slug: logitech-g733-lightspeed-wireless-over-the-ear-gaming-headset-for-playstation-windows---black; logitech-g-driving-force-racing-simulator-bundle-with-g923-trueforce-feedback-steering-wheel-pedals--shifter---xbox-series-xs; logitech-g-driving-force-racing-simulator-bundle-with-g923-trueforce-feedback-steering-wheel-pedals--shifter---playstation-5; logitech-combo-touch-se-for-ipad-10th-gen--a16; logitech-mx-performance-keyboard-and-mouse-combo; logitech-mx-keyboard-and-mouse-combo; logitech-mx-master-keyboard-combo---mx-keys-wireless-keyboard--mx-master-2s-wireless-mouse"
+    },
+    {
+      "upc": "035286302067",
+      "microCenterSku": "090142",
+      "mpn": "30206",
+      "brand": "Allsop",
+      "productName": "Allsop Memory Foam Mouse Pad with Wrist Rest Blue",
+      "status": "not-carried",
+      "probed": [],
+      "indexCandidates": 0,
+      "reason": "no Allsop product in Costco's product index (18180 products)"
+    },
+    {
+      "upc": "035286301848",
+      "microCenterSku": "082081",
+      "mpn": "30184",
+      "brand": "Allsop",
+      "productName": "Allsop Mouse Pad Kittens",
+      "status": "not-carried",
+      "probed": [],
+      "indexCandidates": 0,
+      "reason": "no Allsop product in Costco's product index (18180 products)"
+    }
+  ],
+  "airpods": {
+    "upc": "195949689604",
+    "microCenterSku": "757427",
+    "mpn": "MXP93LL/A",
+    "brand": "Apple",
+    "productName": "Apple AirPods 4 Active Noise Cancelling True Wireless Bluetooth Earbuds - White",
+    "status": "verified",
+    "costcoProductId": "4000308504",
+    "costcoItemNumber": "1611943",
+    "costcoUpcs": ["499996263740", "195949689604"],
+    "costcoPriceCents": 9997,
+    "priceVisibility": "shown"
+  }
+}
