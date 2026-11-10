@@ -1,0 +1,665 @@
+import type {
+  ListingPageResult,
+  ListingReader,
+  ParsedCandidate,
+  ParsedProduct,
+  ProductIndex,
+  ProductIndexEntry,
+  ProductIndexQuery,
+  QuerySupport,
+  RetailerAdapter,
+} from "./types.js";
+
+/**
+ * The Costco adapter, read through Costco's public website only, signed out.
+ *
+ * ── 🔴 Costco cannot be searched ─────────────────────────────────────
+ *
+ * Its search (`/s?keyword=…`) and category pages arrive as the Next.js search
+ * app's client-rendered shell: the results come from Costco's catalogue API,
+ * which only a browser calls. Measured by the investigation on 40 of 40
+ * searches — by barcode and by part number — and on 10 of 10 listing pages:
+ * 0 products, a search for an item Costco sells looking exactly like a search
+ * for nonsense. So this adapter never searches. Its candidates come from
+ * Costco's PRODUCT SITEMAP, the only server-side list of what it sells online
+ * (about 18,180 products), and the product page proves a pairing by barcode.
+ *
+ * 🔴 **Never Costco's internal catalogue API** (`gdx-api.costco.com`): it is
+ * not the website, and reaching it needs a custom header the website's own
+ * browser code sends. Website pages only.
+ *
+ * ── The product page ─────────────────────────────────────────────────
+ *
+ * Server-rendered. The data is in the React Server Components flight data —
+ * every `self.__next_f.push([1,"…"])` chunk, JSON-string-decoded and
+ * concatenated — as one `productDetailsData` object: `productData` (the
+ * product: `id` = the url's product id, `upc`), `productData.childCatalogData`
+ * (the sellable items: Costco's item number, each item's `upc`, its
+ * member-only and price-in-cart flags), and `priceInfo` (the SELECTED item's
+ * price). Plus a JSON-LD `Product`.
+ *
+ * ⚠️ **The parent product's `upc` is often Costco's own number** — `4000001`
+ * and the item number, or `49999…` — while the real barcode is on the item.
+ * Those are never published as a barcode, so they can never verify.
+ *
+ * ⚠️ **JSON-LD `availability` is not a stock signal**: it read `OutOfStock`
+ * on in-stock items (inventory loads in the browser). Stock is unknown.
+ *
+ * ⚠️ **A member-only or price-in-cart item shows "Sign In for Price"** to a
+ * signed-out visitor, while its page source still holds a price. That price
+ * is Costco's choice not to show, so it is never read (the lead's default).
+ *
+ * Ported from the investigation's parser (`meriwether-data-scraper`,
+ * `RECON-FINDINGS-COSTCO.md`) and held to its data contract, not copied: this
+ * one answers the runtime's seam. Pure, and no dependency.
+ */
+
+type Json = Record<string, unknown>;
+
+const isObj = (v: unknown): v is Json =>
+  typeof v === "object" && v !== null && !Array.isArray(v);
+const obj = (v: unknown, key: string): Json | null => {
+  if (!isObj(v)) return null;
+  const inner = v[key];
+  return isObj(inner) ? inner : null;
+};
+const arr = (v: unknown, key: string): unknown[] => {
+  if (!isObj(v)) return [];
+  const inner = v[key];
+  return Array.isArray(inner) ? inner : [];
+};
+const str = (v: unknown): string | null =>
+  typeof v === "string" && v.trim() !== "" ? v.trim() : null;
+const strAt = (v: unknown, key: string): string | null =>
+  isObj(v) ? str(v[key]) : null;
+const num = (v: unknown): number | null =>
+  typeof v === "number" && Number.isFinite(v) ? v : null;
+
+/** Dollars -> cents. Never 0: a price that reads 0 is not a price. */
+const toCents = (v: unknown): number | null => {
+  const n = typeof v === "string" ? Number(v) : num(v);
+  return n !== null && Number.isFinite(n) && n > 0 ? Math.round(n * 100) : null;
+};
+
+export const COSTCO_ORIGIN = "https://www.costco.com";
+
+/** Costco sells every item itself: no page names another seller. */
+const SELLER = "Costco";
+
+// ── Page plumbing ──────────────────────────────────────────────────────
+
+const FLIGHT_CHUNK = /self\.__next_f\.push\(\[1,"((?:[^"\\]|\\.)*)"\]\)/g;
+
+/** The flight data, every chunk decoded and joined in page order. */
+export function extractFlight(html: string): string {
+  const out: string[] = [];
+  for (const m of html.matchAll(FLIGHT_CHUNK)) {
+    try {
+      const decoded: unknown = JSON.parse(`"${m[1] ?? ""}"`);
+      if (typeof decoded === "string") out.push(decoded);
+    } catch {
+      // A chunk that is not a plain JSON string carries nothing read here.
+    }
+  }
+  return out.join("");
+}
+
+/** The balanced `{…}` starting at `start`, honouring strings, or `null`. */
+function balancedObject(text: string, start: number): string | null {
+  if (text[start] !== "{") return null;
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (ch === "\\") escaped = true;
+      else if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') inString = true;
+    else if (ch === "{") depth++;
+    else if (ch === "}") {
+      depth--;
+      if (depth === 0) return text.slice(start, i + 1);
+    }
+  }
+  return null;
+}
+
+/** The first `productDetailsData` object naming a product, parsed. */
+export function productDetails(html: string): Json | null {
+  const flight = extractFlight(html);
+  const needle = '"productDetailsData":{';
+  for (let from = 0; ;) {
+    const at = flight.indexOf(needle, from);
+    if (at < 0) return null;
+    from = at + needle.length;
+    const raw = balancedObject(flight, at + needle.length - 1);
+    if (raw === null) continue;
+    try {
+      const parsed: unknown = JSON.parse(raw);
+      if (strAt(obj(parsed, "productData"), "id") !== null && isObj(parsed)) {
+        return parsed;
+      }
+    } catch {
+      // Not this one.
+    }
+  }
+}
+
+const LD_JSON =
+  /<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g;
+
+/** The page's JSON-LD `Product`, or `null`. */
+export function ldProduct(html: string): Json | null {
+  for (const m of html.matchAll(LD_JSON)) {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(m[1] ?? "");
+    } catch {
+      continue;
+    }
+    for (const node of Array.isArray(parsed) ? parsed : [parsed]) {
+      if (isObj(node) && node["@type"] === "Product") return node;
+    }
+  }
+  return null;
+}
+
+/** Which of Costco's Next.js apps served a page, from its asset paths. */
+export function costcoApp(html: string): "search" | "product" | "other" {
+  if (/\/consumer-web\/search\/[a-z]+\/catalog-/.test(html)) return "search";
+  if (/\/consumer-web\/product\/[a-z]+\/details-/.test(html)) return "product";
+  return "other";
+}
+
+// ── The product page ───────────────────────────────────────────────────
+
+/**
+ * Costco's own numbers in a UPC field, stated on the page and never a
+ * manufacturer's barcode:
+ * - `4` and one of the page's own item numbers, zero-padded to 13 digits —
+ *   `4000001939040` for item 1939040, and `4000002037132` for item 2037132;
+ * - a 12-digit `49999…` value, UPC number system 4, which GS1 reserves for a
+ *   retailer's in-store use.
+ *
+ * 🔴 **The investigation's rule was `4000001…` only**, and missed the second
+ * form: two of the Logitech pages it probed state `4000002037132` and
+ * `4000002094503` beside their real UPCs, and it reported both as UPCs.
+ * Neither could have matched a client's barcode, but a reviewer reading them
+ * as the listing's barcodes would have been told something false.
+ */
+export function isCostcoInternalUpc(
+  upc: string,
+  itemNumbers: readonly string[],
+): boolean {
+  if (/^49999\d{7}$/.test(upc)) return true;
+  return itemNumbers.some(
+    (n) => /^\d+$/.test(n) && upc === `4${n.padStart(12, "0")}`,
+  );
+}
+
+interface Item {
+  readonly itemNumber: string;
+  readonly upc: string | null;
+  readonly title: string | null;
+  readonly membershipRequired: boolean;
+  readonly priceInCartOnly: boolean;
+}
+
+/** How a signed-out visitor is shown the price. */
+type PriceVisibility = "shown" | "member-only" | "in-cart-only" | "none";
+
+interface PageItem {
+  readonly productId: string;
+  /** Every real UPC the page states for its product: the items' first. */
+  readonly upcs: readonly string[];
+  readonly visibility: PriceVisibility;
+  /**
+   * The one price every item shows, or `null`: withheld, absent, or not one
+   * price across the product's items.
+   */
+  readonly priceCents: number | null;
+  /** Several items whose prices are not all known to be one price. */
+  readonly severalPrices: boolean;
+  readonly title: string | null;
+}
+
+function toItem(v: unknown): Item | null {
+  const itemNumber = strAt(v, "id");
+  if (itemNumber === null) return null;
+  const description = obj(arr(v, "descriptions")[0], "object");
+  return {
+    itemNumber,
+    upc: strAt(v, "upc"),
+    title: strAt(description, "shortDescription"),
+    membershipRequired: isObj(v) && v["isMembershipReqd"] === true,
+    priceInCartOnly: isObj(v) && num(v["dispPriceInCartOnly"]) === 1,
+  };
+}
+
+/** The product page's own product, or `null` when the body is not one. */
+function pageItem(html: string): PageItem | null {
+  const details = productDetails(html);
+  const product = obj(details, "productData");
+  const productId = strAt(product, "id");
+  if (details === null || product === null || productId === null) return null;
+
+  const items = arr(product, "childCatalogData")
+    .map(toItem)
+    .filter((i): i is Item => i !== null);
+
+  // 🔑 The items' UPCs first: the parent's is often Costco's own number,
+  // and where it is real it is one of the items' anyway.
+  const itemNumbers = items.map((i) => i.itemNumber);
+  const upcs: string[] = [];
+  for (const upc of [...items.map((i) => i.upc), strAt(product, "upc")]) {
+    if (
+      upc === null ||
+      isCostcoInternalUpc(upc, itemNumbers) ||
+      upcs.includes(upc)
+    ) {
+      continue;
+    }
+    upcs.push(upc);
+  }
+
+  const priceInfo = obj(details, "priceInfo");
+  const display = obj(priceInfo, "displayPrice");
+  const online = toCents(display?.["onlinePrice"]);
+  const discount = toCents(display?.["aggregatedDiscountAmt"]) ?? 0;
+  const ld = ldProduct(html);
+  const ldOffer = obj(ld, "offers");
+  const source =
+    online !== null && online - discount > 0
+      ? online - discount
+      : toCents(ldOffer?.["price"]);
+
+  const memberOnly =
+    items.some((i) => i.membershipRequired) ||
+    product["isMembershipReqd"] === true;
+  const inCart =
+    items.some((i) => i.priceInCartOnly) ||
+    num(product["dispPriceInCartOnly"]) === 1;
+  const visibility: PriceVisibility =
+    source === null
+      ? "none"
+      : memberOnly
+        ? "member-only"
+        : inCart
+          ? "in-cart-only"
+          : "shown";
+
+  // 🔴 **A price only when every item shows the same one.** `priceInfo`
+  // prices the SELECTED item; a barcode that matched another item of the
+  // same product says nothing about that item's price. Each item's price is
+  // known only from `priceInfo` and a JSON-LD offer naming it.
+  const known = new Map<string, number>();
+  const priced = strAt(priceInfo, "id");
+  if (priced !== null && source !== null) known.set(priced, source);
+  for (const offer of arr(ld, "offers")) {
+    const sku = strAt(offer, "sku");
+    const cents = toCents(isObj(offer) ? offer["price"] : null);
+    if (sku !== null && cents !== null && !known.has(sku)) {
+      known.set(sku, cents);
+    }
+  }
+  const itemPrices = items.map((i) => known.get(i.itemNumber) ?? null);
+  const onePrice =
+    items.length <= 1
+      ? source
+      : itemPrices.every((p) => p !== null && p === itemPrices[0])
+        ? (itemPrices[0] ?? null)
+        : null;
+
+  return {
+    productId,
+    upcs,
+    visibility,
+    priceCents: visibility === "shown" ? onePrice : null,
+    severalPrices: visibility === "shown" && onePrice === null,
+    title: strAt(ld, "name") ?? items[0]?.title ?? null,
+  };
+}
+
+/**
+ * Raw product-page body -> what resolution reads, or `null` when it is not a
+ * product page: the product app with no product in it, a search shell, a
+ * refusal, an empty body.
+ */
+export function parseProductPage(html: string): ParsedProduct | null {
+  const page = pageItem(html);
+  if (page === null) return null;
+  return {
+    barcode: page.upcs[0] ?? null,
+    additionalBarcodes: page.upcs.slice(1),
+    // Withheld (member-only, price in cart) or not one price: `null`.
+    priceCents: page.priceCents,
+    // Costco's page states no stock this build can trust.
+    inStock: null,
+    title: page.title,
+    sellerName: SELLER,
+    // A Costco page says nothing about why it publishes no barcode.
+    unverifiableReason: null,
+  };
+}
+
+/** What a listing's own page says, for a read run. */
+export function readListingPage(html: string): ListingPageResult {
+  const page = pageItem(html);
+  if (page === null) {
+    const app = costcoApp(html);
+    return {
+      kind: "not-a-product-page",
+      detail:
+        app === "product"
+          ? "Costco's product app with no product in it"
+          : app === "search"
+            ? "Costco's search app: a search or category shell"
+            : "not a Costco product page",
+    };
+  }
+  if (page.severalPrices) {
+    return {
+      kind: "unreadable-offer",
+      detail: "several items, not all at one price this build can read",
+    };
+  }
+  // 🔴 A price Costco WITHHOLDS from a signed-out visitor is the page's
+  // answer, not a failed reading: no price, and a page.
+  if (page.visibility === "none") {
+    return {
+      kind: "unreadable-offer",
+      detail: "a product page showing no price this build can read",
+    };
+  }
+  return {
+    kind: "page",
+    page: {
+      pageItemId: page.productId,
+      barcode: page.upcs[0] ?? null,
+      additionalBarcodes: page.upcs.slice(1),
+      priceCents: page.priceCents,
+      inStock: null,
+    },
+  };
+}
+
+/**
+ * 🔴 Costco answers no search with a result (see the module docblock), so
+ * this is `null` for every body — a search nobody answered, never "not
+ * carried". Resolution never calls it: Costco has a product index.
+ */
+export function parseSearchResults(_html: string): ParsedCandidate[] | null {
+  return null;
+}
+
+// ── The product index: Costco's sitemap ───────────────────────────────
+
+export const SITEMAP_INDEX = `${COSTCO_ORIGIN}/sitemap_lw_index.xml`;
+
+const LOC = /<loc>\s*([^<]+?)\s*<\/loc>/g;
+
+const decodeXml = (s: string): string =>
+  s
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&amp;/g, "&");
+
+/**
+ * The product files the sitemap index lists, or `null` if it is no index.
+ *
+ * 🔑 **Only the `/p/-/` product sitemaps** (`sitemap_lw_p_mod_NNN.xml`). The
+ * index also lists the same products in Costco's older url form
+ * (`sitemap_lw_p_001.xml`) and with images (`sitemap_lw_i_mod_001.xml`) —
+ * measured as the same ~18,180 products three times — and reading all of
+ * them would buy each product's name three times over.
+ */
+export function parseSitemapIndex(body: string): string[] | null {
+  if (!body.includes("<sitemapindex")) return null;
+  const files: string[] = [];
+  for (const m of body.matchAll(LOC)) {
+    const url = decodeXml(m[1] ?? "");
+    if (/^https:\/\/www\.costco\.com\/sitemap_lw_p_mod_\d+\.xml$/.test(url)) {
+      files.push(url);
+    }
+  }
+  return files;
+}
+
+const PRODUCT_URL = /^https:\/\/www\.costco\.com\/p\/-\/([^/?#]+)\/(\d+)$/;
+
+/** A product sitemap's entries, or `null` if the body is no sitemap. */
+export function parseSitemap(body: string): ProductIndexEntry[] | null {
+  if (!body.includes("<urlset")) return null;
+  const entries: ProductIndexEntry[] = [];
+  for (const m of body.matchAll(LOC)) {
+    const url = decodeXml(m[1] ?? "");
+    const parts = PRODUCT_URL.exec(url);
+    if (parts === null) continue;
+    let slug: string;
+    try {
+      slug = decodeURIComponent(parts[1] ?? "");
+    } catch {
+      slug = parts[1] ?? "";
+    }
+    entries.push({
+      itemId: parts[2] ?? "",
+      url,
+      name: words(slug).join(" "),
+    });
+  }
+  return entries;
+}
+
+/** Lower-case letter-and-digit words. */
+const words = (s: string): string[] =>
+  s
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((w) => w !== "");
+
+/** How many of an index's names use each word, computed once per index. */
+interface IndexStats {
+  readonly size: number;
+  readonly uses: ReadonlyMap<string, number>;
+}
+const STATS = new WeakMap<readonly ProductIndexEntry[], IndexStats>();
+function statsOf(entries: readonly ProductIndexEntry[]): IndexStats {
+  const known = STATS.get(entries);
+  if (known !== undefined) return known;
+  const uses = new Map<string, number>();
+  for (const e of entries) {
+    for (const w of new Set(words(e.name))) uses.set(w, (uses.get(w) ?? 0) + 1);
+  }
+  const stats = { size: entries.length, uses };
+  STATS.set(entries, stats);
+  return stats;
+}
+
+/**
+ * Words that name what a product IS, rather than describe it.
+ *
+ * 🔑 **Measured off the index itself, not a stop list.** A word in more than
+ * one name in a hundred is a colour, a size or a feature — "black" is in 286
+ * of Costco's 18,180 names, "with" in 2,421, "wireless" in 95, "mouse" in 13,
+ * "headset" in 9 — so it is common enough to say nothing about which product
+ * this is. A number on its own is a spec, never the product.
+ */
+const DISTINCTIVE_SHARE = 1 / 100;
+/**
+ * A product line: a word in no more than one name in a thousand. "airpods"
+ * leads 6 of 18,180; "true" and "memory", which lead other products' names,
+ * are in 39 and 171.
+ */
+const LINE_SHARE = 1 / 1000;
+
+/** Equal, or the same word in two forms ("cancelling", "cancellation"). */
+const sameWord = (a: string, b: string): boolean =>
+  a === b ||
+  (a.length >= 6 && b.length >= 6 && a.slice(0, 6) === b.slice(0, 6));
+
+const compact = (s: string): string =>
+  s.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+/**
+ * The index entries worth probing for an item, best first.
+ *
+ * ── 🔑 Which entries are candidates ─────────────────────────────────
+ *
+ * Costco's product name, as its url spells it, leads with the brand
+ * (`cyberpower-900va450w-…`) or, where the brand is not in it, with the
+ * product line (`airpods-4-with-active-noise-cancellation` — no "apple").
+ * So an entry is a candidate when its name LEADS with the item's brand, or
+ * with a product-line word of the client's own name for the item, AND shares
+ * at least one more distinctive word with that name (or names one of its
+ * part numbers).
+ *
+ * 🔴 **Leading, never merely containing.** A brand later in a name is a
+ * component (Costco has 87 names mentioning AMD, every one a PC or a
+ * monitor), and `cyberpowerpc-…` is another company. And a name that only
+ * shares a word with the item's is another brand's product: H390 headset and
+ * AirPods share "noise cancellation".
+ *
+ * 🔴 **The brand is set only where the name led with it** — never read into
+ * a name that does not say it.
+ *
+ * ── Order ────────────────────────────────────────────────────────────
+ *
+ * A name that spells a part number first, then by how much of the entry's
+ * name is the client's: shared distinctive words over all of its distinctive
+ * words. `airpods-4-with-active-noise-cancellation` is all AirPods 4 ANC;
+ * `apple-airpods-pro-3-…-hearing-aid-feature-…` shares more words and is
+ * mostly something else.
+ */
+export function indexCandidates(
+  entries: readonly ProductIndexEntry[],
+  query: ProductIndexQuery,
+): ParsedCandidate[] {
+  const stats = statsOf(entries);
+  const uses = (w: string): number => stats.uses.get(w) ?? 0;
+  const distinctive = (w: string): boolean =>
+    w.length >= 2 &&
+    !/^\d+$/.test(w) &&
+    uses(w) <= Math.max(stats.size * DISTINCTIVE_SHARE, 2);
+  const isLine = (w: string): boolean =>
+    distinctive(w) && uses(w) <= Math.max(stats.size * LINE_SHARE, 1);
+
+  const brandWord = words(query.brand ?? "")[0] ?? null;
+  const nameWords = [
+    ...new Set(words(query.productName ?? "").filter(distinctive)),
+  ].filter((w) => w !== brandWord);
+  const partNumbers = query.partNumbers
+    .map(compact)
+    .filter((p) => p.length >= 4);
+
+  const scored: {
+    entry: ProductIndexEntry;
+    byBrand: boolean;
+    namesPart: boolean;
+    share: number;
+    shared: number;
+    order: number;
+  }[] = [];
+  entries.forEach((entry, order) => {
+    const own = words(entry.name);
+    const lead = own[0];
+    if (lead === undefined) return;
+    const byBrand = brandWord !== null && lead === brandWord;
+    const byLine =
+      !byBrand && isLine(lead) && nameWords.some((w) => sameWord(w, lead));
+    if (!byBrand && !byLine) return;
+
+    const rest = [...new Set(own.slice(1).filter(distinctive))].filter(
+      (w) => !sameWord(w, lead),
+    );
+    const shared = rest.filter((w) => nameWords.some((n) => sameWord(n, w)));
+    const namesPart = partNumbers.some((p) => compact(entry.name).includes(p));
+    if (shared.length === 0 && !namesPart) return;
+    scored.push({
+      entry,
+      byBrand,
+      namesPart,
+      // The lead counts on both sides: it is the word that matched.
+      share: (shared.length + 1) / (rest.length + 1),
+      shared: shared.length,
+      order,
+    });
+  });
+
+  return scored
+    .sort(
+      (a, b) =>
+        Number(b.namesPart) - Number(a.namesPart) ||
+        b.share - a.share ||
+        b.shared - a.shared ||
+        a.order - b.order,
+    )
+    .map(({ entry, byBrand }): ParsedCandidate => ({
+      itemId: entry.itemId,
+      url: entry.url,
+      // The sitemap states no model; the product page is what proves it.
+      model: null,
+      title: entry.name,
+      brand: byBrand ? query.brand : null,
+      priceCents: null,
+      inStock: null,
+      isFirstParty: true,
+      sellerName: SELLER,
+      imageUrl: null,
+    }));
+}
+
+/**
+ * Costco's product index: the sitemap index robots.txt names, then each
+ * product sitemap it lists.
+ */
+export const COSTCO_PRODUCT_INDEX: ProductIndex = {
+  urls: [SITEMAP_INDEX],
+  // The real index is 1,547 bytes for 15 files; a 200 shorter than a third
+  // of that is a vendor's error document, not the list.
+  minListBytes: 500,
+  parseListing: parseSitemapIndex,
+  // 18,180 products when measured (2026-11-10); a read with fewer than
+  // 10,000 is a file cut short, and would make every item it lost look not
+  // carried.
+  minEntries: 10_000,
+  parse: parseSitemap,
+  candidates: indexCandidates,
+};
+
+/**
+ * 🔑 **Neither a barcode nor a part number is searchable at Costco**: both
+ * return the same empty shell (40 of 40). The index stands in for search.
+ */
+const QUERY_SUPPORT: QuerySupport = {
+  maxNumericQueryDigits: null,
+  barcodeIsSearchable: false,
+  partNumberNeedsBrand: false,
+};
+
+export const costcoAdapter: RetailerAdapter & ListingReader = {
+  slug: "costco",
+  querySupport: QUERY_SUPPORT,
+  // Jody's politeness rule of two to four pages at once, at its top: the
+  // registry's figure arrives with the job and wins over this.
+  pacing: { pagesAtOnce: 4 },
+  // 🔴 Product pages take 60-150 s through the vendor, which waits out a
+  // 60-second timer for an element of Costco's previous page design before
+  // answering; 280 s per attempt, as the investigation settled on after
+  // 150 s timed out.
+  fetchProfile: { country: "us", timeoutMs: 280_000 },
+  // The investigation probed at most three product pages per row.
+  maxProbes: 3,
+  productIndex: COSTCO_PRODUCT_INDEX,
+  buildSearchUrl: (query) =>
+    `${COSTCO_ORIGIN}/s?keyword=${encodeURIComponent(query)}`,
+  parseSearchResults,
+  parseProductPage,
+  hosts: ["www.costco.com"],
+  readListingPage,
+};

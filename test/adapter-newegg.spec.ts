@@ -222,9 +222,9 @@ describe("the adapter's own configuration", () => {
     expect(neweggAdapter.slug).toBe("newegg");
 
     const adapters = adapterFiles();
-    // Not vacuous: Newegg, Amazon, Best Buy and B&H at least.
+    // Not vacuous: Newegg, Amazon, Best Buy, B&H and Costco at least.
     expect(adapters.map((a) => a.slug)).toEqual(
-      expect.arrayContaining(["newegg", "amazon", "bestbuy", "bh"]),
+      expect.arrayContaining(["newegg", "amazon", "bestbuy", "bh", "costco"]),
     );
     const named = new RegExp(
       `["'\`](?:${adapters.map((a) => a.slug).join("|")}|bh|costco)["'\`]`,

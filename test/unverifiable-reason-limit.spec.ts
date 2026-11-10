@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import { amazonAdapter } from "../src/adapters/amazon.js";
 import { bestbuyAdapter } from "../src/adapters/bestbuy.js";
 import { bhAdapter, DISCONTINUED_NO_UPC } from "../src/adapters/bh.js";
+import { costcoAdapter } from "../src/adapters/costco.js";
 import { neweggAdapter } from "../src/adapters/newegg.js";
 import {
   MAX_UNVERIFIABLE_REASON_LENGTH,
@@ -28,6 +29,7 @@ const ADAPTERS: readonly RetailerAdapter[] = [
   amazonAdapter,
   bestbuyAdapter,
   bhAdapter,
+  costcoAdapter,
 ];
 
 const dir = (rel: string): string =>
@@ -98,7 +100,7 @@ describe("every unverifiable reason fits the gateway's limit", () => {
   });
 
   it("the adapters that state no reason state none", () => {
-    for (const slug of ["newegg", "amazon", "bestbuy"]) {
+    for (const slug of ["newegg", "amazon", "bestbuy", "costco"]) {
       expect([...(reasons.get(slug) ?? [])]).toEqual([]);
     }
   });
