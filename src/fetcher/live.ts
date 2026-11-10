@@ -144,7 +144,22 @@ export class LiveFetcher implements Fetcher {
    * tests body length — but a TRUNCATED png is long, so length would accept a
    * corrupt image. Four bytes settle it.
    */
-  async fetchScreenshot(url: string): Promise<Screenshot> {
+  async fetchScreenshot(
+    url: string,
+    profile?: FetchProfile,
+  ): Promise<Screenshot> {
+    // 🔑 The same profile rule `fetch` keeps: the country LAST and only when
+    // set, a client timeout only when set, so the vendor-default profile sends
+    // exactly the body it always did.
+    const country = profile?.country ?? null;
+    const timeoutMs = profile?.timeoutMs ?? null;
+    const requestBody = JSON.stringify({
+      zone: this.options.zone,
+      url,
+      format: "raw",
+      data_format: "screenshot",
+      ...(country === null ? {} : { country }),
+    });
     let lastError: unknown = null;
     let status: number | null = null;
     let sent = 0;
@@ -164,12 +179,12 @@ export class LiveFetcher implements Fetcher {
               Authorization: `Bearer ${this.options.apiKey}`,
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({
-              zone: this.options.zone,
-              url,
-              format: "raw",
-              data_format: "screenshot",
-            }),
+            body: requestBody,
+            // A fresh signal per attempt, as `fetch` does: a timeout abandons
+            // THIS attempt and is retried like any other failure.
+            ...(timeoutMs === null
+              ? {}
+              : { signal: AbortSignal.timeout(timeoutMs) }),
           },
         );
         const bytes = new Uint8Array(await response.arrayBuffer());

@@ -31,7 +31,7 @@
 import { appendFile, mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
-import type { Fetcher } from "../fetcher/types.js";
+import type { Fetcher, FetchProfile } from "../fetcher/types.js";
 import type { Resolution } from "../resolve.js";
 import { CaptureBudget } from "./budget.js";
 import {
@@ -63,6 +63,15 @@ export interface CapturerDeps {
    */
   readonly isSelected: (clientSku: string) => boolean;
   readonly fetcher: Fetcher;
+  /**
+   * How the competitor's pages are fetched — its adapter's profile.
+   *
+   * 🔴 **Required, and used on both re-reads.** The capture fetched with no
+   * profile, so a competitor whose pages need a country and a client timeout
+   * was captured with neither: Best Buy's pages take one to three minutes and
+   * the vendor's own limit is longer than the run can afford to wait.
+   */
+  readonly fetchProfile: FetchProfile;
   readonly runDir: string;
   readonly upload: (args: {
     readonly clientSku: string;
@@ -219,7 +228,10 @@ export class Capturer {
         //
         // ⚠️ **The markup is NOT also fetched.** It would be a second paid
         // request for bytes this branch discards.
-        const shot = await this.deps.fetcher.fetchScreenshot?.(url);
+        const shot = await this.deps.fetcher.fetchScreenshot?.(
+          url,
+          this.deps.fetchProfile,
+        );
         if (shot === undefined) {
           throw new Error(
             "the capture policy asks for a png and this fetcher cannot take " +
@@ -228,7 +240,10 @@ export class Capturer {
         }
         body = shot.bytes;
       } else {
-        const fetched = await this.deps.fetcher.fetch(url);
+        const fetched = await this.deps.fetcher.fetch(
+          url,
+          this.deps.fetchProfile,
+        );
         body = fetched.body;
       }
     } catch (error) {

@@ -87,8 +87,11 @@ export interface Fetcher {
    * real stored bytes looking like evidence.
    *
    * ⚠️ A caller that needs one must handle its absence rather than assume it.
+   *
+   * @param profile How the competitor's pages must be fetched, exactly as for
+   * `fetch` — a screenshot of a competitor's page is that page.
    */
-  fetchScreenshot?(url: string): Promise<Screenshot>;
+  fetchScreenshot?(url: string, profile?: FetchProfile): Promise<Screenshot>;
 
   /**
    * Requests sent to the vendor: **every attempt**, a retry, a 200 too short to

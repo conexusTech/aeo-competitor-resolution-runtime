@@ -53,8 +53,11 @@ export class RequestMeter implements Fetcher {
     // cannot take a screenshot — the capturer branches on presence.
     const take = inner.fetchScreenshot?.bind(inner);
     if (take !== undefined) {
-      this.fetchScreenshot = async (url: string): Promise<Screenshot> => {
-        const shot = await this.counted(() => take(url));
+      this.fetchScreenshot = async (
+        url: string,
+        profile?: FetchProfile,
+      ): Promise<Screenshot> => {
+        const shot = await this.counted(() => take(url, profile));
         this.spent += shot.attempts;
         this.delivered++;
         return shot;
@@ -107,7 +110,10 @@ export class RequestMeter implements Fetcher {
    * ⚠️ **No cache clause, unlike `fetch`.** Screenshots are not cached — see
    * `LiveFetcher.fetchScreenshot` — so every attempt is a purchase.
    */
-  readonly fetchScreenshot?: (url: string) => Promise<Screenshot>;
+  readonly fetchScreenshot?: (
+    url: string,
+    profile?: FetchProfile,
+  ) => Promise<Screenshot>;
 
   /**
    * Requests sent through this meter: every attempt, failures included.

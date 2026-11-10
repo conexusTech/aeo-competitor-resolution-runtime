@@ -298,3 +298,57 @@ describe("the read run sends the reader's profile", () => {
     expect(fetcher.asked.every((a) => a.profile === PROFILE)).toBe(true);
   });
 });
+
+describe("a screenshot is taken with the competitor's profile too", () => {
+  const PNG = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 1, 2, 3, 4, 5]);
+  const png = (): Promise<Response> =>
+    Promise.resolve(new Response(PNG, { status: 200 }));
+
+  it("🔴 adds the country and a client timeout when the profile sets them", async () => {
+    vendorAnswering(png);
+    const url = "https://shop.test/p/shot";
+    await new LiveFetcher(opts()).fetchScreenshot(url, PROFILE);
+
+    expect(sent[0]?.body).toBe(
+      `{"zone":"z","url":"${url}","format":"raw","data_format":"screenshot","country":"us"}`,
+    );
+    expect(sent[0]?.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it("abandons a screenshot attempt after the profile's timeout, as a failed attempt", async () => {
+    vendorAnswering(hangs);
+    const fetcher = new LiveFetcher(opts({ attempts: 1 }));
+    const error = await fetcher
+      .fetchScreenshot("https://shop.test/p/shot2", {
+        country: null,
+        timeoutMs: 20,
+      })
+      .then(
+        () => null,
+        (e: unknown) => e,
+      );
+
+    expect(error).toBeInstanceOf(FetchFailed);
+    expect(error instanceof FetchFailed ? error.attempts : null).toBe(1);
+  });
+
+  for (const adapter of [neweggAdapter, amazonAdapter]) {
+    it(`CONTROL: ${adapter.slug}'s screenshot request is byte for byte as before profiles`, async () => {
+      vendorAnswering(png);
+      const url = `https://www.${adapter.slug}.com/p/X`;
+      await new LiveFetcher(opts()).fetchScreenshot(url, adapter.fetchProfile);
+      await new LiveFetcher(opts()).fetchScreenshot(url);
+
+      const today = `{"zone":"z","url":"${url}","format":"raw","data_format":"screenshot"}`;
+      expect(sent.map((init) => init.body)).toEqual([today, today]);
+      expect(sent.every((init) => !("signal" in init))).toBe(true);
+    });
+  }
+
+  it("the meter hands the profile through to a screenshot", async () => {
+    vendorAnswering(png);
+    const meter = new RequestMeter(new LiveFetcher(opts()));
+    await meter.fetchScreenshot?.("https://shop.test/p/shot3", PROFILE);
+    expect(sent[0]?.body).toContain(`"country":"us"`);
+  });
+});

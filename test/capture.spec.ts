@@ -18,7 +18,7 @@ import {
   type CaptureArtifact,
   type CapturePolicy,
 } from "../src/capture/types.js";
-import type { Fetcher } from "../src/fetcher/types.js";
+import type { Fetcher, FetchProfile } from "../src/fetcher/types.js";
 import { FetchFailed } from "../src/fetcher/types.js";
 import type { Resolution } from "../src/resolve.js";
 
@@ -39,6 +39,9 @@ import type { Resolution } from "../src/resolve.js";
  */
 
 const PAGE = "<html><body>a competitor product page</body></html>";
+
+/** The vendor's defaults — Newegg's and Amazon's profile. */
+const NO_PROFILE: FetchProfile = { country: null, timeoutMs: null };
 
 const resolution = (over: Partial<Resolution> = {}): Resolution =>
   ({
@@ -289,6 +292,7 @@ describe("capturing a resolution's page", () => {
       fetcher?: ReturnType<typeof fakeFetcher>;
       upload?: ReturnType<typeof fakeUpload>;
       isSelected?: (clientSku: string) => boolean;
+      fetchProfile?: FetchProfile;
     } = {},
   ) => {
     const fetcher = over.fetcher ?? fakeFetcher();
@@ -300,6 +304,7 @@ describe("capturing a resolution's page", () => {
       // unselected path has its own checks below.
       isSelected: over.isSelected ?? (() => true),
       fetcher,
+      fetchProfile: over.fetchProfile ?? NO_PROFILE,
       runDir,
       upload: upload.upload,
       log: () => undefined,
@@ -531,6 +536,7 @@ describe("capturing a resolution's page", () => {
       policy: ENABLED,
       isSelected: () => true,
       fetcher: fakeFetcher(),
+      fetchProfile: NO_PROFILE,
       runDir,
       upload: fakeUpload().upload,
       log: () => undefined,
@@ -679,6 +685,53 @@ describe("capturing a resolution's page", () => {
       expect(upload.sent[0]?.artifact.byteSize).toBe(PNG_BYTES.length);
     });
 
+    /**
+     * 🔴 **The capture re-read went out with no profile**, so a competitor
+     * whose pages need a country and a client timeout — Best Buy's take one
+     * to three minutes — was captured with neither, and could hang the run.
+     */
+    it("🔴 asks for the screenshot with the competitor's profile", async () => {
+      const profile: FetchProfile = { country: "us", timeoutMs: 150_000 };
+      const asked: (FetchProfile | undefined)[] = [];
+      const fetcher = shotFetcher();
+      const { capturer, upload } = await build({
+        policy: { ...ENABLED, format: "png" },
+        fetchProfile: profile,
+        fetcher: {
+          ...fetcher,
+          fetchScreenshot: (url: string, given?: FetchProfile) => {
+            asked.push(given);
+            return fetcher.fetchScreenshot(url);
+          },
+        },
+      });
+      await capturer.offer(resolution());
+
+      expect(asked).toEqual([profile]);
+      expect(upload.sent).toHaveLength(1);
+    });
+
+    it("🔴 re-reads the markup with the competitor's profile", async () => {
+      const profile: FetchProfile = { country: "us", timeoutMs: 150_000 };
+      const asked: (FetchProfile | undefined)[] = [];
+      const fetcher = shotFetcher();
+      const { capturer, upload } = await build({
+        policy: ENABLED,
+        fetchProfile: profile,
+        fetcher: {
+          ...fetcher,
+          fetch: (url: string, given?: FetchProfile) => {
+            asked.push(given);
+            return fetcher.fetch(url);
+          },
+        },
+      });
+      await capturer.offer(resolution());
+
+      expect(asked).toEqual([profile]);
+      expect(upload.sent).toHaveLength(1);
+    });
+
     it("still keeps the markup when the policy asks for html — the CONTROL", async () => {
       // Without this, a capturer hard-wired to screenshots would pass both
       // checks above while silently ending html capture for everyone.
@@ -708,6 +761,7 @@ describe("resuming a run that already captured", () => {
       policy: ENABLED,
       isSelected: () => true,
       fetcher: fakeFetcher(),
+      fetchProfile: NO_PROFILE,
       runDir,
       upload: upload.upload,
       log: () => undefined,
