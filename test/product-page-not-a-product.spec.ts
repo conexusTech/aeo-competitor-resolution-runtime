@@ -103,9 +103,16 @@ describe("a product page that is not one", () => {
       retailer(["A"], () => null),
       new AnyPage(),
     );
-    expect(r.probes).toBe(1);
     expect(r.outcome).not.toBe("unverifiable");
-    expect(r.outcome).toBe("unconfirmed");
+    // 🔴 Nor is it `unconfirmed`, which this check said until 2026-11-11: a
+    // page that parsed to nothing was never read, so no barcode on it can
+    // disagree. It is read once more within the item's probes, and still
+    // unread it is a failure, which the run retries — see
+    // `unread-best-candidate.spec.ts`.
+    expect(r.probes).toBe(2);
+    expect(r.outcome).toBe("not-found");
+    expect(r.match).toBeNull();
+    expect(r.failure).toMatch(/^the best candidate's page could not be read/);
   });
 
   it("CONTROL: a real page publishing no barcode IS unverifiable", async () => {

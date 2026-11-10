@@ -1102,6 +1102,34 @@ async function resolveCounted(
     };
   }
 
+  /** A pairing proven by a page this item read. */
+  const verifiedOn = (
+    entry: { candidate: ParsedCandidate; score: number },
+    agreeing: string,
+  ): Resolution => ({
+    ...counted,
+    outcome: "verified",
+    identity,
+    queriesTried: tried,
+    candidatesSeen,
+    probes,
+    requests: fetcher.liveRequestCount,
+    // The value that AGREED, not the field's first token — otherwise the
+    // evidence a reviewer reads names a barcode that did not match.
+    match: evidence(
+      entry.candidate,
+      entry.score,
+      agreeing,
+      pages.get(entry.candidate.url),
+    ),
+    alternatives: alternativesFor({
+      ranked,
+      chosen: entry.candidate,
+      probed: probeOutcomes,
+      scoreInput: rankInput,
+    }),
+  });
+
   /** Probes after identity: the item's `maxProbes`, the barcode stage's apart. */
   let itemProbes = 0;
   for (const entry of ranked) {
@@ -1116,31 +1144,7 @@ async function resolveCounted(
     if (published === null) continue;
 
     const agreeing = agreeingIn(published);
-    if (agreeing !== null) {
-      return {
-        ...counted,
-        outcome: "verified",
-        identity,
-        queriesTried: tried,
-        candidatesSeen,
-        probes,
-        requests: fetcher.liveRequestCount,
-        // The value that AGREED, not the field's first token — otherwise the
-        // evidence a reviewer reads names a barcode that did not match.
-        match: evidence(
-          entry.candidate,
-          entry.score,
-          agreeing,
-          pages.get(entry.candidate.url),
-        ),
-        alternatives: alternativesFor({
-          ranked,
-          chosen: entry.candidate,
-          probed: probeOutcomes,
-          scoreInput: rankInput,
-        }),
-      };
-    }
+    if (agreeing !== null) return verifiedOn(entry, agreeing);
 
     // 🔴 No barcode at all is NOT a mismatch. Remember the best such listing:
     // if nothing verifies, this is an `unverifiable`, not an `unconfirmed`.
@@ -1174,6 +1178,41 @@ async function resolveCounted(
     ...rankInput,
     candidate: best.candidate,
   });
+  /**
+   * 🔴 **The best listing's page, read once more where it was not read**,
+   * within what is left of the item's probes.
+   *
+   * A live Best Buy run (2026-11-10, Bright Data delivering 67 of 107
+   * requests) proposed Kensington's best listing — the one the investigation
+   * verified — as `unconfirmed` without ever reading it: the barcode stage's
+   * read had failed, and the loop above reuses an answer rather than buying
+   * it twice. Only a page that was READ can disagree. See `proposal` below
+   * for what happens when this read fails too.
+   *
+   * Only when nothing verified, nothing read published no barcode — an
+   * `unverifiable` already rests on a page that was read — and the best
+   * listing clears the floor to be reported at all: one that does not is a
+   * miss whose unread pages already make it a failure, which the run retries
+   * after the rest of its list.
+   */
+  let bestRead = probed.get(best.candidate.url) ?? null;
+  if (
+    bestRead === null &&
+    noBarcodeFound === null &&
+    bestHasEvidence &&
+    best.score >= MIN_EVIDENCE_TO_REPORT &&
+    itemProbes < maxProbes
+  ) {
+    itemProbes++;
+    bestRead = await probe(best.candidate);
+    if (bestRead !== null) {
+      const agreeing = agreeingIn(bestRead);
+      if (agreeing !== null) return verifiedOn(best, agreeing);
+      // Ranked first, so it is the best such listing whatever came before.
+      if (bestRead.length === 0) noBarcodeFound = best;
+    }
+  }
+
   /**
    * 🔴 **Jody's rule: a candidate without a barcode match goes to a person.**
    * A product index states no model, so an index candidate can never show
@@ -1228,6 +1267,56 @@ async function resolveCounted(
     };
   }
 
+  /**
+   * What goes to a person as `unconfirmed`: a listing whose page was READ and
+   * whose published barcode disagrees — never one nobody read.
+   *
+   * 🔴 **The best listing, where its page was read**, as it always was. Where
+   * it was not — even after the read above — the best listing below it
+   * qualifies only when its page WAS read (so the disagreement a reviewer is
+   * shown is a fact) and it clears, on its own evidence, the floor the best
+   * had to clear: part-number evidence and the reporting score. The unread
+   * best stays among the alternatives for the reviewer to choose instead.
+   *
+   * Every read page here disagrees: an agreeing one returned `verified`, and
+   * an empty one made this an `unverifiable` above.
+   */
+  const proposal =
+    bestRead !== null
+      ? best
+      : (ranked.slice(1).find((entry) => {
+          const read = probed.get(entry.candidate.url);
+          return (
+            read !== undefined &&
+            read !== null &&
+            entry.score >= MIN_EVIDENCE_TO_REPORT &&
+            hasPartNumberEvidence({ ...rankInput, candidate: entry.candidate })
+          );
+        }) ?? null);
+
+  if (proposal === null) {
+    // 🔴 **A failure, never a proposal and never a miss.** The listing most
+    // likely to be this item was never compared by barcode, so this is an
+    // item nobody managed to look at — `runList` retries it after the rest of
+    // the list, and the gateway files it as an error.
+    return {
+      ...counted,
+      outcome: "not-found",
+      identity,
+      queriesTried: tried,
+      candidatesSeen,
+      probes,
+      requests: fetcher.liveRequestCount,
+      // The run's own account of what went unread follows, in the words
+      // every other miss over an unread page uses.
+      failure:
+        `the best candidate's page could not be read, and no listing that ` +
+        `was read clears the evidence floor, so none is proposed: ` +
+        (missFailure() ??
+          `${tally.unanswered} of ${probes} product pages could not be read`),
+    };
+  }
+
   return {
     ...counted,
     outcome: "unconfirmed",
@@ -1237,14 +1326,14 @@ async function resolveCounted(
     probes,
     requests: fetcher.liveRequestCount,
     match: evidence(
-      best.candidate,
-      best.score,
+      proposal.candidate,
+      proposal.score,
       null,
-      pages.get(best.candidate.url),
+      pages.get(proposal.candidate.url),
     ),
     alternatives: alternativesFor({
       ranked,
-      chosen: best.candidate,
+      chosen: proposal.candidate,
       probed: probeOutcomes,
       scoreInput: rankInput,
     }),
