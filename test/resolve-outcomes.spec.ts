@@ -304,7 +304,8 @@ describe("resolveItem outcomes", () => {
       DEFAULT_OPTIONS,
     );
     expect(resolution.outcome).toBe("unconfirmed");
-    expect(resolution.match?.retailerBarcode).toBeNull();
+    // The barcode the read page published: the disagreement a reviewer sees.
+    expect(resolution.match?.retailerBarcode).toBe("099999999999");
   });
 
   it("🔴 unverifiable beats unconfirmed when both are available", async () => {

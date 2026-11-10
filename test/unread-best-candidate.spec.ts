@@ -493,3 +493,91 @@ describe("a run retries the failure after the rest of its list", () => {
     }
   });
 });
+
+/**
+ * 🔴 **An `unconfirmed` match carries the barcode its read page published.**
+ *
+ * `unconfirmed` means the listing's page was READ and its published barcode
+ * disagrees, so that barcode is the evidence a reviewer is shown. A local
+ * Best Buy run on 2026-11-11 sent three such rows to the gateway with
+ * `retailerBarcode: null`, which the gateway's review note describes as a
+ * page that could not be read — and the portal's "theirs" column was blank.
+ * `unverifiable` is the opposite case: its page published no barcode, so
+ * its evidence carries none.
+ */
+describe("the evidence's retailer barcode", () => {
+  it("🔴 an unconfirmed best carries the barcode its page published", async () => {
+    const adapter = retailer(SEARCH, { [QUERY]: [BEST, TG83] }, DISAGREEING, 3);
+    const fetcher = new Scripted({
+      [BEST.url]: [page(BEST.url)],
+      [TG83.url]: [page(TG83.url)],
+    });
+    const r = await resolveItem(REQUEST, adapter, fetcher, OPTIONS);
+    expect(r.outcome).toBe("unconfirmed");
+    expect(r.match?.itemId).toBe("BEST");
+    expect(r.match?.retailerBarcode).toBe("710931999999");
+  });
+
+  it("🔴 the primary value, where the page published several", async () => {
+    const adapter = retailer(
+      SEARCH,
+      { [QUERY]: [BEST] },
+      {
+        [BEST.url]: {
+          ...product("710931999999"),
+          additionalBarcodes: ["710931777777"],
+        },
+      },
+      3,
+    );
+    const fetcher = new Scripted({ [BEST.url]: [page(BEST.url)] });
+    const r = await resolveItem(REQUEST, adapter, fetcher, OPTIONS);
+    expect(r.outcome).toBe("unconfirmed");
+    expect(r.match?.retailerBarcode).toBe("710931999999");
+  });
+
+  it("🔴 a lower listing proposed on the last attempt carries ITS barcode", async () => {
+    const adapter = retailer(
+      SEARCH,
+      { [QUERY]: [BEST, SIBLING, TG83] },
+      DISAGREEING,
+      3,
+    );
+    const fetcher = new Scripted({
+      [BEST.url]: [FAIL],
+      [SIBLING.url]: [page(SIBLING.url)],
+      [TG83.url]: [page(TG83.url)],
+    });
+    const r = await resolveItem(
+      REQUEST,
+      adapter,
+      fetcher,
+      OPTIONS,
+      undefined,
+      undefined,
+      true,
+    );
+    expect(r.outcome).toBe("unconfirmed");
+    expect(r.match?.itemId).toBe("SIB");
+    // The sibling's own published value — not the unread best's, not the
+    // TPE-TG83's.
+    expect(r.match?.retailerBarcode).toBe("710931888888");
+  });
+
+  it("CONTROL: an unverifiable carries none, because its page published none", async () => {
+    const adapter = retailer(
+      SEARCH,
+      { [QUERY]: [BEST, TG83] },
+      { ...DISAGREEING, [BEST.url]: product(null) },
+      3,
+    );
+    const fetcher = new Scripted({
+      [BEST.url]: [page(BEST.url)],
+      [TG83.url]: [page(TG83.url)],
+    });
+    const r = await resolveItem(REQUEST, adapter, fetcher, OPTIONS);
+    expect(r.outcome).toBe("unverifiable");
+    expect(r.match?.itemId).toBe("BEST");
+    expect(r.match?.retailerBarcode).toBeNull();
+  });
+});

@@ -321,6 +321,7 @@ describe("where the item's brand is unknown (review finding 12, documented in th
     // Its barcode disagrees: a proposal for a person, never a verification.
     expect(r.outcome).toBe("unconfirmed");
     expect(r.match?.itemId).toBe("C2G");
-    expect(r.match?.retailerBarcode).toBeNull();
+    // The cable's own published barcode, which is the disagreement.
+    expect(r.match?.retailerBarcode).toBe("757120295381");
   });
 });

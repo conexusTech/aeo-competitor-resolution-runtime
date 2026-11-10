@@ -1353,10 +1353,19 @@ async function resolveCounted(
     candidatesSeen,
     probes,
     requests: fetcher.liveRequestCount,
+    // 🔴 **The barcode the proposal's page published — the evidence of the
+    // disagreement — never `null`.** Each evidence call carries what its
+    // outcome rests on: `verified` the value that agreed, `unverifiable`
+    // nothing (its page published none), `unconfirmed` the primary value its
+    // read page published. The gateway reads a `null` here as a page nobody
+    // could read, so a hard-coded `null` described every real mismatch as an
+    // unread page and left the portal's "theirs" column blank. Both proposals
+    // above rest on a read page that published at least one value, so the
+    // fallback is the type's, never reached.
     match: evidence(
       proposal.candidate,
       proposal.score,
-      null,
+      probed.get(proposal.candidate.url)?.[0] ?? null,
       pages.get(proposal.candidate.url),
     ),
     alternatives: alternativesFor({

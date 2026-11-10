@@ -183,19 +183,28 @@ proven either way here".
 
 **Requirement:** A listing the retailer publishes no barcode for is unverifiable, not probable
 **Surface:** `resolveItem` → `unconfirmed`
-**Automated:** `test/resolve-outcomes.spec.ts` — "unconfirmed — a barcode published, and it disagrees"
+**Automated:** `test/resolve-outcomes.spec.ts` — "unconfirmed — a barcode published, and it disagrees"; `test/unread-best-candidate.spec.ts` — "an unconfirmed best carries the barcode its page published", "the primary value, where the page published several", "a lower listing proposed on the last attempt carries ITS barcode", "CONTROL: an unverifiable carries none, because its page published none"
 
 **Do**
 
 ```bash
 npx vitest run test/resolve-outcomes.spec.ts -t "unconfirmed"
+npx vitest run test/unread-best-candidate.spec.ts -t "the evidence's retailer barcode"
 ```
 
 **Expect**
 
-Outcome `unconfirmed`. The negative half of the check above: without it,
-`unverifiable` could be returned for every non-match and the distinction would
-be meaningless.
+Outcome `unconfirmed`, with evidence whose `retailerBarcode` is the barcode the
+read page published — `099999999999`, the value that disagreed. The negative
+half of the check above: without it, `unverifiable` could be returned for every
+non-match and the distinction would be meaningless. The second command's four
+pass: an unconfirmed best carries its page's value, the primary one where the
+page published several; a lower listing proposed on the last attempt carries
+its own page's value, not the unread best's; and the CONTROL, an
+`unverifiable`, carries `null`. 🔴 **Until 2026-11-11 every `unconfirmed`
+carried `null`**, which the gateway's review note reads as a page that could
+not be read — so every real mismatch was described as an unread page, and the
+portal's "theirs" column was blank. Seen on three Best Buy rows in a local run.
 
 ---
 

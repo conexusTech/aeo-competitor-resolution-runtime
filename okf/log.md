@@ -8,6 +8,8 @@
 
 - **Learning** — ⚠️ **Counting delivered pages hid a third of Best Buy's cost.** 166 requests were sent for 110 pages delivered. A run now reports attempts, and the registry's rates are measured on that.
 
+- **Learning** — 🔴 **Every `unconfirmed` match reached the gateway with no barcode.** The evidence for the proposed listing hard-coded the retailer's barcode to `null`, so a page that was read and disagreed looked, in the review note, like a page nobody could read, and the portal's "theirs" column was blank. It now carries the primary barcode the read page published; `unverifiable` still carries none. In the pinned replays one row changed, Newegg 53's `619659113551`, now carrying `619659113568`.
+
 ## 2026-10-23
 
 - **Update** — `read-mode-paces-throttled-pages` (MC-1): a page the vendor throttles in read mode — an empty 200 after the fetcher's own 5 s and 10 s waits, or a 429 — is set aside while the rest of the job is read, then read again after 20 s, 40 s and 80 s, and reported as not read (`fetch-failed:`, as before) only after its last attempt. A page the retailer answered, or one that could not be reached, is still read once. Re-reads are capped per job at a quarter of its listings, at least 3 and at most 100; past the cap a throttled page is reported not read at once and says so. Each reading is still posted exactly once, and the gateway contract is unchanged. Three scenarios and ten checks added to `listing-reads`; seven mutations each shown red.
