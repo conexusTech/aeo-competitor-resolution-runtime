@@ -6,6 +6,7 @@ import type {
   QuerySupport,
   RetailerAdapter,
 } from "./types.js";
+import { ldJsonBlocks } from "../ld-json.js";
 import { safeImageUrl } from "./types.js";
 
 /**
@@ -333,18 +334,14 @@ function barcodesIn(raw: unknown, into: string[]): void {
   }
 }
 
-const LD_JSON =
-  /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
-
 /** The page's `schema.org/Product` nodes, in page order. */
 function ldProducts(html: string): Json[] {
   const out: Json[] = [];
-  LD_JSON.lastIndex = 0;
-  let m: RegExpExecArray | null;
-  while ((m = LD_JSON.exec(html)) !== null) {
+  // 🔴 Through the shared linear scan: see `ldJsonBlocks`.
+  for (const block of ldJsonBlocks(html)) {
     let parsed: unknown;
     try {
-      parsed = JSON.parse((m[1] ?? "").trim());
+      parsed = JSON.parse(block.trim());
     } catch {
       continue;
     }
@@ -355,7 +352,14 @@ function ldProducts(html: string): Json[] {
   return out;
 }
 
-const UPC_LINE = /data-selenium="overviewUpcText"[^>]*>\s*UPC:\s*([^<]*)</g;
+/**
+ * A rendered "UPC:" line, its value trimmed by the caller.
+ *
+ * 🔴 **One run of non-`<` characters after "UPC:", nothing before it.** A
+ * leading `\s*` shared that run with `[^<]*`, so a line of 50,000 spaces with
+ * no closing tag took three and a half seconds.
+ */
+const UPC_LINE = /data-selenium="overviewUpcText"[^>]*>\s*UPC:([^<]*)</g;
 
 /** The entry that queried exactly one item, and its item. */
 function productEntries(pre: Json | null): Json[] {

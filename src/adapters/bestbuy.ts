@@ -6,6 +6,7 @@ import type {
   QuerySupport,
   RetailerAdapter,
 } from "./types.js";
+import { ldJsonBlocks } from "../ld-json.js";
 import { safeImageUrl } from "./types.js";
 
 /**
@@ -344,18 +345,14 @@ interface PageProduct {
   readonly isFirstParty: boolean | null;
 }
 
-const LD_JSON =
-  /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
-
 /** The page's `schema.org/Product` nodes, in page order. */
 function ldProducts(html: string): Json[] {
   const out: Json[] = [];
-  LD_JSON.lastIndex = 0;
-  let m: RegExpExecArray | null;
-  while ((m = LD_JSON.exec(html)) !== null) {
+  // 🔴 Through the shared linear scan: see `ldJsonBlocks`.
+  for (const block of ldJsonBlocks(html)) {
     let parsed: unknown;
     try {
-      parsed = JSON.parse((m[1] ?? "").trim());
+      parsed = JSON.parse(block.trim());
     } catch {
       continue;
     }

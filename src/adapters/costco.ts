@@ -9,6 +9,7 @@ import type {
   QuerySupport,
   RetailerAdapter,
 } from "./types.js";
+import { ldJsonBlocks } from "../ld-json.js";
 
 /**
  * The Costco adapter, read through Costco's public website only, signed out.
@@ -104,7 +105,10 @@ export function extractFlight(html: string): string {
   return out.join("");
 }
 
-/** The balanced `{…}` starting at `start`, honouring strings, or `null`. */
+/**
+ * The balanced `{…}` starting at `start`, honouring strings, or `null` when
+ * the text ends before it closes.
+ */
 function balancedObject(text: string, start: number): string | null {
   if (text[start] !== "{") return null;
   let depth = 0;
@@ -128,16 +132,25 @@ function balancedObject(text: string, start: number): string | null {
   return null;
 }
 
-/** The first `productDetailsData` object naming a product, parsed. */
+/**
+ * The first `productDetailsData` object naming a product, parsed.
+ *
+ * 🔴 **Each character is scanned once.** A scan resumes where the last one
+ * ended — after an object that was read and rejected, never just after its
+ * opening — and one that ran to the end of the text unclosed ends the search,
+ * since every later opening lies inside it. Resuming after each opening made
+ * 20,000 unclosed or nested objects take thirteen seconds.
+ */
 export function productDetails(html: string): Json | null {
   const flight = extractFlight(html);
   const needle = '"productDetailsData":{';
   for (let from = 0; ;) {
     const at = flight.indexOf(needle, from);
     if (at < 0) return null;
-    from = at + needle.length;
-    const raw = balancedObject(flight, at + needle.length - 1);
-    if (raw === null) continue;
+    const start = at + needle.length - 1;
+    const raw = balancedObject(flight, start);
+    if (raw === null) return null;
+    from = start + raw.length;
     try {
       const parsed: unknown = JSON.parse(raw);
       if (strAt(obj(parsed, "productData"), "id") !== null && isObj(parsed)) {
@@ -149,15 +162,13 @@ export function productDetails(html: string): Json | null {
   }
 }
 
-const LD_JSON =
-  /<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g;
-
 /** The page's JSON-LD `Product`, or `null`. */
 export function ldProduct(html: string): Json | null {
-  for (const m of html.matchAll(LD_JSON)) {
+  // 🔴 Through the shared linear scan: see `ldJsonBlocks`.
+  for (const block of ldJsonBlocks(html)) {
     let parsed: unknown;
     try {
-      parsed = JSON.parse(m[1] ?? "");
+      parsed = JSON.parse(block);
     } catch {
       continue;
     }
