@@ -305,6 +305,7 @@ describe("capturing a resolution's page", () => {
       isSelected: over.isSelected ?? (() => true),
       fetcher,
       fetchProfile: over.fetchProfile ?? NO_PROFILE,
+      hosts: ["www.newegg.com", "newegg.com"],
       runDir,
       upload: upload.upload,
       log: () => undefined,
@@ -323,6 +324,31 @@ describe("capturing a resolution's page", () => {
       .filter((line) => line.trim() !== "")
       .map((line) => JSON.parse(line) as Record<string, unknown>);
   };
+
+  it("🔴 never fetches a page off the competitor's own hosts (security finding 5)", async () => {
+    for (const url of [
+      "http://www.newegg.com/p/N82E16820233852",
+      "https://user@www.newegg.com/p/N82E16820233852",
+      "https://www.newegg.com:8443/p/N82E16820233852",
+      "https://www.newegg.com.evil.example/p/N82E16820233852",
+    ]) {
+      const { capturer, fetcher, upload } = await build();
+      const before = capturer.remaining;
+      const record = await capturer.offer(
+        resolution({
+          match: { ...otherPage, url },
+        }),
+      );
+      expect(record.state, url).toBe("failed");
+      expect(record.failureReason, url).toMatch(/own hosts/);
+      expect(fetcher.calls, url).toEqual([]);
+      expect(upload.sent, url).toEqual([]);
+      // Nothing was stored, so nothing was charged.
+      expect(capturer.remaining, url).toBe(before);
+      await rm(runDir, { recursive: true, force: true });
+      runDir = await mkdtemp(path.join(tmpdir(), "capture-spec-"));
+    }
+  });
 
   it("captures the page the resolution was decided on, once", async () => {
     const { capturer, fetcher, upload } = await build();
@@ -537,6 +563,7 @@ describe("capturing a resolution's page", () => {
       isSelected: () => true,
       fetcher: fakeFetcher(),
       fetchProfile: NO_PROFILE,
+      hosts: ["www.newegg.com", "newegg.com"],
       runDir,
       upload: fakeUpload().upload,
       log: () => undefined,
@@ -762,6 +789,7 @@ describe("resuming a run that already captured", () => {
       isSelected: () => true,
       fetcher: fakeFetcher(),
       fetchProfile: NO_PROFILE,
+      hosts: ["www.newegg.com", "newegg.com"],
       runDir,
       upload: upload.upload,
       log: () => undefined,

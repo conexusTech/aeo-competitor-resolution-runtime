@@ -395,6 +395,16 @@ export interface RetailerAdapter {
   readonly pacing: Pacing;
 
   /**
+   * The only hosts this competitor's listings live on, lower-case, exact —
+   * the same list its `ListingReader` states.
+   *
+   * 🔴 **A listing off them is never probed, never proposed** (see
+   * `isOwnHostUrl`): its url comes from a page the competitor controls, is
+   * fetched through a paid proxy, and is persisted as a link everyone sees.
+   */
+  readonly hosts: readonly string[];
+
+  /**
    * How this competitor's pages are fetched: its searches and its product
    * pages, never the client's catalogue or the search engine.
    */

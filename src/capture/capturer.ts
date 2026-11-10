@@ -28,6 +28,7 @@
  * delivery to an idempotent receiver is the only pair that cannot lose data.
  */
 
+import { isOwnHostUrl } from "../own-hosts.js";
 import { appendFile, mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -72,6 +73,12 @@ export interface CapturerDeps {
    * the vendor's own limit is longer than the run can afford to wait.
    */
   readonly fetchProfile: FetchProfile;
+  /**
+   * The competitor's own hosts. 🔴 A page off them is never fetched: the
+   * match's url came from a page the competitor controls (see
+   * `isOwnHostUrl`).
+   */
+  readonly hosts: readonly string[];
   readonly runDir: string;
   readonly upload: (args: {
     readonly clientSku: string;
@@ -190,6 +197,24 @@ export class Capturer {
         byteSize: null,
         sha256: null,
         failureReason: null,
+        at,
+      });
+    }
+
+    // 🔴 Off the competitor's own hosts: never fetched, and never charged
+    // to the budget, since nothing is stored (security finding 5).
+    if (!isOwnHostUrl(url, this.deps.hosts)) {
+      return this.remember({
+        clientSku: resolution.clientSku,
+        barcode: resolution.barcode,
+        state: "failed",
+        sourceUrl: url,
+        storageKey: null,
+        byteSize: null,
+        sha256: null,
+        failureReason:
+          "the page is not an https page on the competitor's own hosts, " +
+          "with no userinfo and no port, so it was not fetched",
         at,
       });
     }

@@ -61,6 +61,7 @@ function fakeAdapter(
     fetchProfile: { country: null, timeoutMs: null },
     maxProbes: null,
     productIndex: null,
+    hosts: ["retailer.test"],
     buildSearchUrl: (q) => `https://retailer.test/s?q=${encodeURIComponent(q)}`,
     parseSearchResults: (html) => searchResults[html] ?? [],
     parseProductPage: (html) =>

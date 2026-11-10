@@ -231,6 +231,7 @@ describe("the meter charges failed attempts to the item that made them", () => {
     fetchProfile: { country: null, timeoutMs: null },
     maxProbes: null,
     productIndex: null,
+    hosts: ["r.test"],
     buildSearchUrl: (q) => `https://r.test/s?q=${encodeURIComponent(q)}`,
     parseSearchResults: () => [],
     parseProductPage: () => ({

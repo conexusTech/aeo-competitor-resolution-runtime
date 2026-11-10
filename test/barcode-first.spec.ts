@@ -170,6 +170,7 @@ function retailer(support: QuerySupport): RetailerAdapter {
     fetchProfile: { country: null, timeoutMs: null },
     maxProbes: null,
     productIndex: null,
+    hosts: ["r.test"],
     buildSearchUrl: SEARCH,
     parseSearchResults: (html) => {
       if (html === "NOTHING") return [];

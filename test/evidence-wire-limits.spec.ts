@@ -64,6 +64,7 @@ function resolveWith(
     fetchProfile: { country: null, timeoutMs: null },
     maxProbes: null,
     productIndex: null,
+    hosts: ["r.test"],
     buildSearchUrl: (q) => `https://r.test/s?q=${encodeURIComponent(q)}`,
     parseSearchResults: () => [chosen, runnerUp],
     parseProductPage: (html) => ({
@@ -169,6 +170,7 @@ describe("🔴 a page-derived string past its limit is held to it", () => {
       fetchProfile: { country: null, timeoutMs: null },
       maxProbes: null,
       productIndex: null,
+      hosts: ["r.test"],
       buildSearchUrl: (q) => `https://r.test/s?q=${encodeURIComponent(q)}`,
       parseSearchResults: () => [],
       parseProductPage: () => null,

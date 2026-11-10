@@ -83,6 +83,7 @@ function retailer(limit: number): RetailerAdapter {
     fetchProfile: { country: null, timeoutMs: null },
     maxProbes: null,
     productIndex: null,
+    hosts: ["r.test"],
     buildSearchUrl: (q) => `https://r.test/s?q=${encodeURIComponent(q)}`,
     parseSearchResults: () => [],
     parseProductPage: () => ({

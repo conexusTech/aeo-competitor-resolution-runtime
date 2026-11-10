@@ -110,6 +110,7 @@ export async function runDispatchedJob(
     isSelected: (clientSku) => selected.has(clientSku),
     fetcher: deps.fetcher,
     fetchProfile: adapter.fetchProfile,
+    hosts: adapter.hosts,
     runDir: deps.baseOptions.runDir,
     upload: (args) => deps.client.postCapture(args),
     log,

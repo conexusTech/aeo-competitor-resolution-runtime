@@ -45,6 +45,7 @@
  * are not touched, so a read cannot change what a resolution finds.
  */
 
+import { isOwnHostUrl } from "./own-hosts.js";
 import {
   MAX_PAGES_AT_ONCE,
   pagesAtOnce,
@@ -314,14 +315,14 @@ function readBody(
  * on a job about to be refused.
  */
 function requireOwnHosts(job: ReadJob, reader: ListingReader): void {
-  const hosts = new Set(reader.hosts);
   for (const [index, listing] of job.listings.entries()) {
-    const host = new URL(listing.url).hostname.toLowerCase();
-    if (!hosts.has(host)) {
+    // 🔴 The gateway's own rule (`isOwnHostUrl`): https, no userinfo, no
+    // port, the exact host — not merely a hostname that matches.
+    if (!isOwnHostUrl(listing.url, reader.hosts)) {
       throw new Error(
-        `listing ${index} of read run ${job.readRunId} is on host "${host}", ` +
-          `which is not ${reader.slug}'s (${reader.hosts.join(", ")}) — ` +
-          `refused before anything was bought`,
+        `listing ${index} of read run ${job.readRunId} is not an https page ` +
+          `on one of ${reader.slug}'s own hosts (${reader.hosts.join(", ")}), ` +
+          `with no userinfo and no port — refused before anything was bought`,
       );
     }
   }

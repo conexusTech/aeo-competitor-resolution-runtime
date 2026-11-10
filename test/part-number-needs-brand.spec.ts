@@ -123,6 +123,7 @@ function retailer(
     fetchProfile: { country: null, timeoutMs: null },
     maxProbes: 3,
     productIndex: null,
+    hosts: ["r.test"],
     buildSearchUrl: searchUrl,
     parseSearchResults: (html) => [
       ...(results[html.replace(/^search:/, "")] ?? []),

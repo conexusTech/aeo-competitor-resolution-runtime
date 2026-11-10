@@ -143,6 +143,7 @@ const scripted = (maxProbes: number | null): RetailerAdapter => ({
   fetchProfile: { country: null, timeoutMs: null },
   maxProbes,
   productIndex: null,
+  hosts: ["r.test"],
   buildSearchUrl: (q) => `https://r.test/s?q=${encodeURIComponent(q)}`,
   parseSearchResults: (html) => {
     const [kind, ids] = html.split(" ");

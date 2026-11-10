@@ -1161,6 +1161,14 @@ describe("a read job", () => {
       "https://evil.example/p/A",
       "https://www.newegg.com.evil.example/p/A",
       "https://www.amazon.com/dp/B0BFGB2D2Z",
+      // 🔴 Security finding 5: the gateway's own rule, https only, no
+      // userinfo, no port, the exact host.
+      "http://www.newegg.com/p/A",
+      "https://user@www.newegg.com/p/A",
+      "https://user:secret@www.newegg.com/p/A",
+      "https://www.newegg.com:8443/p/A",
+      "https://www.newegg.com:443.evil.example/p/A",
+      "https://wwwnewegg.com/p/A",
     ]) {
       const clock = new Clock();
       const fetcher = new ScriptedFetcher(NEWEGG_PAGES, clock);

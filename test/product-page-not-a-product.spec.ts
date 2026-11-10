@@ -68,6 +68,7 @@ function retailer(
     fetchProfile: { country: null, timeoutMs: null },
     maxProbes,
     productIndex: null,
+    hosts: ["r.test"],
     buildSearchUrl: (q) => `https://r.test/s?q=${encodeURIComponent(q)}`,
     parseSearchResults: () => ids.map(candidate),
     parseProductPage: page,

@@ -22,6 +22,7 @@ import { gtinMatches } from "./gtin.js";
 import { identityFromBarcode } from "./identity/from-barcode.js";
 import { identityFromSearchResults } from "./identity/from-search-results.js";
 import { identityFromStructuredData } from "./identity/from-structured-data.js";
+import { isOwnHostUrl } from "./own-hosts.js";
 import { createIndexCache, type IndexCache } from "./product-index.js";
 import {
   boundText,
@@ -474,6 +475,21 @@ async function resolveCounted(
   let notAResultsPage = 0;
 
   /**
+   * Add a found listing to the pool, the first finding of it winning.
+   *
+   * 🔴 **The check before every probe, and every proposal: a listing off the
+   * competitor's own hosts never enters the pool** (security finding 5). Its
+   * url came from a page the competitor controls; probing it would send the
+   * paid proxy somewhere that is not the retailer, and proposing it would
+   * persist that link for every reviewer. Every probe and every match is
+   * drawn from this pool, so nothing past here can reach one.
+   */
+  const admit = (candidate: ParsedCandidate): void => {
+    if (!isOwnHostUrl(candidate.url, adapter.hosts)) return;
+    if (!pool.has(candidate.itemId)) pool.set(candidate.itemId, candidate);
+  };
+
+  /**
    * Ask the retailer one query, adding what it answers to the pool.
    *
    * Returns whether it answered with a results page. A fetch that failed and
@@ -499,9 +515,7 @@ async function resolveCounted(
       return false;
     }
     candidatesSeen += candidates.length;
-    for (const candidate of candidates) {
-      if (!pool.has(candidate.itemId)) pool.set(candidate.itemId, candidate);
-    }
+    for (const candidate of candidates) admit(candidate);
     return true;
   };
 
@@ -792,9 +806,7 @@ async function resolveCounted(
       productName,
     });
     candidatesSeen += found.length;
-    for (const candidate of found) {
-      if (!pool.has(candidate.itemId)) pool.set(candidate.itemId, candidate);
-    }
+    for (const candidate of found) admit(candidate);
   } else {
     const queries = planQueries(
       {

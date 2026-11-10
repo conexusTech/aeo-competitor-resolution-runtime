@@ -102,6 +102,7 @@ const indexed: RetailerAdapter = {
   fetchProfile: { country: "us", timeoutMs: 1000 },
   maxProbes: 3,
   productIndex: FAKE_INDEX,
+  hosts: ["r.test"],
   buildSearchUrl: (q) => `https://r.test/s?q=${encodeURIComponent(q)}`,
   parseSearchResults: () => {
     searches++;

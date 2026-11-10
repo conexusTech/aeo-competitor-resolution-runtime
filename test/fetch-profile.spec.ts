@@ -234,6 +234,7 @@ describe("resolve sends the competitor's profile on competitor pages only", () =
     fetchProfile: PROFILE,
     maxProbes: null,
     productIndex: null,
+    hosts: ["r.test"],
     buildSearchUrl: (q) => `https://r.test/s?q=${encodeURIComponent(q)}`,
     parseSearchResults: () => [
       {
