@@ -294,7 +294,8 @@ export async function runList(
    * ⚠️ **Deferred BEFORE being reported, not retried after.** `offer` skips a
    * clientSku the gateway has already acknowledged, so a sweep that ran after
    * reporting would be silently dropped — and, worse, would appear to work on
-   * a short list, because nothing is flushed until 100 findings have piled up.
+   * a short, fast list, because nothing is flushed until 100 findings have
+   * piled up or the oldest has waited a minute.
    */
   //
   // ⚠️ **Each carries what the first attempt already spent.** A retry's meter

@@ -15,7 +15,7 @@ import type { DispatchPayload } from "../src/queue/task-record.js";
 import { GatewayReporter } from "../src/reporting/reporter.js";
 import { RUN_DEFAULTS, runList } from "../src/run.js";
 import { FakeClock } from "./fake-clock.js";
-import { filed, gatewayDouble, typesOf as types } from "./gateway-double.js";
+import { filed, gatewayDouble, typesOf } from "./gateway-double.js";
 
 /**
  * A run with a time budget takes no new item once it is spent, files what it
@@ -121,6 +121,16 @@ class ScriptedFetcher implements Fetcher {
 
 const barcodeOf = (i: number): string => `81234801054${i}`;
 
+/**
+ * The event types in order, progress left out and a run of findings batches
+ * read as one: how many batches a run takes depends on the minute, and what
+ * matters here is that every finding comes before the one terminal event.
+ */
+const types = (events: readonly Record<string, unknown>[]): unknown[] =>
+  typesOf(events).filter(
+    (t, i, all) => !(t === "resolutions" && all[i - 1] === "resolutions"),
+  );
+
 interface Setup {
   readonly items: number;
   /** `undefined` sends no budget at all, as a gateway predating it does. */
@@ -133,6 +143,8 @@ interface Setup {
   readonly onFetch?: (fetchNumber: number, clock: FakeClock) => void;
   /** Under the test's directory, so two runs in one check never share a journal. */
   readonly dir?: string;
+  /** The reporter's longest wait; its own default unless a check says. */
+  readonly flushEveryMs?: number;
 }
 
 describe("a run with a time budget", () => {
@@ -164,21 +176,30 @@ describe("a run with a time budget", () => {
         : { stopTakingItemsAfterSec: setup.budgetSec }),
     };
     const { client, events } = gatewayDouble(job);
+    // 🔑 The same clock as the run's, as in production: the budget and the
+    // reporter's minute are both measured on it.
     const reporter = new GatewayReporter(client, {
       runDir: dir,
       log: () => undefined,
       requestsSpent: () => fetcher.liveRequestCount,
       pagesDelivered: () => fetcher.pagesDelivered,
+      clock,
+      ...(setup.flushEveryMs === undefined
+        ? {}
+        : { flushEveryMs: setup.flushEveryMs }),
     });
     const perItemMs = setup.perItemMs ?? 10 * MINUTE;
     /** Fetches made when each item was finished, in order. */
     const fetchesAtFinish: number[] = [];
+    /** Findings the gateway had been sent when each item was finished. */
+    const filedAtFinish: number[] = [];
     // The real `runList`; the only addition is that finishing an item takes
     // clock time, so the budget is spent by the work itself.
     const timedRunList: QueueRunDeps["runList"] = (items, a, f, options) =>
       runList(items, a, f, {
         ...options,
         onResolved: async (resolution) => {
+          filedAtFinish.push(filed(events).length);
           clock.tick(perItemMs);
           fetchesAtFinish.push(fetcher.fetches);
           await options.onResolved?.(resolution);
@@ -198,7 +219,7 @@ describe("a run with a time budget", () => {
       clock,
       log: () => undefined,
     });
-    return { result, events, fetcher, fetchesAtFinish, clock };
+    return { result, events, fetcher, fetchesAtFinish, filedAtFinish, clock };
   }
 
   it("takes no new item once the budget is spent, and answers `yielded`, not `completed`", async () => {
@@ -314,5 +335,34 @@ describe("a run with a time budget", () => {
     });
     expect([...filed(events)].sort()).toEqual(["SKU-0", "SKU-1", "SKU-2"]);
     expect(types(events)).toEqual(["resolutions", "completed"]);
+  });
+
+  it("files a short list's findings while it runs, not only at its end", async () => {
+    // 🔴 The production case: 20 rows, about seven minutes, nothing reported
+    // when the container was evicted. Ten seconds an item here, so a minute
+    // holds about six findings — and the gateway has most of the list before
+    // the last item is even finished.
+    const { events, filedAtFinish } = await run({
+      items: 20,
+      perItemMs: 10_000,
+    });
+    expect(filed(events)).toHaveLength(20);
+    expect(
+      events.filter((e) => e["type"] === "resolutions").length,
+    ).toBeGreaterThanOrEqual(3);
+    expect(filedAtFinish[19]).toBeGreaterThanOrEqual(12);
+    expect(types(events)[types(events).length - 1]).toBe("completed");
+  });
+
+  it("CONTROL: without the minute, a short list files nothing until its end", async () => {
+    // Proves the check above measures the timed send, not something else
+    // that happens to send early: the same run with an unreachable minute.
+    const { events, filedAtFinish } = await run({
+      items: 20,
+      perItemMs: 10_000,
+      flushEveryMs: Number.MAX_SAFE_INTEGER,
+    });
+    expect(filed(events)).toHaveLength(20);
+    expect(filedAtFinish[19]).toBe(0);
   });
 });

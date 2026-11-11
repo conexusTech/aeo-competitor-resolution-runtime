@@ -4,9 +4,13 @@ import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { GatewayReporter } from "../src/reporting/reporter.js";
+import {
+  FLUSH_AT,
+  FLUSH_EVERY_MS,
+  GatewayReporter,
+} from "../src/reporting/reporter.js";
 import type { Resolution } from "../src/resolve.js";
-import { settle } from "./fake-clock.js";
+import { FakeClock, settle } from "./fake-clock.js";
 import {
   filed,
   gatewayDouble,
@@ -97,5 +101,125 @@ describe("handing a run back", () => {
     await reporter.offer(resolution("A"));
     await reporter.reportYielded(5);
     expect(typesOf(gateway.events)).toEqual(["resolutions"]);
+  });
+});
+
+/**
+ * A finding never waits more than a minute to be sent.
+ *
+ * 🔴 **Measured in production, 2026-11-11:** a 20-row Best Buy run was evicted
+ * after about seven minutes and every finding was lost — 0 of 20 reported —
+ * because nothing is sent until 100 have piled up, and a 20-row list never
+ * gets there. So a short list held everything until its end, and the gateway
+ * could not tell a container that had made progress from one that had not.
+ */
+describe("findings are sent at least every minute", () => {
+  let runDir = "";
+  beforeEach(async () => {
+    runDir = await mkdtemp(path.join(os.tmpdir(), "reporter-timed-"));
+  });
+  afterEach(async () => {
+    await rm(runDir, { recursive: true, force: true });
+  });
+
+  const reporterFor = (answer?: (e: Record<string, unknown>) => Answer) => {
+    const clock = new FakeClock();
+    const gateway = gatewayDouble({}, answer);
+    const reporter = new GatewayReporter(gateway.client, {
+      runDir,
+      log: () => undefined,
+      clock,
+    });
+    return { gateway, reporter, clock };
+  };
+
+  it("sends a lone finding a minute after it was offered, not before", async () => {
+    const { gateway, reporter, clock } = reporterFor();
+    await reporter.load();
+    await reporter.offer(resolution("A"));
+    await clock.advance(FLUSH_EVERY_MS - 1);
+    expect(filed(gateway.events)).toEqual([]);
+    await clock.advance(1);
+    expect(filed(gateway.events)).toEqual(["A"]);
+  });
+
+  it("counts the minute from the oldest waiting finding, not the newest", async () => {
+    // A minute per finding would let a steady trickle wait for ever.
+    const { gateway, reporter, clock } = reporterFor();
+    await reporter.load();
+    await reporter.offer(resolution("A"));
+    await clock.advance(30_000);
+    await reporter.offer(resolution("B"));
+    await clock.advance(30_000);
+    expect(gateway.events.map((e) => filed([e]))).toEqual([["A", "B"]]);
+    await clock.advance(FLUSH_EVERY_MS);
+    expect(gateway.events).toHaveLength(1);
+  });
+
+  it("starts a fresh minute for a finding offered after a timed send", async () => {
+    const { gateway, reporter, clock } = reporterFor();
+    await reporter.load();
+    await reporter.offer(resolution("A"));
+    await clock.advance(FLUSH_EVERY_MS);
+    await clock.advance(10_000);
+    await reporter.offer(resolution("C"));
+    await clock.advance(FLUSH_EVERY_MS - 1);
+    expect(filed(gateway.events)).toEqual(["A"]);
+    await clock.advance(1);
+    expect(filed(gateway.events)).toEqual(["A", "C"]);
+  });
+
+  it("still sends at once at the batch size, and leaves no timer behind", async () => {
+    const { gateway, reporter, clock } = reporterFor();
+    await reporter.load();
+    for (let i = 0; i < FLUSH_AT; i++)
+      await reporter.offer(resolution(`S${i}`));
+    expect(filed(gateway.events)).toHaveLength(FLUSH_AT);
+    expect(clock.pending).toBe(0);
+  });
+
+  it("leaves no timer behind once nothing is waiting, so a finished run never waits a minute to exit", async () => {
+    const { reporter, clock } = reporterFor();
+    await reporter.load();
+    await reporter.offer(resolution("A"));
+    expect(clock.pending).toBe(1);
+    await reporter.reportCompleted(1);
+    expect(clock.pending).toBe(0);
+  });
+
+  it("never sends a terminal event while a timed send is still in flight", async () => {
+    // 🔴 The gateway drops a findings batch that lands after a terminal event.
+    // A timed send can be in flight at the moment the run ends — so the
+    // terminal report waits for it, then sends the rest, then ends the run.
+    let holdFirst = true;
+    const { gateway, reporter, clock } = reporterFor((e) => {
+      if (e["type"] === "resolutions" && holdFirst) {
+        holdFirst = false;
+        return "hold";
+      }
+      return "apply";
+    });
+    await reporter.load();
+    await reporter.offer(resolution("A"));
+    await clock.advance(FLUSH_EVERY_MS);
+    expect(typesOf(gateway.events)).toEqual(["resolutions"]);
+    await reporter.offer(resolution("B"));
+    const ending = reporter.reportCompleted(9);
+    await settle();
+    // B is not sent beside A's open request, and the run is not ended.
+    expect(typesOf(gateway.events)).toEqual(["resolutions"]);
+    gateway.release();
+    await ending;
+    expect(typesOf(gateway.events)).toEqual([
+      "resolutions",
+      "resolutions",
+      "completed",
+    ]);
+    expect(filed(gateway.events)).toEqual(["A", "B"]);
+    expect(typesOf(gateway.answered)).toEqual([
+      "resolutions",
+      "resolutions",
+      "completed",
+    ]);
   });
 });

@@ -37,6 +37,7 @@
 import { appendFile, mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
+import { SYSTEM_CLOCK, type Clock } from "../clock.js";
 import {
   MAX_RESOLUTIONS_PER_EVENT,
   type GatewayClient,
@@ -56,6 +57,18 @@ export const REPORTED_JOURNAL = "reported.jsonl";
  * fetching.
  */
 export const FLUSH_AT = 100;
+
+/**
+ * The longest a finding waits in the buffer before it is sent.
+ *
+ * 🔴 **Measured in production, 2026-11-11:** a 20-row run was evicted after
+ * about seven minutes with every finding still buffered — 0 of 20 reported —
+ * because a short list never reaches `FLUSH_AT`. Lost findings are bought
+ * again by the next container, and a container that reported nothing cannot
+ * be told apart from one that made no progress. A minute bounds both at the
+ * cost of at most one small request a minute.
+ */
+export const FLUSH_EVERY_MS = 60_000;
 
 /** One acknowledgement, as a line of the journal. */
 interface AckLine {
@@ -112,6 +125,10 @@ export interface ReporterOptions {
    * `requestsSpent`. Omitted, no `pages_delivered` is sent.
    */
   readonly pagesDelivered?: () => number;
+  /** What `flushEveryMs` is measured on. The system clock unless a check says. */
+  readonly clock?: Clock;
+  /** The longest a finding waits before it is sent. `FLUSH_EVERY_MS` unless a check says. */
+  readonly flushEveryMs?: number;
 }
 
 /**
@@ -127,6 +144,20 @@ export class GatewayReporter {
   private readonly log: (message: string) => void;
   private readonly requestsSpent: (() => number) | null;
   private readonly pagesDelivered: (() => number) | null;
+  private readonly clock: Clock;
+  private readonly flushEveryMs: number;
+
+  /** Cancels the timed send armed for the oldest waiting finding, if any. */
+  private cancelTimedFlush: (() => void) | null = null;
+  /**
+   * The sends so far, one after another.
+   *
+   * 🔴 **Serialised, because a timed send can be in flight when the run
+   * ends.** A terminal report flushes first; if that flush ran beside a timed
+   * send still waiting on its 200, the terminal event could land first and
+   * the gateway would drop the batch behind it. Every flush waits its turn.
+   */
+  private sending: Promise<void> = Promise.resolve();
 
   /** Set when the gateway refuses in a way retrying cannot fix. */
   private reportingDisabled = false;
@@ -148,6 +179,8 @@ export class GatewayReporter {
     this.log = options.log ?? console.warn;
     this.requestsSpent = options.requestsSpent ?? null;
     this.pagesDelivered = options.pagesDelivered ?? null;
+    this.clock = options.clock ?? SYSTEM_CLOCK;
+    this.flushEveryMs = options.flushEveryMs ?? FLUSH_EVERY_MS;
   }
 
   /** Whether the gateway has said this run no longer exists. */
@@ -189,11 +222,46 @@ export class GatewayReporter {
     if (!this.isReporting) return;
     if (this.acknowledged.has(resolution.clientSku)) return;
     this.buffer.push(resolution);
-    if (this.buffer.length >= this.flushAt) await this.flush();
+    if (this.buffer.length >= this.flushAt) {
+      await this.flush();
+      return;
+    }
+    this.armTimedFlush();
   }
 
-  /** Send whatever is buffered. Total: never throws into the run. */
-  async flush(): Promise<void> {
+  /**
+   * Send the buffer `flushEveryMs` from now, unless something sends it first.
+   *
+   * ⚠️ **Armed once, by the oldest waiting finding, and never pushed back.**
+   * Re-arming on every offer would let a steady trickle of findings wait for
+   * ever.
+   */
+  private armTimedFlush(): void {
+    if (this.cancelTimedFlush !== null) return;
+    this.cancelTimedFlush = this.clock.after(this.flushEveryMs, () => {
+      this.cancelTimedFlush = null;
+      // Not awaited: nothing waits on a timer. `flush` is total, so this
+      // cannot become an unhandled rejection.
+      void this.flush();
+    });
+  }
+
+  /**
+   * Send whatever is buffered, after any send already in flight. Total:
+   * never throws into the run.
+   *
+   * 🔑 Cancels the timed send first, so a finished run is never kept alive
+   * for a minute by a timer with nothing left to send.
+   */
+  flush(): Promise<void> {
+    this.cancelTimedFlush?.();
+    this.cancelTimedFlush = null;
+    const next = this.sending.then(() => this.sendBuffered());
+    this.sending = next;
+    return next;
+  }
+
+  private async sendBuffered(): Promise<void> {
     if (this.buffer.length === 0 || !this.isReporting) return;
     const batch = this.buffer.splice(0, this.buffer.length);
 
