@@ -571,6 +571,13 @@ export function readCategoryPage(html: string, n: number): CategoryPageResult {
   }
   const cells = splitResultCells(html);
   if (cells.length === 0) {
+    // 🔴 Page 1 with no results is a failure, never an empty category.
+    if (n === 1) {
+      return {
+        kind: "not-a-category-page",
+        detail: "page 1 of the category lists no products",
+      };
+    }
     return html.includes(NO_RESULTS_WIDGET)
       ? { kind: "end", detail: "Amazon says the grid has no results" }
       : {

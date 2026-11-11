@@ -48,7 +48,11 @@ import type {
   ReadCategory,
   ReadCategoryListing,
 } from "./gateway/client.js";
-import { boundText, MAX_CATEGORY_ERROR_LENGTH } from "./wire-limits.js";
+import {
+  boundText,
+  MAX_CATEGORY_ERROR_LENGTH,
+  MAX_PRICE_CENTS,
+} from "./wire-limits.js";
 
 /**
  * The most pages one walk reads.
@@ -60,6 +64,70 @@ import { boundText, MAX_CATEGORY_ERROR_LENGTH } from "./wire-limits.js";
  * from their own pages.
  */
 export const MAX_WALK_PAGES = 60;
+
+/**
+ * The most category pages one read job may buy, across all its walks and
+ * size reads.
+ *
+ * 🔴 **A spend ceiling, held twice.** A job planning more is refused before
+ * anything is bought; and since a walk follows its category's own last page,
+ * one that grew past its plan stops when the job's pages are spent, its
+ * listings read from their own pages.
+ */
+export const MAX_CATEGORY_PAGES_PER_JOB = 600;
+
+/**
+ * The most pages a job's plan lets one category buy: one for a size read;
+ * the job's last page for a walk, or the 60 a walk may read where the job
+ * knows none. What `MAX_CATEGORY_PAGES_PER_JOB` is held against before
+ * anything is bought.
+ */
+export function plannedPages(category: {
+  readonly kind: CategoryReadKind;
+  readonly lastPage: number | null;
+}): number {
+  return category.kind === "size"
+    ? 1
+    : Math.min(category.lastPage ?? MAX_WALK_PAGES, MAX_WALK_PAGES);
+}
+
+/**
+ * One category address in one spelling, so a category asked for twice is
+ * seen as one: host in lower case, no trailing slash, no fragment, the query
+ * in order. The path keeps its case — a retailer's paths may not.
+ *
+ * Returns the url unchanged when it does not parse; the job's own checks
+ * refuse it.
+ */
+export function categoryKey(raw: string): string {
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    return raw;
+  }
+  url.hash = "";
+  url.searchParams.sort();
+  const path = url.pathname.replace(/\/+$/, "");
+  return `${url.protocol}//${url.host}${path}${url.search}`;
+}
+
+/**
+ * A card's price as the gateway will take it: a whole number of cents from
+ * 1 to its ceiling, or none.
+ *
+ * 🔴 **Out of range is no price, never a price the gateway refuses.** A card
+ * reading as more than the gateway accepts, or as a fraction of a cent, is a
+ * parse that went wrong; with no price its listing is read from its own page.
+ */
+function takenPrice(priceCents: number | null): number | null {
+  return priceCents !== null &&
+    Number.isInteger(priceCents) &&
+    priceCents > 0 &&
+    priceCents <= MAX_PRICE_CENTS
+    ? priceCents
+    : null;
+}
 
 /**
  * The least share of a category's stated products a walk must see to count.
@@ -76,12 +144,15 @@ export type CategoryStatus = "valid" | "invalid" | "failed";
 /**
  * One category's outcome, exactly as the `categories` event carries it.
  *
- * - `valid`: read as asked; its cards price the listings found on them.
+ * - `valid`: read as asked; a walk's cards price the listings found on them.
  * - `invalid`: read, but not whole — fewer than 90% of the products it
  *   states, or more pages than a walk reads. No card prices anything.
  * - `failed`: not read: no category reads at this competitor, an address
- *   this build cannot read, a page that could not be had or was not a page of
- *   the category, or more pages asked for than a walk reads.
+ *   this build cannot read, a page 1 that lists nothing or is the end, a page
+ *   that could not be had or was not a page of the category, more pages asked
+ *   for than a walk reads, or the job's category pages spent.
+ *
+ * ⚠️ A `size` read that is `valid` still prices nothing: it counts.
  */
 export interface CategoryReport {
   readonly categoryId: string;
@@ -122,6 +193,11 @@ export interface WalkDeps {
   readonly rereadDelaysMs: readonly number[];
   /** Takes one re-read from the job's budget, or says none is left. */
   readonly takeReread: () => boolean;
+  /**
+   * Takes one page from the job's `MAX_CATEGORY_PAGES_PER_JOB`, before its
+   * first read, or says none is left.
+   */
+  readonly takePage: () => boolean;
   /** Waits out a re-read's delay, or less if the walk must stop. */
   readonly wait: (ms: number) => Promise<void>;
   /** True once the job must buy nothing more: a stop, a crash, a run gone. */
@@ -250,6 +326,13 @@ export async function walkCategory(
           `(page ${n})`,
       );
     }
+    if (!deps.takePage()) {
+      return outcome(
+        "failed",
+        `this job's ${MAX_CATEGORY_PAGES_PER_JOB} category pages are spent; ` +
+          `not read past page ${n - 1}`,
+      );
+    }
     const fetched = await fetchPage(url, deps);
     if (fetched.kind === "stopped") return null;
     if (fetched.kind === "failed") {
@@ -266,7 +349,17 @@ export async function walkCategory(
           `are not a page of the category (${result.detail})`,
       );
     }
-    if (result.kind === "end") break;
+    if (result.kind === "end") {
+      // 🔴 A category with no page 1 is never an empty valid one: the walk
+      // would report nothing seen, against no count, as whole.
+      if (n === 1) {
+        return outcome(
+          "failed",
+          `page 1 (${url}) is the end of the category (${result.detail})`,
+        );
+      }
+      break;
+    }
     pagesRead++;
     const page = result.page;
     total ??= page.total;
@@ -274,7 +367,10 @@ export async function walkCategory(
     for (const card of page.products) {
       seen.add(card.itemId);
       if (watched.has(card.itemId) && !found.has(card.itemId)) {
-        found.set(card.itemId, { card, readAt: fetched.readAt });
+        found.set(card.itemId, {
+          card: { ...card, priceCents: takenPrice(card.priceCents) },
+          readAt: fetched.readAt,
+        });
       }
     }
     if (
@@ -317,8 +413,12 @@ export interface CardPrice {
  *
  * 🔴 **Only a valid walk prices anything**, and only from a card that shows
  * a price. Everything else — a card missing, a card with no price, every
- * listing of a walk that is not valid — is read from its own page, in this
- * container, today.
+ * listing of a walk that is not valid, every listing of a size read — is read
+ * from its own page, in this container, today.
+ *
+ * ⚠️ **A size read counts; it never prices.** It is a question about the
+ * category, asked of page 1, and a card that happened to be there says
+ * nothing a walk would have checked.
  */
 export function settleWalk(
   category: ReadCategory,
@@ -333,6 +433,7 @@ export function settleWalk(
     const hit = walk.found.get(listing.itemId);
     const priceCents = hit?.card.priceCents ?? null;
     if (
+      category.kind === "walk" &&
       walk.report.status === "valid" &&
       hit !== undefined &&
       priceCents !== null

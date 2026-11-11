@@ -37,7 +37,12 @@ import {
 import { MAX_UNVERIFIABLE_REASON_LENGTH } from "../adapters/types.js";
 import { boundText, MAX_FAILURE_LENGTH } from "../wire-limits.js";
 import { buildVersion } from "../fetcher/select.js";
-import type { CategoryReport } from "../category-walk.js";
+import {
+  categoryKey,
+  MAX_CATEGORY_PAGES_PER_JOB,
+  plannedPages,
+  type CategoryReport,
+} from "../category-walk.js";
 import type { ListingReading } from "../read-run.js";
 import type { Resolution } from "../resolve.js";
 
@@ -1358,7 +1363,7 @@ function parseCategories(
   const categoryIds = new Set<string>();
   const categoryUrls = new Set<string>();
   const listingIds = new Set<string>();
-  return entries.map((entry, index) => {
+  const categories = entries.map((entry, index): ReadCategory => {
     const what = `category ${index} of read run ${readRunId}`;
     if (entry === null || typeof entry !== "object") {
       throw new Error(`${what} is not an object`);
@@ -1376,14 +1381,17 @@ function parseCategories(
     if (typeof kind !== "string" || !CATEGORY_READ_KINDS.has(kind)) {
       throw new Error(`${what} has a 'kind' that is neither walk nor size`);
     }
-    if (categoryIds.has(categoryId) || categoryUrls.has(url)) {
+    // 🔴 By its address in one spelling: a trailing slash, the host's case
+    // or the query's order does not make a second category.
+    const key = categoryKey(url);
+    if (categoryIds.has(categoryId) || categoryUrls.has(key)) {
       throw new Error(
         `${what} names a category twice (${categoryId}) — reading it again ` +
           `would buy the same pages twice`,
       );
     }
     categoryIds.add(categoryId);
-    categoryUrls.add(url);
+    categoryUrls.add(key);
     const lastPage = parseWholeNumber(
       Reflect.get(entry, "lastPage"),
       "lastPage",
@@ -1394,6 +1402,12 @@ function parseCategories(
       throw new Error(`${what} carries no listings array`);
     }
     const rows: readonly unknown[] = field;
+    if (kind === "walk" && rows.length === 0) {
+      throw new Error(
+        `${what} is a walk with no listings — a walk is planned to price ` +
+          `watched listings, and would buy its pages for nothing`,
+      );
+    }
     const listings = rows.map((row, at): ReadCategoryListing => {
       const which = `listing ${at} of ${what}`;
       if (row === null || typeof row !== "object") {
@@ -1438,4 +1452,14 @@ function parseCategories(
       listings,
     };
   });
+  // 🔴 The job's whole plan, held to its page ceiling before anything is
+  // bought: a walk with no known last page may read 60.
+  const planned = categories.reduce((n, c) => n + plannedPages(c), 0);
+  if (planned > MAX_CATEGORY_PAGES_PER_JOB) {
+    throw new Error(
+      `the job for read run ${readRunId} plans ${planned} category pages, ` +
+        `more than the ${MAX_CATEGORY_PAGES_PER_JOB} one job may buy`,
+    );
+  }
+  return categories;
 }

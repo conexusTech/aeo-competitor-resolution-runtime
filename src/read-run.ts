@@ -55,6 +55,8 @@ import {
   type ListingReader,
 } from "./adapters/types.js";
 import {
+  categoryKey,
+  MAX_CATEGORY_PAGES_PER_JOB,
   settleWalk,
   walkCategory,
   type CardPrice,
@@ -418,7 +420,10 @@ function fromCard({ listing, card, readAt }: CardPrice): CategoryPageReading {
  * is not what this build understands, and reading the rest first would spend
  * on a job about to be refused.
  */
-function requireOwnHosts(job: ReadJob, reader: ListingReader): void {
+function requireOwnHosts(
+  job: ReadJob,
+  reader: ListingReader & CategoryReading,
+): void {
   const refuse = (what: string): never => {
     throw new Error(
       `${what} of read run ${job.readRunId} is not an https page ` +
@@ -433,10 +438,26 @@ function requireOwnHosts(job: ReadJob, reader: ListingReader): void {
   }
   // 🔴 A category's pages and its listings' pages are bought on the job's
   // say-so too.
+  const pages = new Map<string, number>();
   for (const [index, category] of (job.categories ?? []).entries()) {
     if (!isOwnHostUrl(category.url, reader.hosts)) {
       refuse(`category ${index}`);
     }
+    // 🔴 One category, one walk: two addresses the reader builds the same
+    // page 1 from — B&H's `/pn/2` and its category, say — are one category,
+    // and walking both would buy every page twice.
+    const page1 = categoryKey(
+      reader.categoryReader?.pageUrl(category.url, 1) ?? category.url,
+    );
+    const first = pages.get(page1);
+    if (first !== undefined) {
+      throw new Error(
+        `category ${index} of read run ${job.readRunId} names a category ` +
+          `twice (category ${first} reads the same pages) — refused before ` +
+          `anything was bought`,
+      );
+    }
+    pages.set(page1, index);
     for (const [at, listing] of category.listings.entries()) {
       if (!isOwnHostUrl(listing.url, reader.hosts)) {
         refuse(`listing ${at} of category ${index}`);
@@ -715,6 +736,8 @@ export async function runReadJob(deps: ReadRunDeps): Promise<ReadRunResult> {
     let reserved = 0;
     /** Re-reads actually fetched. */
     let rereads = 0;
+    /** Category pages taken, against `MAX_CATEGORY_PAGES_PER_JOB`. */
+    let categoryPages = 0;
     /**
      * 🔴 **Set on the first worker's crash, so the others buy nothing more.**
      * `Promise.all` rejects at once while the rest carry on, and a worker
@@ -734,15 +757,18 @@ export async function runReadJob(deps: ReadRunDeps): Promise<ReadRunResult> {
      */
     const fallback: ReadListing[] = [];
     let nextFallback = 0;
-    /** Settles when a walk ends, waking a worker waiting on one. */
-    let walkEnded: () => void = () => undefined;
+    /**
+     * Settles when a walk leaves listings to read, or ends, waking a worker
+     * waiting on one.
+     */
+    let walkNews: () => void = () => undefined;
     let walkSignal = new Promise<void>((resolve) => {
-      walkEnded = resolve;
+      walkNews = resolve;
     });
-    const signalWalkEnded = (): void => {
-      const wake = walkEnded;
+    const wakeIdleWorkers = (): void => {
+      const wake = walkNews;
       walkSignal = new Promise<void>((resolve) => {
-        walkEnded = resolve;
+        walkNews = resolve;
       });
       wake();
     };
@@ -804,6 +830,11 @@ export async function runReadJob(deps: ReadRunDeps): Promise<ReadRunResult> {
             rereads++;
             return true;
           },
+          takePage: () => {
+            if (categoryPages >= MAX_CATEGORY_PAGES_PER_JOB) return false;
+            categoryPages++;
+            return true;
+          },
           // ⚠️ A stop ends the wait at once, as for a set-aside page.
           wait: async (ms) => {
             await Promise.race([sleep(ms), stop.asked]);
@@ -819,6 +850,9 @@ export async function runReadJob(deps: ReadRunDeps): Promise<ReadRunResult> {
         for (const listing of settled.fallback) {
           fallback.push({ itemId: listing.itemId, url: listing.url });
         }
+        // 🔑 Wake an idle worker now, not after this walk's batch is sent: the
+        // listings it left are ready to read.
+        if (settled.fallback.length > 0) wakeIdleWorkers();
         const { report } = walked;
         log(
           `category ${category.categoryId} (${category.kind}): ${report.status}, ` +
@@ -831,7 +865,7 @@ export async function runReadJob(deps: ReadRunDeps): Promise<ReadRunResult> {
         if (buffer.length >= flushAt) await flush(false);
       } finally {
         walking--;
-        signalWalkEnded();
+        wakeIdleWorkers();
       }
     };
 

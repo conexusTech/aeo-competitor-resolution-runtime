@@ -462,7 +462,13 @@ export function readCategoryPage(html: string, n: number): CategoryPageResult {
 
   const raw = state["Products"];
   if (!Array.isArray(raw) || raw.length === 0) {
-    return { kind: "end", detail: "the category page lists no products" };
+    // 🔴 Page 1 listing nothing is a failure, whatever count it states.
+    return n === 1
+      ? {
+          kind: "not-a-category-page",
+          detail: "page 1 of the category lists no products",
+        }
+      : { kind: "end", detail: "the category page lists no products" };
   }
   const products: CategoryCard[] = [];
   const seen = new Set<string>();

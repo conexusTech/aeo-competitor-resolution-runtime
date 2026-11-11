@@ -661,7 +661,15 @@ export function readCategoryPage(html: string, n: number): CategoryPageResult {
 
   const items = arr(data, "items");
   if (items.length === 0) {
-    return { kind: "end", detail: "the category page lists no products" };
+    // 🔴 Page 1 listing nothing is a failure, whatever count it states: a
+    // category the walk was sent to is never read as an empty one, and the
+    // walk would end before it had the count its 90% rule needs.
+    return n === 1
+      ? {
+          kind: "not-a-category-page",
+          detail: "page 1 of the category lists no products",
+        }
+      : { kind: "end", detail: "the category page lists no products" };
   }
   const products: CategoryCard[] = [];
   const seen = new Set<string>();

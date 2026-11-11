@@ -22,6 +22,13 @@ export const MAX_FAILURE_LENGTH = 512;
 export const MAX_CATEGORY_ERROR_LENGTH = 512;
 
 /**
+ * The highest price, in cents, the gateway takes on a reading
+ * (`aeo-backend` `listing-read-event.dto.ts`, `MAX_PRICE_CENTS`): a whole
+ * number from 1 to this. A reading past it is refused on its own.
+ */
+export const MAX_PRICE_CENTS = 1_000_000_000;
+
+/**
  * `text` held to `max` characters: as it is when it fits, otherwise cut and
  * ended with "…", so a reader can see it was cut.
  */

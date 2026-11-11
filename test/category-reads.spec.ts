@@ -18,6 +18,7 @@ import {
   neweggAdapter,
   parseSearchResults as parseNeweggSearch,
 } from "../src/adapters/newegg.js";
+import { neweggBody, rewriteBhCategoryPage } from "./category-bodies.js";
 import type {
   CategoryPage,
   CategoryPageResult,
@@ -172,6 +173,20 @@ describe("B&H: one category page prices every product it lists", () => {
     expect(kindOf(BH.readCategoryPage(BH_P2, 1))).toBe("not-a-category-page");
   });
 
+  it("🔴 a page 1 listing no products is a failure, even where it states a count (SYNTHETIC)", () => {
+    // Page 1 of Mice & Touchpads with its items emptied: it still says 412
+    // products, 28 a page. Read as the end, the walk would report a valid,
+    // empty category and lose the count the 90% rule needs.
+    const empty = rewriteBhCategoryPage(BH_P1);
+    expect(BH.readCategoryPage(empty, 1)).toEqual({
+      kind: "not-a-category-page",
+      detail: "page 1 of the category lists no products",
+    });
+    // Past page 1 an empty page is the end: the walk already has the count.
+    const emptyP2 = rewriteBhCategoryPage(BH_P2);
+    expect(kindOf(BH.readCategoryPage(emptyP2, 2))).toBe("end");
+  });
+
   it("🔴 a product page, a search page and a refusal are not category pages", () => {
     expect(BH.readCategoryPage(raw("bh-pdp-m310"), 1)).toEqual({
       kind: "not-a-category-page",
@@ -223,16 +238,6 @@ const NE_P2 = raw("newegg-category-desktop-memory-p2");
 const NE_LAPTOP = raw("newegg-category-laptop-memory-p1");
 const NE_CATEGORY = "https://www.newegg.com/Desktop-Memory/SubCategory/ID-147";
 
-/** SYNTHETIC: a minimal Newegg listing body around `state`. */
-function neweggBody(state: unknown, pagination: string | null): string {
-  return (
-    `<html><head><script>window.__initialState__ = ${JSON.stringify(state)};</script></head><body>` +
-    (pagination === null
-      ? ""
-      : `<div class="list-tool-pagination-text">Page<!-- --> <strong>${pagination}</strong></div>`) +
-    "</body></html>"
-  );
-}
 const CATEGORY_CRUMBS = [
   { Name: "Memory", StoreId: 17, StoreType: 1 },
   { Name: "Desktop Memory", StoreId: 147, StoreType: 2 },
@@ -325,6 +330,22 @@ describe("Newegg: one category page prices every product it lists", () => {
       { itemId: "N82E16811000002", priceCents: null, inStock: true },
       { itemId: "N82E16811000003", priceCents: 1250, inStock: null },
     ]);
+  });
+
+  it("🔴 a page 1 listing no products is a failure, even where it states a count (SYNTHETIC)", () => {
+    const state = (products: unknown[]) => ({
+      Breadcrumbs: CATEGORY_CRUMBS,
+      Products: products,
+      TotalItemCount: 3564,
+    });
+    expect(NEWEGG.readCategoryPage(neweggBody(state([]), "1/20"), 1)).toEqual({
+      kind: "not-a-category-page",
+      detail: "page 1 of the category lists no products",
+    });
+    // Past page 1, an empty page is the end.
+    expect(
+      kindOf(NEWEGG.readCategoryPage(neweggBody(state([]), "2/20"), 2)),
+    ).toBe("end");
   });
 
   it("🔴 a page past the last one the category states is the END (SYNTHETIC)", () => {
@@ -444,6 +465,12 @@ describe("Amazon: one results grid page prices every product it lists", () => {
   it("🔴 a grid Amazon says is empty is the END (SYNTHETIC)", () => {
     const empty = `<html>${CONTAINER}<div widgetId=messaging-messages-no-results>No results.</div></html>`;
     expect(kindOf(AMAZON.readCategoryPage(empty, 3))).toBe("end");
+    // On page 1 it is a failure: a category the walk was sent to is never
+    // read as an empty one.
+    expect(AMAZON.readCategoryPage(empty, 1)).toEqual({
+      kind: "not-a-category-page",
+      detail: "page 1 of the category lists no products",
+    });
   });
 
   it("🔴 a grid with no cells and no such word is a failure: cut short or moved", () => {

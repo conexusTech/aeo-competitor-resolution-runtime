@@ -5,12 +5,17 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { bhAdapter } from "../src/adapters/bh.js";
+import { neweggAdapter } from "../src/adapters/newegg.js";
 import type {
   CategoryReader,
   CategoryReading,
   ListingReader,
 } from "../src/adapters/types.js";
-import { MAX_WALK_PAGES, type CategoryReport } from "../src/category-walk.js";
+import {
+  MAX_CATEGORY_PAGES_PER_JOB,
+  MAX_WALK_PAGES,
+  type CategoryReport,
+} from "../src/category-walk.js";
 import {
   FetchFailed,
   type Fetcher,
@@ -33,6 +38,7 @@ import {
   type ReadRunResult,
 } from "../src/read-run.js";
 import { SHUTDOWN, StopSwitch } from "../src/stop-signal.js";
+import { neweggBody, rewriteBhCategoryPage } from "./category-bodies.js";
 import { FakeClock, settle } from "./fake-clock.js";
 
 /**
@@ -703,6 +709,56 @@ describe("a walk that cannot be trusted prices nothing", () => {
   });
 });
 
+const BH =
+  "https://www.bhphotovideo.com/c/buy/mice-wireless-bluetooth-usb/ci/18369";
+const BH_1910635 = "https://www.bhphotovideo.com/c/product/1910635-REG/x.html";
+const BH_1431406 = "https://www.bhphotovideo.com/c/product/1431406-REG/x.html";
+const bhRaw = (name: string): string =>
+  gunzipSync(
+    readFileSync(
+      fileURLToPath(new URL(`./raw/${name}.html.gz`, import.meta.url)),
+    ),
+  ).toString("utf8");
+const BH_P1 = bhRaw("bh-category-mice-p1");
+const BH_P2 = bhRaw("bh-category-mice-p2");
+
+/**
+ * B&H's Mice & Touchpads, read through the real B&H reader, watching
+ * `1910635` (priced at 11999 on page 1) and `1431406` (its price withheld).
+ * At one page at once, so the order of fetches is the order asked.
+ */
+async function runBh(
+  kind: "walk" | "size",
+  pages: ReadonlyMap<string, string>,
+): Promise<{ port: Port; fetcher: MapFetcher }> {
+  const port = new Port({
+    readRunId: READ_RUN_ID,
+    retailerSlug: "bh",
+    listings: [],
+    pagesAtOnce: 1,
+    categories: [
+      {
+        categoryId: uuid(7),
+        url: BH,
+        kind,
+        lastPage: null,
+        listings: [
+          { listingId: uuid(71), itemId: "1910635", url: BH_1910635 },
+          { listingId: uuid(72), itemId: "1431406", url: BH_1431406 },
+        ],
+      },
+    ],
+  });
+  const fetcher = new MapFetcher(pages);
+  await runReadJob({
+    client: port,
+    readerFor: () => bhAdapter,
+    fetcher,
+    log: () => undefined,
+  });
+  return { port, fetcher };
+}
+
 describe("how far a walk reads", () => {
   it("🔑 a size read buys page 1 only and reports the category's count and last page", async () => {
     const answers = new Map<string, Answer>([
@@ -740,9 +796,11 @@ describe("how far a walk reads", () => {
         error: null,
       },
     ]);
-    // A size read is not judged by the 90% rule; its cards still price.
-    expect(byItem(port.readings)["A"]?.priceSource).toBe("category_page");
+    // 🔴 A size read counts; it prices nothing. A's card was seen and is
+    // not used: every watched listing is read from its own page.
+    expect(byItem(port.readings)["A"]?.priceSource).toBe("product_page");
     expect(byItem(port.readings)["Q"]?.priceSource).toBe("product_page");
+    expect(fetcher.calls).toContain(PDP("A"));
   });
 
   it("🔑 reads to the last page the retailer states, and never buys the page past it", async () => {
@@ -862,72 +920,274 @@ describe("how far a walk reads", () => {
     expect(port.types).toEqual(["readings", "categories", "completed"]);
   });
 
-  it("reads B&H's real category page 1 for its size, pricing the watched card it shows", async () => {
-    const page1 = gunzipSync(
-      readFileSync(
-        fileURLToPath(
-          new URL("./raw/bh-category-mice-p1.html.gz", import.meta.url),
-        ),
-      ),
-    ).toString("utf8");
-    const BH =
-      "https://www.bhphotovideo.com/c/buy/mice-wireless-bluetooth-usb/ci/18369";
-    const port = new Port({
-      readRunId: READ_RUN_ID,
-      retailerSlug: "bh",
-      listings: [],
-      pagesAtOnce: 2,
-      categories: [
-        {
-          categoryId: uuid(7),
-          url: BH,
-          kind: "size",
-          lastPage: null,
-          listings: [
-            {
-              listingId: uuid(71),
-              itemId: "1910635",
-              url: "https://www.bhphotovideo.com/c/product/1910635-REG/x.html",
-            },
-            {
-              // Its card withholds the price.
-              listingId: uuid(72),
-              itemId: "1431406",
-              url: "https://www.bhphotovideo.com/c/product/1431406-REG/x.html",
-            },
-          ],
-        },
-      ],
-    });
-    const fetcher = new MapFetcher(new Map([[BH, page1]]));
-    await runReadJob({
-      client: port,
-      readerFor: () => bhAdapter,
-      fetcher,
-      log: () => undefined,
-    });
+  it("reads B&H's real category page 1 for its size, and prices nothing from it", async () => {
+    const { port, fetcher } = await runBh("size", new Map([[BH, BH_P1]]));
     expect(port.categories).toEqual([
-      expect.objectContaining({
+      {
+        categoryId: uuid(7),
+        kind: "size",
         status: "valid",
         pagesRead: 1,
         productsSeen: 28,
         watchedFound: 2,
         total: 412,
         lastPage: 15,
-      }),
+        error: null,
+      },
     ]);
-    const got = byItem(port.readings);
-    expect(got["1910635"]).toMatchObject({
-      priceSource: "category_page",
-      priceCents: 11999,
-      inStock: true,
-    });
-    // Its product page was asked for (and refused, in this double).
-    expect(got["1431406"]).toMatchObject({
-      priceSource: "product_page",
+    // Both are read from their own pages (refused, in this double) — the
+    // priced card of 1910635 included.
+    expect(fetcher.calls).toEqual([BH, BH_1910635, BH_1431406]);
+    expect(port.readings.map((r) => [r.itemId, r.priceSource])).toEqual([
+      ["1910635", "product_page"],
+      ["1431406", "product_page"],
+    ]);
+    expect(byItem(port.readings)["1431406"]).toMatchObject({
       pageFound: null,
       category: null,
     });
+  });
+
+  it("🔴 a B&H page 1 listing no products fails the walk, whatever count it states", async () => {
+    // SYNTHETIC: page 1 with its items emptied, still saying 412 products.
+    const { port, fetcher } = await runBh(
+      "walk",
+      new Map([[BH, rewriteBhCategoryPage(BH_P1)]]),
+    );
+    expect(port.categories[0]).toMatchObject({
+      status: "failed",
+      pagesRead: 0,
+      productsSeen: 0,
+    });
+    expect(port.categories[0]?.error).toMatch(
+      /page 1 of the category lists no products/,
+    );
+    expect(fetcher.calls).toEqual([BH, BH_1910635, BH_1431406]);
+  });
+
+  it("🔴 a B&H walk whose page 2 lists nothing keeps page 1's count, and the 90% rule sends it back", async () => {
+    // SYNTHETIC page 2: its items emptied. The walk ends there having seen 28
+    // of the 412 the category states.
+    const { port } = await runBh(
+      "walk",
+      new Map([
+        [BH, BH_P1],
+        [`${BH}/pn/2`, rewriteBhCategoryPage(BH_P2)],
+      ]),
+    );
+    expect(port.categories[0]).toMatchObject({
+      status: "invalid",
+      pagesRead: 1,
+      productsSeen: 28,
+      total: 412,
+      lastPage: 15,
+    });
+    expect(port.readings.map((r) => r.priceSource)).toEqual([
+      "product_page",
+      "product_page",
+    ]);
+  });
+
+  it("🔴 a Newegg page 1 listing no products fails the walk, whatever count it states", async () => {
+    const NE = "https://www.newegg.com/Desktop-Memory/SubCategory/ID-147";
+    // SYNTHETIC: a Desktop Memory page 1 with no products and its count.
+    const empty = neweggBody(
+      {
+        Breadcrumbs: [
+          { Name: "Memory", StoreId: 17, StoreType: 1 },
+          { Name: "Desktop Memory", StoreId: 147, StoreType: 2 },
+        ],
+        Products: [],
+        TotalItemCount: 3564,
+      },
+      "1/20",
+    );
+    const port = new Port({
+      readRunId: READ_RUN_ID,
+      retailerSlug: "newegg",
+      listings: [],
+      pagesAtOnce: 2,
+      categories: [
+        {
+          categoryId: uuid(8),
+          url: NE,
+          kind: "walk",
+          lastPage: null,
+          listings: [
+            {
+              listingId: uuid(81),
+              itemId: "N82E16820236991",
+              url: "https://www.newegg.com/p/N82E16820236991",
+            },
+          ],
+        },
+      ],
+    });
+    const fetcher = new MapFetcher(new Map([[NE, empty]]));
+    await runReadJob({
+      client: port,
+      readerFor: () => neweggAdapter,
+      fetcher,
+      log: () => undefined,
+    });
+    expect(port.categories[0]).toMatchObject({
+      status: "failed",
+      pagesRead: 0,
+    });
+    expect(fetcher.calls).toEqual([
+      NE,
+      "https://www.newegg.com/p/N82E16820236991",
+    ]);
+    expect(port.readings[0]?.priceSource).toBe("product_page");
+  });
+
+  it("🔴 any reader's end on page 1 fails the walk, never an empty valid category", async () => {
+    const answers = new Map<string, Answer>([
+      [CAT("switches"), "END"],
+      ...productPages("A"),
+    ]);
+    const { port } = await run(
+      job([category({ listings: watched("A") })]),
+      answers,
+    );
+    expect(port.categories[0]).toMatchObject({
+      status: "failed",
+      pagesRead: 0,
+    });
+    expect(port.readings[0]?.priceSource).toBe("product_page");
+  });
+});
+
+describe("a card's price the gateway would refuse", () => {
+  it("🔴 reads as no price, so its listing is read from its own page", async () => {
+    // The gateway takes a whole number of cents from 1 to 1,000,000,000.
+    const answers = new Map<string, Answer>([
+      [
+        CAT("switches"),
+        catPage(
+          1,
+          [
+            ["A", 1_000_000_001],
+            ["B", 1_000_000_000],
+            ["C", 12.5],
+            ["D", -3],
+          ],
+          4,
+          1,
+        ),
+      ],
+      ...productPages("A", "C", "D"),
+    ]);
+    const { port, fetcher } = await run(
+      job([category({ listings: watched("A", "B", "C", "D") })]),
+      answers,
+    );
+    const got = byItem(port.readings);
+    // CONTROL: the ceiling itself is a price.
+    expect(got["B"]).toMatchObject({
+      priceSource: "category_page",
+      priceCents: 1_000_000_000,
+    });
+    for (const id of ["A", "C", "D"]) {
+      expect(got[id]).toMatchObject({
+        priceSource: "product_page",
+        priceCents: 5000,
+      });
+    }
+    expect(fetcher.calls).not.toContain(PDP("B"));
+  });
+});
+
+describe("the listings a walk leaves", () => {
+  it("🔴 are read at once by an idle worker, not after the walk's batch is sent", async () => {
+    const answers = new Map<string, Answer>([
+      [
+        CAT("switches"),
+        catPage(
+          1,
+          [
+            ["A", 1299],
+            ["B", null],
+          ],
+          2,
+          1,
+        ),
+      ],
+      ...productPages("B", "Z"),
+    ]);
+    const port = new Port(
+      job([category({ listings: watched("A", "B", "Z") })], [], 2),
+    );
+    // The gateway holds the first batch — the walk's own reading — open.
+    let release: () => void = () => undefined;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let first = true;
+    const record = port.reportReadings.bind(port);
+    port.reportReadings = async (readings) => {
+      const outcome = await record(readings);
+      if (first) {
+        first = false;
+        await held;
+      }
+      return outcome;
+    };
+    const fetcher = new MapFetcher(answers);
+    const done = runReadJob({
+      client: port,
+      readerFor: () => reader(),
+      fetcher,
+      flushAt: 1,
+      log: () => undefined,
+    });
+    await settle();
+    // The other worker, waiting on the walk, has started on what it left.
+    expect(fetcher.calls).toContain(PDP("B"));
+    release();
+    await done;
+    expect(port.readings.map((r) => r.itemId).sort()).toEqual(["A", "B", "Z"]);
+  });
+});
+
+describe("the category pages one job may buy", () => {
+  it(`🔴 stop at ${MAX_CATEGORY_PAGES_PER_JOB}, and the walks past them are read from their listings' own pages`, async () => {
+    // Eleven walks the job planned at 50 pages each (550), whose categories
+    // now state 60 pages each.
+    const answers = new Map<string, Answer>();
+    const categories: ReadCategory[] = [];
+    for (let c = 0; c < 11; c++) {
+      const url = CAT(`grown${c}`);
+      for (let n = 1; n <= 60; n++) {
+        answers.set(
+          n === 1 ? url : `${url}?page=${n}`,
+          catPage(n, [[`G${c}P${n}`, 100]], 60, 60),
+        );
+      }
+      const itemId = `G${c}P1`;
+      answers.set(PDP(itemId), pdp(itemId, 5000));
+      categories.push(
+        category({
+          categoryId: uuid(c + 1),
+          url,
+          lastPage: 50,
+          listings: [{ listingId: uuid(500 + c), itemId, url: PDP(itemId) }],
+        }),
+      );
+    }
+    const { fetcher, port } = await run(job(categories, [], 1), answers);
+    expect(fetcher.calls.filter((u) => u.includes("/c/"))).toHaveLength(
+      MAX_CATEGORY_PAGES_PER_JOB,
+    );
+    expect(port.categories.slice(0, 10).map((c) => c.status)).toEqual(
+      Array.from({ length: 10 }, () => "valid"),
+    );
+    expect(port.categories[10]).toMatchObject({
+      status: "failed",
+      pagesRead: 0,
+    });
+    expect(port.categories[10]?.error).toMatch(/600 category pages/);
+    expect(byItem(port.readings)["G10P1"]?.priceSource).toBe("product_page");
   });
 });
 
@@ -1173,6 +1433,7 @@ describe("a read job's categories, as the gateway serves them", () => {
         ...good,
         categoryId: uuid(i + 1),
         url: CAT(`c${i}`),
+        kind: "size",
         listings: [],
       }));
     expect(parse(many(MAX_CATEGORIES_PER_JOB)).categories).toHaveLength(
@@ -1195,12 +1456,109 @@ describe("a read job's categories, as the gateway serves them", () => {
       /at most once per job/,
     );
     // The same category twice, by id or by address.
-    expect(() =>
-      parse([good, { ...good, url: CAT("mice"), listings: [] }]),
-    ).toThrow(/names a category twice/);
-    expect(() =>
-      parse([good, { ...good, categoryId: uuid(2), listings: [] }]),
-    ).toThrow(/names a category twice/);
+    const sized = { ...good, kind: "size", listings: [] };
+    expect(() => parse([good, { ...sized, url: CAT("mice") }])).toThrow(
+      /names a category twice/,
+    );
+    expect(() => parse([good, { ...sized, categoryId: uuid(2) }])).toThrow(
+      /names a category twice/,
+    );
+  });
+
+  it("🔴 refuses one category asked for twice under two spellings of its address", () => {
+    const sized = { ...good, categoryId: uuid(2), kind: "size", listings: [] };
+    for (const [first, second] of [
+      // A trailing slash, and the host's case.
+      [CAT("switches"), "https://R.TEST/c/switches/"],
+      // The same query in another order; a fragment is no address at all.
+      [`${CAT("switches")}?a=1&b=2`, `${CAT("switches")}?b=2&a=1#top`],
+    ] as const) {
+      expect(() =>
+        parse([
+          { ...good, url: first },
+          { ...sized, url: second },
+        ]),
+      ).toThrow(/names a category twice/);
+    }
+    // CONTROL: another path, and a different query, are other categories.
+    expect(
+      parse([good, { ...sized, url: CAT("Switches") }]).categories,
+    ).toHaveLength(2);
+    expect(
+      parse([
+        { ...good, url: `${CAT("switches")}?a=1` },
+        { ...sized, url: `${CAT("switches")}?a=2` },
+      ]).categories,
+    ).toHaveLength(2);
+  });
+
+  it("🔴 refuses one category asked for twice as two of its own pages, before buying anything", async () => {
+    // B&H's page 2 address names the same category as its page 1.
+    const port = new Port({
+      readRunId: READ_RUN_ID,
+      retailerSlug: "bh",
+      listings: [],
+      pagesAtOnce: 1,
+      categories: [
+        {
+          categoryId: uuid(1),
+          url: BH,
+          kind: "walk",
+          lastPage: null,
+          listings: [
+            { listingId: uuid(71), itemId: "1910635", url: BH_1910635 },
+          ],
+        },
+        {
+          categoryId: uuid(2),
+          url: `${BH}/pn/2`,
+          kind: "size",
+          lastPage: null,
+          listings: [],
+        },
+      ],
+    });
+    const fetcher = new MapFetcher(new Map());
+    await expect(
+      runReadJob({
+        client: port,
+        readerFor: () => bhAdapter,
+        fetcher,
+        log: () => undefined,
+      }),
+    ).rejects.toThrow(/names a category twice/);
+    expect(fetcher.calls).toEqual([]);
+  });
+
+  it("🔴 refuses a walk with no watched listings — a walk prices, and would price nothing", () => {
+    expect(() => parse([{ ...good, listings: [] }])).toThrow(
+      /a walk with no listings/,
+    );
+    // CONTROL: a size read with none is a count, and is read.
+    expect(
+      parse([{ ...good, kind: "size", listings: [] }]).categories,
+    ).toHaveLength(1);
+  });
+
+  it(`🔴 refuses a job planning more than ${MAX_CATEGORY_PAGES_PER_JOB} category pages`, () => {
+    const walks = (n: number, lastPage: number | null) =>
+      Array.from({ length: n }, (_, i) => ({
+        ...good,
+        categoryId: uuid(i + 1),
+        url: CAT(`c${i}`),
+        lastPage,
+        listings: [
+          { listingId: uuid(900 + i), itemId: `W${i}`, url: PDP(`W${i}`) },
+        ],
+      }));
+    // A walk the job knows no last page for may read 60.
+    expect(parse(walks(10, null)).categories).toHaveLength(10);
+    expect(() => parse(walks(11, null))).toThrow(
+      /plans 660 category pages, more than the 600/,
+    );
+    // A known last page plans that many; a size read plans one.
+    expect(parse(walks(40, 15)).categories).toHaveLength(40);
+    expect(() => parse(walks(41, 15))).toThrow(/plans 615 category pages/);
   });
 
   it("CONTROL: still refuses a job with no listings and no categories", () => {
@@ -1235,15 +1593,16 @@ describe("a walk told to stop", () => {
     const clock = new FakeClock();
     const stop = new StopSwitch(clock);
     const pages = new Map<string, Answer>();
-    // Category 1 (a size read) finishes first; category 2's walk is under way.
+    // At two pages at once: one worker sizes a category, then reads the
+    // job's listing L; the other walks a ten-page category.
     pages.set(CAT("mice"), catPage(1, [["M", 7]], 1, 1));
+    pages.set(PDP("L"), pdp("L", 5000));
     for (let n = 1; n <= 10; n++) {
       pages.set(
         n === 1 ? CAT("switches") : `${CAT("switches")}?page=${n}`,
         catPage(n, [[`S${n}`, n]], 10, 10),
       );
     }
-    let fetches = 0;
     const inner = new MapFetcher(pages);
     const fetcher: Fetcher = {
       get liveRequestCount() {
@@ -1254,7 +1613,7 @@ describe("a walk told to stop", () => {
       },
       fetch: (url) => {
         // The stop arrives as the walk asks for its fourth page.
-        if (++fetches === 5) stop.request();
+        if (url.endsWith("?page=4")) stop.request();
         return inner.fetch(url);
       },
     };
@@ -1265,12 +1624,12 @@ describe("a walk told to stop", () => {
             categoryId: uuid(2),
             url: CAT("mice"),
             kind: "size",
-            listings: watched("M"),
+            listings: [],
           }),
           category({ categoryId: uuid(1), listings: watched("S9") }),
         ],
-        [],
-        1,
+        [{ itemId: "L", url: PDP("L") }],
+        2,
       ),
     );
     const result = await runReadJob({
@@ -1283,11 +1642,20 @@ describe("a walk told to stop", () => {
     });
     await settle();
     // The page in flight finished; no further page was bought.
-    expect(inner.calls).toHaveLength(5);
+    expect([...inner.calls].sort()).toEqual(
+      [
+        CAT("mice"),
+        PDP("L"),
+        CAT("switches"),
+        `${CAT("switches")}?page=2`,
+        `${CAT("switches")}?page=3`,
+        `${CAT("switches")}?page=4`,
+      ].sort(),
+    );
     // The finished size read is reported; the stopped walk is not, nor are
     // its listings, which the gateway plans again next time.
     expect(port.categories.map((c) => c.categoryId)).toEqual([uuid(2)]);
-    expect(port.readings.map((r) => r.itemId)).toEqual(["M"]);
+    expect(port.readings.map((r) => r.itemId)).toEqual(["L"]);
     expect(port.types).toEqual(["readings", "categories", "error"]);
     expect(port.events.at(-1)?.message).toMatch(/told to stop.*1 of 2 listing/);
     expect(result.stopped).toBe(true);
