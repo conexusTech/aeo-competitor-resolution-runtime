@@ -78,9 +78,11 @@ export interface QueueRunResult {
   /** True when the gateway said the run no longer exists and we stopped. */
   readonly stoppedEarly: boolean;
   /**
-   * True when this container handed the run back unfinished with `yielded`:
-   * its time budget was spent, or it was told to stop, with items not yet
-   * finished.
+   * True when this container handed the run back unfinished — its time
+   * budget was spent, or it was told to stop, with items not yet finished —
+   * and so answered `yielded` rather than `completed`. ⚠️ The decision, not
+   * proof of delivery: after a stop, a gateway that did not answer in time
+   * never received it.
    */
   readonly yielded: boolean;
   /** One per resolution offered, whatever happened to it. */
