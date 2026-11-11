@@ -91,7 +91,7 @@ describe("Newegg: the deepest category link in the product page's breadcrumb", (
       [
         "pdp-barcode-12",
         {
-          id: "696",
+          id: "sub-696",
           name: "TV Mounts & Install Accessories",
           url: "https://www.newegg.com/TV-Mounts-Install-Accessories/SubCategory/ID-696",
         },
@@ -99,7 +99,7 @@ describe("Newegg: the deepest category link in the product page's breadcrumb", (
       [
         "pdp-barcode-13",
         {
-          id: "2820",
+          id: "sub-2820",
           name: "Internal Power Cables",
           url: "https://www.newegg.com/Internal-Power-Cables/SubCategory/ID-2820",
         },
@@ -107,7 +107,7 @@ describe("Newegg: the deepest category link in the product page's breadcrumb", (
       [
         "pdp-barcode-14",
         {
-          id: "3929",
+          id: "sub-3929",
           name: "Driving Simulators",
           url: "https://www.newegg.com/Driving-Simulators/SubCategory/ID-3929",
         },
@@ -115,7 +115,7 @@ describe("Newegg: the deepest category link in the product page's breadcrumb", (
       [
         "pdp-barcode-empty",
         {
-          id: "3048",
+          id: "sub-3048",
           name: "Audio Video Converters",
           url: "https://www.newegg.com/Audio-Video-Converters/SubCategory/ID-3048",
         },
@@ -134,6 +134,27 @@ describe("Newegg: the deepest category link in the product page's breadcrumb", (
     }
   });
 
+  it("🔴 names a Category and a SubCategory apart: one number is two categories", () => {
+    // Newegg numbers its Categories and SubCategories separately, so
+    // `Category/ID-147` and `SubCategory/ID-147` are different leaves.
+    const crumb = (kind: string): string =>
+      `<div class="breadcrumbs"><ol><li><a href="https://www.newegg.com/X/${kind}/ID-147" title="X">x</a></li></ol></div>`;
+    // SYNTHETIC: one leaf of each kind, the same number.
+    expect(newegg.breadcrumbCategory(crumb("Category"))?.id).toBe("cat-147");
+    expect(newegg.breadcrumbCategory(crumb("SubCategory"))?.id).toBe("sub-147");
+    // The real page whose leaf is a Category: pdp-barcode-12 with its
+    // SubCategory crumbs made brand crumbs, so Home Video Accessories leads.
+    const html = raw("pdp-barcode-12").replaceAll(
+      "/SubCategory/ID-696",
+      "/BrandSubCat/ID-1-696",
+    );
+    expect(newegg.parseProductPage(html).category).toEqual({
+      id: "cat-358",
+      name: "Home Video Accessories",
+      url: "https://www.newegg.com/Home-Video-Accessories/Category/ID-358",
+    });
+  });
+
   it("CONTROL: the brand crumb is on the page, after the category", () => {
     const html = raw("pdp-barcode-12");
     expect(html).toContain("/BrandSubCat/ID-1762-696");
@@ -146,7 +167,7 @@ describe("Newegg: the deepest category link in the product page's breadcrumb", (
     const html =
       '<div class="breadcrumbs"><ol><li><a href="https://www.newegg.com/Ruth-s-Cables/SubCategory/ID-12" title="Ruth&#x27;s Cables &amp; More">x</a></li></ol></div>';
     expect(newegg.breadcrumbCategory(html)).toEqual({
-      id: "12",
+      id: "sub-12",
       name: "Ruth's Cables & More",
       url: "https://www.newegg.com/Ruth-s-Cables/SubCategory/ID-12",
     });

@@ -194,7 +194,11 @@ export interface ParsedProduct {
  * part of it answers `null` rather than a partial category.
  */
 export interface ListingCategory {
-  /** The retailer's own id for the category, as a string. */
+  /**
+   * The retailer's own id for the category, as a string. At Newegg it carries
+   * the kind as well as the number — `cat-358`, `sub-696` — because Newegg
+   * numbers its Categories and SubCategories separately.
+   */
   readonly id: string;
   /** Its name, entities decoded, as the breadcrumb shows it. */
   readonly name: string;

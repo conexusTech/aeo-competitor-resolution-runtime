@@ -388,11 +388,11 @@ Mice & Touchpads (`18369`) for the M310 and the kit, Computer Speakers (`6565`),
 
 **Do**
 
-Parse and read Newegg's four committed product pages; parse a hand-built breadcrumb whose name carries `&#x27;` and `&amp;`.
+Parse and read Newegg's four committed product pages; parse a hand-built breadcrumb whose name carries `&#x27;` and `&amp;`; parse a hand-built Category leaf and SubCategory leaf of the same number, and `pdp-barcode-12` with its SubCategory crumbs turned into brand crumbs (SYNTHETIC), so its leaf is a Category.
 
 **Expect**
 
-TV Mounts & Install Accessories (`696`), Internal Power Cables (`2820`), Driving Simulators (`3929`) and Audio Video Converters (`3048`), each its `SubCategory` address, never the brand crumb after it; the hand-built name decodes to "Ruth's Cables & More". 🔴 Mutation: accepting the brand crumb turns this red.
+TV Mounts & Install Accessories (`sub-696`), Internal Power Cables (`sub-2820`), Driving Simulators (`sub-3929`) and Audio Video Converters (`sub-3048`), each its `SubCategory` address, never the brand crumb after it; the hand-built name decodes to "Ruth's Cables & More" (`sub-12`). `Category/ID-147` is `cat-147` and `SubCategory/ID-147` is `sub-147`; the rewritten page names Home Video Accessories, `cat-358`, at its `Category` address. 🔴 Mutations: accepting the brand crumb, dropping the kind from the id, or giving both kinds one prefix each turn this red.
 
 ### Check: category-read-amazon-breadcrumb
 
@@ -930,4 +930,4 @@ Read a listing from its card and others from their own pages; read one real Newe
 
 **Expect**
 
-A card's reading is `category_page` with `category: null`; a product page's is `product_page` with its breadcrumb category (Newegg's TV Mounts & Install Accessories, id 696, on the real page). A failed reading is `product_page` with `category: null`.
+A card's reading is `category_page` with `category: null`; a product page's is `product_page` with its breadcrumb category (Newegg's TV Mounts & Install Accessories, id `sub-696`, on the real page). A failed reading is `product_page` with `category: null`.

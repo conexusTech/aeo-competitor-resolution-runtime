@@ -348,7 +348,7 @@ describe("the adapter reads a product page it already knows", () => {
         priceCents: 7126,
         inStock: true,
         category: {
-          id: "696",
+          id: "sub-696",
           name: "TV Mounts & Install Accessories",
           url: "https://www.newegg.com/TV-Mounts-Install-Accessories/SubCategory/ID-696",
         },
@@ -363,7 +363,7 @@ describe("the adapter reads a product page it already knows", () => {
         priceCents: 1953,
         inStock: true,
         category: {
-          id: "2820",
+          id: "sub-2820",
           name: "Internal Power Cables",
           url: "https://www.newegg.com/Internal-Power-Cables/SubCategory/ID-2820",
         },
@@ -379,7 +379,7 @@ describe("the adapter reads a product page it already knows", () => {
         priceCents: 19999,
         inStock: true,
         category: {
-          id: "3929",
+          id: "sub-3929",
           name: "Driving Simulators",
           url: "https://www.newegg.com/Driving-Simulators/SubCategory/ID-3929",
         },
@@ -542,7 +542,7 @@ describe("the adapter reads a product page it already knows", () => {
       priceCents: null,
       inStock: false,
       category: {
-        id: "696",
+        id: "sub-696",
         name: "TV Mounts & Install Accessories",
         url: "https://www.newegg.com/TV-Mounts-Install-Accessories/SubCategory/ID-696",
       },
@@ -564,7 +564,7 @@ describe("the adapter reads a product page it already knows", () => {
       isFirstParty: null,
       unverifiableReason: null,
       category: {
-        id: "696",
+        id: "sub-696",
         name: "TV Mounts & Install Accessories",
         url: "https://www.newegg.com/TV-Mounts-Install-Accessories/SubCategory/ID-696",
       },
@@ -607,7 +607,7 @@ describe("one listing, read", () => {
       // page names the category its breadcrumb places it in.
       priceSource: "product_page",
       category: {
-        id: "696",
+        id: "sub-696",
         name: "TV Mounts & Install Accessories",
         url: "https://www.newegg.com/TV-Mounts-Install-Accessories/SubCategory/ID-696",
       },

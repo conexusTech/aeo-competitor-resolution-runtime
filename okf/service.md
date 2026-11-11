@@ -247,7 +247,8 @@ price is `null`, never 0. B&H answers a page past the last with a search, which
 is `end` past page 1 and a failure on page 1. Product pages (`ParsedProduct`
 and the read run's `ListingPageReading`) carry `category: { id, name, url } |
 null`, the deepest level of their breadcrumb — B&H's primary category path,
-Newegg's last `SubCategory`/`Category` crumb, Amazon's last browse node — and
+Newegg's last `SubCategory`/`Category` crumb (its id `sub-<n>` or `cat-<n>`,
+since Newegg numbers the two separately), Amazon's last browse node — and
 `null` at Best Buy and Costco. A read run's reading carries it to the
 gateway; the walk that uses the reader is the section below.
 Behaviour: [category-reads](/capabilities/category-reads.md).

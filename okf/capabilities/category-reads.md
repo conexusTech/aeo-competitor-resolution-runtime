@@ -151,6 +151,7 @@ to stop part-way says nothing and prices nothing; the gateway plans it again.
 - WHEN it is read, by resolution or by a read run
 - THEN it names the deepest category of its breadcrumb: its id, its name and its address
 - AND at Newegg never the brand-narrowed crumb after it
+- AND at Newegg its id carries its kind, `cat-<n>` for a Category and `sub-<n>` for a SubCategory, since Newegg numbers the two separately
 - AND a page naming no category reads as none, the rest of it unchanged
 
 **Checked by:** category-read-bh-breadcrumb

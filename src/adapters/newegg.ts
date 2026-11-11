@@ -274,7 +274,21 @@ const BREADCRUMBS = /class="breadcrumbs"><ol>([\s\S]{0,8000}?)<\/ol>/;
  * narrowed to one brand. Its id is two numbers, so `ID-(\d+)"` cannot match it.
  */
 const CATEGORY_CRUMB =
-  /href="(https:\/\/www\.newegg\.com\/[^"]*\/(?:SubCategory|Category)\/ID-(\d+))"[^>]*title="([^"]*)"/g;
+  /href="(https:\/\/www\.newegg\.com\/[^"]*\/(SubCategory|Category)\/ID-(\d+))"[^>]*title="([^"]*)"/g;
+
+/**
+ * The id a Newegg category is reported by: its kind and its number,
+ * `cat-358` for `Category/ID-358`, `sub-696` for `SubCategory/ID-696`.
+ *
+ * 🔴 **The kind is part of the id.** Newegg numbers its Categories and its
+ * SubCategories separately, so `Category/ID-147` and `SubCategory/ID-147`
+ * are two different leaves; the number alone would file both as one. The
+ * gateway's backfill derives the same form from a category's address.
+ */
+const CATEGORY_ID_PREFIX: Readonly<Record<string, string>> = {
+  Category: "cat",
+  SubCategory: "sub",
+};
 
 /**
  * The deepest category a product page's breadcrumb names — `TV Mounts &
@@ -287,10 +301,19 @@ export function breadcrumbCategory(html: string): ListingCategory | null {
   let leaf: ListingCategory | null = null;
   for (const link of crumbs.matchAll(CATEGORY_CRUMB)) {
     const url = link[1];
-    const id = link[2];
-    const name = decodeEntities(link[3] ?? "").trim();
-    if (url === undefined || id === undefined || name === "") continue;
-    leaf = { id, name, url };
+    const prefix =
+      link[2] === undefined ? undefined : CATEGORY_ID_PREFIX[link[2]];
+    const number = link[3];
+    const name = decodeEntities(link[4] ?? "").trim();
+    if (
+      url === undefined ||
+      prefix === undefined ||
+      number === undefined ||
+      name === ""
+    ) {
+      continue;
+    }
+    leaf = { id: `${prefix}-${number}`, name, url };
   }
   return leaf;
 }
