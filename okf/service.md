@@ -301,6 +301,7 @@ drift:
 | one query in a finding's trail | 500 | cut |
 | `unverifiableReason` | 200 | every adapter's reasons are held to it in a test; a longer one is sent as `null` and logged |
 | a category's `error` in a read run's `categories` event | 512 | cut, ending "…" — a requirement on the gateway's DTO |
+| a card's price on a category reading | 1,000,000,000 cents, whole, from 1 | anything else reads as no price, and its listing is read from its own page |
 
 A job item's `partNumber` and `brand` are checked on the way in against the
 gateway's own 128 and 160. Two ceilings guard the way in from the vendor: a
@@ -324,21 +325,47 @@ categories?: { categoryId: uuid; url: string; kind: "walk" | "size";
 
 - **`walk`** reads pages 1 to the last page the category itself states (the
   job's `lastPage` where it states none, or until the reader says the end),
-  never more than `MAX_WALK_PAGES`, 60. **`size`** reads page 1 only. A card
-  whose `itemId` equals a watched listing's prices it — on a walk that is
-  whole.
+  never more than `MAX_WALK_PAGES`, 60. **`size`** reads page 1 only and is
+  count-only: it reports the category's count and last page and prices
+  nothing. 🔑 **Cards price listings only on a walk that is whole**: a card
+  whose `itemId` equals a watched listing's, with a price the gateway takes
+  (a whole number of cents from 1 to `MAX_PRICE_CENTS`, 1,000,000,000;
+  anything else reads as no price).
 - 🔴 **Everything else is read from its own page, in this container, today**:
-  a card missing or unpriced; every listing of a walk with a page that is not
-  a category page or could not be had after its re-reads, that saw fewer than
-  90% of the products the category states, or that is longer than 60 pages;
-  every listing at a competitor whose `categoryReader` is `null`. Hence each
-  category listing carries its own `url` — required, checked like a read
-  listing's (contract point 8, 2026-11-12) — and a job missing one is refused.
+  a card missing, unpriced or out of range; every listing of a size read;
+  every listing of a walk whose page 1 lists nothing or is the end, with a
+  page that is not a category page or could not be had after its re-reads,
+  that saw fewer than 90% of the products the category states, or that is
+  longer than 60 pages; every listing at a competitor whose `categoryReader`
+  is `null`. Hence each category listing carries its own `url` — required,
+  checked like a read listing's (contract point 8, 2026-11-12) — and a job
+  missing one is refused. A worker with nothing to read is woken as soon as a
+  walk leaves listings, not after the walk's readings are sent.
+- 🔴 **An empty page 1 is never an empty category.** Every reader answers a
+  page 1 that lists no products with `not-a-category-page`, whatever count it
+  states, and the walk fails a page 1 any reader calls the end; past page 1
+  an empty page is the end, and the count page 1 stated still judges the walk
+  by the 90% rule.
 - 🔑 **One listing, one read, per job.** A category's listings are never also
   in the job's `listings`; a listing named twice anywhere, or a category named
   twice, refuses the job, as does more than 200 categories
-  (`MAX_CATEGORIES_PER_JOB`) or any malformed field. Absent or empty
-  `categories` is the read exactly as before.
+  (`MAX_CATEGORIES_PER_JOB`), a walk with no listings, or any malformed field.
+  A category is one category however its address is spelled: the parse
+  compares addresses with the host in lower case, no trailing slash, no
+  fragment and the query sorted (`categoryKey`), and the run, before buying
+  anything, compares the page 1 each reader builds — so B&H's `/pn/2` and its
+  category are one. Absent or empty `categories` is the read exactly as
+  before.
+- 🔴 **At most 600 category pages a job** (`MAX_CATEGORY_PAGES_PER_JOB`),
+  held twice: a job whose plan exceeds it — a size read plans 1, a walk its
+  `lastPage`, or 60 where it has none — is refused before anything is bought;
+  and a walk whose category grew past its plan stops when the 600th page is
+  bought, `failed`, its listings read from their own pages.
+- ⚠️ **An Amazon walk the job gives no `lastPage` can only fail.** Amazon's
+  reader reports no count and no last page, and a page past the end is a
+  failure unless it shows Amazon's no-results widget, which no captured page
+  has. Amazon's category mode is off in the gateway's registry for this
+  reason.
 - **Pages at once is shared.** A walk is one worker, its pages read one after
   another, so walks and product reads together never hold more pages open
   than the job's `pagesAtOnce` (at most 4). Walks are taken first, since the

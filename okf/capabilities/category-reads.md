@@ -1,7 +1,7 @@
 ---
 type: Capability
 title: One read of a competitor's category page prices every product it lists
-description: A competitor's category page is read whole — every product it lists, named as its listing is named, with the price its card shows or none — and a body that is not a category page is a failure, never an empty category. Past the last page is the end. Product pages name the category their product sits in. B&H, Newegg and Amazon have category reads; Best Buy and Costco do not. A read job can ask for a category's walk or its size; a whole walk prices each watched listing from its card, and every listing a walk cannot price is read from its own page the same day. Every reading says which kind of page its price came from.
+description: A competitor's category page is read whole — every product it lists, named as its listing is named, with the price its card shows or none — and a body that is not a category page is a failure, never an empty category. Past the last page is the end. Product pages name the category their product sits in. B&H, Newegg and Amazon have category reads; Best Buy and Costco do not. A read job can ask for a category's walk or its size; only a whole walk prices a watched listing from its card, a size read only counts, and every listing a walk cannot price is read from its own page the same day. Every reading says which kind of page its price came from.
 ---
 
 # One read of a category page prices every product it lists
@@ -25,14 +25,21 @@ category, or for no whole page number) and reads one body as exactly one of:
 | Answer | Means | Carries |
 |---|---|---|
 | `page` | a page of the category | every product on it: its listing id, the price its card shows or `null`, its stock or `null`; the category's stated product count and last page, each or `null` |
-| `end` | the competitor saying there is no such page | why |
-| `not-a-category-page` | anything else: a refusal, a robot check, a product page, a search page, an empty body, a page cut short | why |
+| `end` | the competitor saying there is no such page — never page 1 | why |
+| `not-a-category-page` | anything else: a refusal, a robot check, a product page, a search page, an empty body, a page cut short, a page 1 listing no products whatever count it states | why |
 
 | Competitor | A page | Count and last page | Past the last page | Measured on |
 |---|---|---|---|---|
 | B&H | 28 | stated (`count`, `itemsPerPage`) | a search for the url's slug | Mice & Touchpads, pages 1, 2, 15 (last) and 16 |
 | Newegg | 36 | stated (`TotalItemCount`, "Page k/M"); M is its 20-page browse ceiling | not captured; read off the page's own "Page k/M" | Desktop Memory pages 1 and 2, Laptop Memory page 1 |
 | Amazon | as the grid shows (16 to 24) | not stated: Amazon's "over N results" shifts between pages | an empty grid Amazon says is empty; not captured | a results grid, pages 1 and 2 |
+
+⚠️ **An Amazon walk the job gives no last page can only fail.** Its pages state
+no count and no last page, so the walk reads until the page past the end — and
+that page is a failure unless it shows Amazon's no-results widget, which no
+captured page has. So it fails, and its listings are read from their own
+pages. Amazon's category mode is off in the gateway's registry for this
+reason.
 
 A product page's reading — resolution's and the read run's — also names the
 category its product sits in, the deepest level of its breadcrumb, as an id, a
@@ -44,18 +51,24 @@ price.
 
 A read job may carry categories beside its listings. Each is a **walk** —
 every page, to price its watched listings from their cards — or a **size** —
-page 1 only, to learn its count and last page. A category's watched listings
-are not also among the job's listings: each is read exactly once, from its
-card or from its own page.
+page 1 only, to learn its count and last page, pricing nothing. A category's
+watched listings are not also among the job's listings: each is read exactly
+once, from its card or from its own page. Cards price listings only on a walk
+that is whole.
 
 | A watched listing whose… | is |
 |---|---|
 | card shows a price, on a whole walk | priced from the card: `priceSource: "category_page"`, no barcode, no category |
-| card is missing, or shows no price | read from its own page, in the same container |
-| walk is not whole — a page that is not one of the category, a page that could not be had after its re-reads, fewer than 90% of the stated products seen, more than 60 pages — or whose competitor has no category reads | read from its own page, its card ignored if seen |
+| card is missing, or shows no price — or a price the gateway would refuse (not a whole number of cents from 1 to 1,000,000,000) | read from its own page, in the same container, as soon as a worker is free |
+| walk is not whole — page 1 listing nothing or being the end, a page that is not one of the category, a page that could not be had after its re-reads, fewer than 90% of the stated products seen, more than 60 pages, the job's 600 category pages spent — or whose competitor has no category reads, or whose category was only sized | read from its own page, its card ignored if seen |
 
 A walk reads to the last page the category states (the job's figure where it
-states none, or until the category says it ends), never more than 60 pages.
+states none, or until the category says it ends), never more than 60 pages,
+and one job buys at most 600 category pages: a job planning more — a size
+read plans 1, a walk its last page or 60 where it has none — is refused, and
+a walk that grew past its plan stops when they are spent. A job is refused
+too for a walk with no listings, or for one category named twice, however its
+address is spelled or whichever of its pages it names.
 Walks and product reads share the job's pages at once (never more than 4); a
 walk's pages are read one after another. After the readings, one `categories`
 event says what became of each category — status `valid`, `invalid` or
@@ -109,7 +122,7 @@ to stop part-way says nothing and prices nothing; the gateway plans it again.
 **Checked by:** category-read-amazon-says-empty
 
 #### Scenario: A page that is not a category page is a failure, never an empty category
-- GIVEN a body that is not the category page asked for — a refusal, a robot check, an empty or short body, a product page, a search page, a hub page, a page cut short, or a page naming another page number
+- GIVEN a body that is not the category page asked for — a refusal, a robot check, an empty or short body, a product page, a search page, a hub page, a page cut short, a page naming another page number, or a page 1 listing no products whatever count it states
 - WHEN it is read
 - THEN the reading is not-a-category-page, with why
 - AND never a page with no products, and never the end of the category
@@ -121,6 +134,7 @@ to stop part-way says nothing and prices nothing; the gateway plans it again.
 **Checked by:** category-read-amazon-empty-grid-unsaid
 **Checked by:** category-read-amazon-other-page-is-a-failure
 **Checked by:** category-read-cut-short
+**Checked by:** category-read-empty-page-one-is-a-failure
 
 #### Scenario: A page address is built only for a category on the competitor's own host
 - GIVEN a category's address and a page number
@@ -162,29 +176,39 @@ to stop part-way says nothing and prices nothing; the gateway plans it again.
 
 **Checked by:** category-walk-prices-from-cards, category-walk-card-twice-once
 
+#### Scenario: A card's price the gateway would refuse is no price
+- GIVEN a whole walk in which a watched listing's card reads as more than 1,000,000,000 cents, a fraction of a cent, or below 1
+- WHEN the walk ends
+- THEN that card prices nothing, and its listing is read from its own page
+- AND a card at exactly 1,000,000,000 cents still prices its listing
+
+**Checked by:** category-walk-out-of-range-price-is-no-price
+
 #### Scenario: A listing its card cannot price is read from its own page, the same day
 - GIVEN a whole walk in which a watched listing's card is missing or shows no price
 - WHEN the walk ends
 - THEN that listing is read from its own product page in the same container
+- AND a worker with nothing to read starts on it at once, not after the walk's readings are sent
 - AND it has exactly one reading, never also one from the category
 
-**Checked by:** category-walk-missing-or-unpriced-falls-back
+**Checked by:** category-walk-missing-or-unpriced-falls-back, category-walk-leftovers-read-at-once
 
 #### Scenario: A walk that cannot be trusted prices nothing
-- GIVEN a walk in which a page is not a page of the category, a page could not be had after its re-reads, or the walk saw fewer than 90% of the products the category states
+- GIVEN a walk in which page 1 lists no products or is the end, a page is not a page of the category, a page could not be had after its re-reads, or the walk saw fewer than 90% of the products the category states
 - WHEN it ends
 - THEN every watched listing in it is read from its own page, one whose card was seen included
 - AND no page after the bad one is bought
-- AND the category is reported failed or invalid, saying why
+- AND the category is reported failed or invalid, saying why — never valid with nothing seen
+- AND a walk that ends on an empty page past page 1 keeps the count page 1 stated, so the 90% rule still judges it
 
-**Checked by:** category-walk-bad-page-falls-back-whole, category-walk-failed-page-falls-back, category-walk-thin-walk-falls-back, category-walk-throttled-page-then-fails
+**Checked by:** category-walk-bad-page-falls-back-whole, category-walk-failed-page-falls-back, category-walk-thin-walk-falls-back, category-walk-throttled-page-then-fails, category-walk-empty-page-one-fails
 
-#### Scenario: A size read buys page 1 only
+#### Scenario: A size read buys page 1 only, and prices nothing
 - GIVEN a read job asking for a category's size
 - WHEN it runs
 - THEN page 1 alone is bought
 - AND the category's stated count and last page are reported
-- AND a watched listing priced on page 1 is priced from it, and any other read from its own page
+- AND no card prices anything: every watched listing in it is read from its own page
 
 **Checked by:** category-size-reads-page-one
 
@@ -196,6 +220,14 @@ to stop part-way says nothing and prices nothing; the gateway plans it again.
 - AND a walk the job says has more than 60 pages is not started, and one whose category states more stops after its first page, each reading its listings from their own pages
 
 **Checked by:** category-walk-reads-to-the-stated-last-page, category-walk-reads-to-the-end, category-walk-never-past-sixty, category-walk-too-long-is-not-a-walk
+
+#### Scenario: One job buys at most 600 category pages
+- GIVEN a read job whose walks plan more than 600 category pages, or whose categories have grown past what it planned
+- WHEN the job is read, and when it runs
+- THEN a job planning more than 600 is refused before anything is bought
+- AND a walk past the 600th page bought buys nothing more, is reported failed, and its listings are read from their own pages
+
+**Checked by:** category-job-page-plan-refused, category-walk-page-budget-spent
 
 #### Scenario: A competitor without category reads reads its watched listings from their own pages
 - GIVEN a read job asking for categories at a competitor with no category reads
@@ -236,8 +268,10 @@ to stop part-way says nothing and prices nothing; the gateway plans it again.
 - WHEN the job is read
 - THEN it is refused, and nothing is bought
 - AND a watched listing with no page of its own is refused, since its fallback needs one
+- AND a walk with no watched listings is refused, since it would buy pages for nothing
+- AND one category named twice is refused however its address is spelled — a trailing slash, the host's case, the query's order — or whichever of its pages it names
 
-**Checked by:** category-job-malformed-refused, category-job-listing-once, category-job-off-host-refused
+**Checked by:** category-job-malformed-refused, category-job-listing-once, category-job-off-host-refused, category-job-one-category-one-walk, category-job-walk-needs-listings
 
 #### Scenario: A walk told to stop just stops
 - GIVEN a walk under way when the container is told to stop
