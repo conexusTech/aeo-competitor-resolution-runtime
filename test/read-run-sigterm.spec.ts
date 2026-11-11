@@ -124,6 +124,7 @@ function start(
   listings: number,
   script: (n: number, stop: StopSwitch) => Hold,
   holdReadings = false,
+  flushAt?: number,
 ) {
   const clock = new FakeClock();
   const stop = new StopSwitch(clock);
@@ -142,6 +143,7 @@ function start(
     clock,
     stop,
     log: () => undefined,
+    ...(flushAt === undefined ? {} : { flushAt }),
   }).then((r) => {
     result = r;
     return r;
@@ -191,6 +193,33 @@ describe("a listing read told to stop", () => {
     await done;
     expect(read(events)).toEqual(["L0", "L1"]);
     expect(events.map((e) => e.type)).toEqual(["readings", "error"]);
+  });
+
+  it("files nothing after ending the batch, even when the abandoned page arrives late", async () => {
+    // The wait gives up at 20 s and the batch ends; the abandoned page arrives
+    // at 22 s. With batches of one, recording it would send it at once —
+    // after the error that ended the batch.
+    const { done, events, clock, stopped } = start(
+      5,
+      (n, stop) => {
+        if (n !== 3) return 0;
+        stop.request();
+        return 22_000;
+      },
+      false,
+      1,
+    );
+    await stopped();
+    await clock.advance(SHUTDOWN.inFlightMs);
+    await done;
+    await clock.advance(2_000);
+    await settle();
+    expect(events.map((e) => e.type)).toEqual([
+      "readings",
+      "readings",
+      "error",
+    ]);
+    expect(read(events)).toEqual(["L0", "L1"]);
   });
 
   it("stops waiting out a throttled page's re-read at once rather than at the end of its delay", async () => {

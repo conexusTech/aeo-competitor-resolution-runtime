@@ -546,7 +546,15 @@ export async function runReadJob(deps: ReadRunDeps): Promise<ReadRunResult> {
         `(at most ${MAX_PAGES_AT_ONCE})`,
     );
 
+    /**
+     * 🔴 Set once the batch's end is decided. A page abandoned in flight can
+     * still arrive afterwards; recorded, it could be sent after the event
+     * that ended the batch. Dropped instead — the listing is read again at
+     * the next slot.
+     */
+    let sealed = false;
     const record = (reading: ListingReading): void => {
+      if (sealed) return;
       readings.push(reading);
       buffer.push(reading);
     };
@@ -664,6 +672,7 @@ export async function runReadJob(deps: ReadRunDeps): Promise<ReadRunResult> {
     // going after that is abandoned, so the readings already made are still
     // filed before SIGKILL.
     const ran = await boundAfterStop(working, stop, clock, SHUTDOWN.inFlightMs);
+    sealed = true;
     await closing(flush(true), "file the last readings");
 
     const failures = readings.filter((r) => r.failure !== null).length;

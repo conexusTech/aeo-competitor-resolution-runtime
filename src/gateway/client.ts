@@ -167,7 +167,8 @@ export interface ResolutionJob {
   readonly pagesAtOnce: number | null;
   /**
    * Seconds after the job started past which this container takes no new
-   * item. `null` is no budget: the container works the whole list.
+   * item, from 1 to a day. `null` is no budget: the container works the
+   * whole list.
    *
    * 🔑 **What lets a list longer than one container's life finish.** The
    * queue kills a Job at its deadline and reports nothing to the gateway, so a
@@ -191,15 +192,33 @@ function parseWholeNumber(
   value: unknown,
   field: string,
   what: string,
+  max: number = Number.POSITIVE_INFINITY,
 ): number | null {
   if (value === undefined || value === null) return null;
-  if (typeof value !== "number" || !Number.isInteger(value) || value < 1) {
+  if (
+    typeof value !== "number" ||
+    !Number.isInteger(value) ||
+    value < 1 ||
+    value > max
+  ) {
+    const range =
+      max === Number.POSITIVE_INFINITY ? "of at least 1" : `from 1 to ${max}`;
     throw new Error(
-      `${what} has a '${field}' that is not a whole number of at least 1`,
+      `${what} has a '${field}' that is not a whole number ${range}`,
     );
   }
   return value;
 }
+
+/**
+ * The longest time budget a job may carry: a day.
+ *
+ * ⚠️ **Refused above it, not clamped.** No container lives that long, so a
+ * larger figure is two builds disagreeing — most likely about the unit, a
+ * budget sent in milliseconds — and honouring it would mean no budget at all
+ * while the job claims one.
+ */
+export const MAX_STOP_TAKING_ITEMS_AFTER_SEC = 86_400;
 
 /**
  * The job's pages-at-once figure.
@@ -891,6 +910,7 @@ export function parseJob(body: unknown, runId: string): ResolutionJob {
       raw["stopTakingItemsAfterSec"],
       "stopTakingItemsAfterSec",
       `the job for run ${runId}`,
+      MAX_STOP_TAKING_ITEMS_AFTER_SEC,
     ),
   };
 }

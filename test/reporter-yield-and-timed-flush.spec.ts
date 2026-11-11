@@ -81,6 +81,44 @@ describe("handing a run back", () => {
     expect(gateway.events[1]?.["requests_spent"]).toBe(42);
   });
 
+  it("files nothing and ticks nothing once the run is handed back", async () => {
+    // 🔴 Sealed at the terminal decision: a finding offered afterwards —
+    // an item abandoned in flight that finished late — is dropped, not sent
+    // after `yielded`. The next container buys it again.
+    const { gateway, reporter } = reporterFor();
+    await reporter.load();
+    await reporter.offer(resolution("A"));
+    await reporter.reportYielded(3);
+    await reporter.offer(resolution("LATE"));
+    await reporter.reportProgress({ itemsReported: 2, requestsSpent: 4 });
+    await reporter.flush();
+    // Every event, progress included: a tick after the seal is the failure.
+    expect(gateway.events.map((e) => e["type"])).toEqual([
+      "resolutions",
+      "yielded",
+    ]);
+    expect(filed(gateway.events)).toEqual(["A"]);
+  });
+
+  it("never lets a progress tick still on its way land after the terminal event", async () => {
+    // A tick is not awaited by the run, so one can be in flight when the run
+    // ends. The terminal event waits for it to be answered.
+    const { gateway, reporter } = reporterFor((e) =>
+      e["type"] === "progress" ? "hold" : "apply",
+    );
+    await reporter.load();
+    void reporter.reportProgress({ itemsReported: 25, requestsSpent: 60 });
+    const ending = reporter.reportCompleted(61);
+    await settle();
+    expect(gateway.events.map((e) => e["type"])).toEqual(["progress"]);
+    gateway.release();
+    await ending;
+    expect(gateway.answered.map((e) => e["type"])).toEqual([
+      "progress",
+      "completed",
+    ]);
+  });
+
   it("does not say `yielded` once the gateway has refused findings, as `completed` is not said", async () => {
     // A refusal turns reporting off; the gateway then learns how the
     // container ended from the queue.

@@ -9,7 +9,7 @@ import {
   type QueueRunDeps,
   type QueueRunResult,
 } from "../src/queue-run.js";
-import { GatewayReporter } from "../src/reporting/reporter.js";
+import { FLUSH_EVERY_MS, GatewayReporter } from "../src/reporting/reporter.js";
 import { RUN_DEFAULTS, runList } from "../src/run.js";
 import { SHUTDOWN, StopSwitch } from "../src/stop-signal.js";
 import { FakeClock, settle } from "./fake-clock.js";
@@ -232,6 +232,31 @@ describe("a run told to stop", () => {
     await done;
     expect(types(gateway.events)).toEqual(["resolutions", "yielded"]);
     expect(gateway.answered.map((e) => e["type"])).not.toContain("yielded");
+  });
+
+  it("sends nothing after `yielded`, even when the abandoned item finishes while `yielded` is on its way", async () => {
+    // 🔴 Found in review, 2026-11-11. The wait gives up at 20 s and `yielded`
+    // is posted; the abandoned item finishes at 22 s, while that post is still
+    // unanswered. Filed after `yielded`, the item would be reported twice —
+    // once here, once by the next container — and its pages would be missing
+    // from the spend `yielded` already carried. It is dropped instead: the
+    // next container buys it again.
+    const { done, gateway, clock, stopped } = start({
+      items: 5,
+      stopAfterFinished: 2,
+      stopWhile: { hold: 22_000 },
+      answer: (e) => (e["type"] === "yielded" ? "hold" : "apply"),
+    });
+    await stopped();
+    await clock.advance(SHUTDOWN.inFlightMs);
+    expect(types(gateway.events)).toEqual(["resolutions", "yielded"]);
+    await clock.advance(2_000);
+    gateway.release();
+    await done;
+    // Long enough for any timed send to have gone out.
+    await clock.advance(FLUSH_EVERY_MS);
+    expect(types(gateway.events)).toEqual(["resolutions", "yielded"]);
+    expect(filed(gateway.events)).toEqual(["SKU-0", "SKU-1"]);
   });
 
   it("answers `completed` when told to stop after the last item finished — nothing is left", async () => {

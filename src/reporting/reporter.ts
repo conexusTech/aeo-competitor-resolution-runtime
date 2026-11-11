@@ -158,6 +158,20 @@ export class GatewayReporter {
    * the gateway would drop the batch behind it. Every flush waits its turn.
    */
   private sending: Promise<void> = Promise.resolve();
+  /**
+   * Set when the run's end has been decided — `completed`, `yielded` or
+   * `error`. From then on nothing new is accepted or sent but the terminal
+   * event itself.
+   *
+   * 🔴 **Found in review, 2026-11-11.** After SIGTERM an item abandoned in
+   * flight can finish while `yielded` is on its way. Filed then, it lands
+   * after `yielded`: reported twice — here and by the next container, which
+   * was given it as unfinished — with its pages missing from the spend
+   * `yielded` carried. Dropped instead; the next container buys it again.
+   */
+  private sealed = false;
+  /** Progress ticks not yet answered: a terminal event waits for them. */
+  private readonly ticking = new Set<Promise<void>>();
 
   /** Set when the gateway refuses in a way retrying cannot fix. */
   private reportingDisabled = false;
@@ -219,7 +233,7 @@ export class GatewayReporter {
    * already filed.
    */
   async offer(resolution: Resolution): Promise<void> {
-    if (!this.isReporting) return;
+    if (this.sealed || !this.isReporting) return;
     if (this.acknowledged.has(resolution.clientSku)) return;
     this.buffer.push(resolution);
     if (this.buffer.length >= this.flushAt) {
@@ -256,9 +270,28 @@ export class GatewayReporter {
   flush(): Promise<void> {
     this.cancelTimedFlush?.();
     this.cancelTimedFlush = null;
+    // After the end is decided, the terminal report's own send is the last.
+    if (this.sealed) return Promise.resolve();
+    return this.queueSend();
+  }
+
+  private queueSend(): Promise<void> {
     const next = this.sending.then(() => this.sendBuffered());
     this.sending = next;
     return next;
+  }
+
+  /**
+   * Decide the end: accept nothing more, send what was buffered (after any
+   * send in flight), and wait for every progress tick still on its way — so
+   * the terminal event that follows is the last thing the gateway hears.
+   */
+  private async closeOut(): Promise<void> {
+    this.sealed = true;
+    this.cancelTimedFlush?.();
+    this.cancelTimedFlush = null;
+    await this.queueSend();
+    await Promise.all([...this.ticking]);
   }
 
   private async sendBuffered(): Promise<void> {
@@ -319,7 +352,23 @@ export class GatewayReporter {
     readonly requestsSpent: number;
     readonly pagesDelivered?: number;
   }): Promise<void> {
-    if (!this.isReporting) return;
+    if (this.sealed || !this.isReporting) return;
+    // 🔑 Tracked until answered, because the run does not await a tick and a
+    // terminal event must not overtake one — see `closeOut`.
+    const tick = this.sendProgress(args);
+    this.ticking.add(tick);
+    try {
+      await tick;
+    } finally {
+      this.ticking.delete(tick);
+    }
+  }
+
+  private async sendProgress(args: {
+    readonly itemsReported: number;
+    readonly requestsSpent: number;
+    readonly pagesDelivered?: number;
+  }): Promise<void> {
     const outcome = await this.client.reportProgress(args);
     if (outcome.kind === "run-gone") {
       this.runGone = true;
@@ -334,13 +383,14 @@ export class GatewayReporter {
    * Close the run out.
    *
    * Flushes first, so a `completed` never arrives before the findings it
-   * summarises — the gateway's terminal guard would drop them.
+   * summarises — the gateway's terminal guard would drop them. Seals the
+   * reporter first of all: see `sealed`.
    */
   async reportCompleted(
     requestsSpent: number,
     pagesDelivered?: number,
   ): Promise<void> {
-    await this.flush();
+    await this.closeOut();
     if (!this.isReporting) return;
     await this.client.reportCompleted(requestsSpent, pagesDelivered);
   }
@@ -361,7 +411,7 @@ export class GatewayReporter {
     requestsSpent: number,
     pagesDelivered?: number,
   ): Promise<void> {
-    await this.flush();
+    await this.closeOut();
     if (!this.isReporting) return;
     await this.client.reportYielded(requestsSpent, pagesDelivered);
   }
@@ -377,7 +427,7 @@ export class GatewayReporter {
     message: string,
     context?: Record<string, unknown>,
   ): Promise<void> {
-    await this.flush();
+    await this.closeOut();
     if (this.runGone) return;
     // Deliberately NOT gated on `reportingDisabled`: a 400 on a findings batch
     // says the resolutions disagree about their shape, which says nothing about

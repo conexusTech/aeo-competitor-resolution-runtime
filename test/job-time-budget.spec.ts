@@ -40,13 +40,30 @@ describe("the job's stopTakingItemsAfterSec on the wire", () => {
     ).toBe(1);
   });
 
+  it("carries a day, the longest budget it accepts", () => {
+    expect(
+      parseJob(job({ stopTakingItemsAfterSec: 86_400 }), "r")
+        .stopTakingItemsAfterSec,
+    ).toBe(86_400);
+  });
+
+  it("refuses a budget longer than a day, as it refuses one below a second", () => {
+    // Longer than any container lives: a budget that can never bind is two
+    // builds disagreeing about the unit, not a choice.
+    for (const bad of [86_401, 3_600_000, Number.MAX_SAFE_INTEGER]) {
+      expect(() =>
+        parseJob(job({ stopTakingItemsAfterSec: bad }), "r"),
+      ).toThrow(
+        /'stopTakingItemsAfterSec' that is not a whole number from 1 to 86400/,
+      );
+    }
+  });
+
   it("refuses a budget that is two builds disagreeing, naming the field", () => {
     for (const bad of [0, -1, 2.5, "3600", true, {}, Number.NaN]) {
       expect(() =>
         parseJob(job({ stopTakingItemsAfterSec: bad }), "r"),
-      ).toThrow(
-        /'stopTakingItemsAfterSec' that is not a whole number of at least 1/,
-      );
+      ).toThrow(/'stopTakingItemsAfterSec' that is not a whole number/);
     }
   });
 });
