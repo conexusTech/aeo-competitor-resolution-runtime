@@ -45,6 +45,7 @@
  * are not touched, so a read cannot change what a resolution finds.
  */
 
+import { SYSTEM_CLOCK, type Clock } from "./clock.js";
 import { isOwnHostUrl } from "./own-hosts.js";
 import {
   MAX_PAGES_AT_ONCE,
@@ -58,6 +59,12 @@ import {
   type ReadListing,
   type ReportOutcome,
 } from "./gateway/client.js";
+import {
+  NEVER_STOPPED,
+  SHUTDOWN,
+  boundAfterStop,
+  type StopRequest,
+} from "./stop-signal.js";
 
 /** The stable reason a reading failed. A failure string starts with one. */
 export const READ_FAILURE = {
@@ -408,6 +415,13 @@ export interface ReadRunDeps {
   /** Waits out a re-read's delay. A test passes one that moves its clock. */
   readonly sleep?: (ms: number) => Promise<void>;
   readonly log?: (message: string) => void;
+  /**
+   * The cluster telling this container to stop (SIGTERM). Never, unless the
+   * caller wires one — see `watchForTermination`.
+   */
+  readonly stop?: StopRequest;
+  /** What the shutdown's waits are measured on. The system clock unless a check says. */
+  readonly clock?: Clock;
 }
 
 export interface ReadRunResult {
@@ -422,6 +436,11 @@ export interface ReadRunResult {
   readonly undelivered: number;
   /** Throttled pages read again, across the whole job. */
   readonly rereads: number;
+  /**
+   * True when the container was told to stop with listings still unread, and
+   * ended the batch with an error saying how far it got.
+   */
+  readonly stopped: boolean;
 }
 
 export const READ_DEFAULTS = { flushAt: 100 } as const;
@@ -451,6 +470,24 @@ export async function runReadJob(deps: ReadRunDeps): Promise<ReadRunResult> {
   const delivered = (): number => deps.fetcher.pagesDelivered;
   const pacing = deps.pacing ?? READ_PACING;
   const sleep = deps.sleep ?? realSleep;
+  const clock = deps.clock ?? SYSTEM_CLOCK;
+  const stop = deps.stop ?? NEVER_STOPPED;
+  const stopAsked = (): boolean => stop.askedAt !== null;
+  /**
+   * A closing step: waited for in full, unless the container has been told
+   * to stop — then only until `SHUTDOWN.finishByMs` after the signal.
+   */
+  const closing = async (work: Promise<unknown>, what: string) => {
+    const outcome = await boundAfterStop(
+      work,
+      stop,
+      clock,
+      SHUTDOWN.finishByMs,
+    );
+    if (outcome.kind === "timed-out") {
+      log(`gave up waiting to ${what}: the grace period is nearly over`);
+    }
+  };
 
   const job = await deps.client.fetchJob();
 
@@ -554,7 +591,8 @@ export async function runReadJob(deps: ReadRunDeps): Promise<ReadRunResult> {
 
     let next = 0;
     const work = async (): Promise<void> => {
-      while (!gone && !halted) {
+      // 🔴 A stop takes no new listing: the cluster is ending the container.
+      while (!gone && !halted && !stopAsked()) {
         const task = take();
         if (task === null) return;
         if (typeof task === "number") {
@@ -562,8 +600,10 @@ export async function runReadJob(deps: ReadRunDeps): Promise<ReadRunResult> {
           // long re-read tail then loses only what is in flight, and a run the
           // gateway has ended is learnt of now rather than at the end.
           await flush(true);
-          if (gone || halted) return;
-          await sleep(task);
+          if (gone || halted || stopAsked()) return;
+          // ⚠️ A stop ends the wait at once: a re-read delay is up to 80 s,
+          // far past the grace period.
+          await Promise.race([sleep(task), stop.asked]);
           continue;
         }
         const { listing } = task;
@@ -613,13 +653,18 @@ export async function runReadJob(deps: ReadRunDeps): Promise<ReadRunResult> {
         throw error;
       }
     };
-    await Promise.all(
+    const working = Promise.all(
       Array.from(
         { length: Math.min(concurrency, job.listings.length) },
         worker,
       ),
     );
-    await flush(true);
+    // 🔑 Every listing is read — unless the container is told to stop. Then
+    // pages in flight get `SHUTDOWN.inFlightMs` from the signal; one still
+    // going after that is abandoned, so the readings already made are still
+    // filed before SIGKILL.
+    const ran = await boundAfterStop(working, stop, clock, SHUTDOWN.inFlightMs);
+    await closing(flush(true), "file the last readings");
 
     const failures = readings.filter((r) => r.failure !== null).length;
     log(
@@ -637,6 +682,40 @@ export async function runReadJob(deps: ReadRunDeps): Promise<ReadRunResult> {
         stoppedEarly: true,
         undelivered,
         rereads,
+        stopped: false,
+      };
+    }
+
+    // 🔴 **Told to stop with listings unread: `error`, never `completed`.**
+    // `completed` would say the batch read its listings. The error is what the
+    // gateway records from the queue for a killed batch anyway — here it comes
+    // at once, after the readings that were made, and says how far it got.
+    if (
+      stopAsked() &&
+      (ran.kind === "timed-out" || readings.length < job.listings.length)
+    ) {
+      const lost =
+        undelivered > 0
+          ? `; ${undelivered} reading(s) were not accepted by the gateway`
+          : "";
+      await closing(
+        deps.client.reportError(
+          `the container was told to stop (SIGTERM) after reading ` +
+            `${readings.length} of ${job.listings.length} listing(s); the ` +
+            `rest were not read${lost}`,
+          spent(),
+          delivered(),
+        ),
+        "end the batch",
+      );
+      return {
+        readings,
+        liveRequests: spent(),
+        pagesDelivered: delivered(),
+        stoppedEarly: false,
+        undelivered,
+        rereads,
+        stopped: true,
       };
     }
 
@@ -657,13 +736,20 @@ export async function runReadJob(deps: ReadRunDeps): Promise<ReadRunResult> {
       stoppedEarly: false,
       undelivered,
       rereads,
+      stopped: false,
     };
   } catch (error) {
     // Whatever was read is still worth filing before the run is marked failed
     // — and a failure to file it must not mask the error being reported.
-    await flush(true).catch(() => undefined);
+    await closing(
+      flush(true).catch(() => undefined),
+      "file the last readings",
+    );
     const message = error instanceof Error ? error.message : String(error);
-    await deps.client.reportError(message, spent(), delivered());
+    await closing(
+      deps.client.reportError(message, spent(), delivered()),
+      "report the error",
+    );
     throw error;
   }
 }

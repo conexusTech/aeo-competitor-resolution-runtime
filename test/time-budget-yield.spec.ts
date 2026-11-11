@@ -4,18 +4,18 @@ import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import type {
-  ParsedCandidate,
-  ParsedProduct,
-  RetailerAdapter,
-} from "../src/adapters/types.js";
-import type { Fetcher, FetchResult } from "../src/fetcher/types.js";
 import { runDispatchedJob, type QueueRunDeps } from "../src/queue-run.js";
-import type { DispatchPayload } from "../src/queue/task-record.js";
 import { GatewayReporter } from "../src/reporting/reporter.js";
 import { RUN_DEFAULTS, runList } from "../src/run.js";
 import { FakeClock } from "./fake-clock.js";
-import { filed, gatewayDouble, typesOf } from "./gateway-double.js";
+import { filed, gatewayDouble } from "./gateway-double.js";
+import {
+  ADAPTER,
+  DISPATCH,
+  ScriptedFetcher,
+  barcodeOf,
+  types,
+} from "./run-doubles.js";
 
 /**
  * A run with a time budget takes no new item once it is spent, files what it
@@ -30,106 +30,6 @@ import { filed, gatewayDouble, typesOf } from "./gateway-double.js";
  */
 
 const MINUTE = 60_000;
-
-const DISPATCH: DispatchPayload = {
-  resolutionRunId: "11111111-1111-4111-8111-111111111111",
-  tenantId: "22222222-2222-4222-8222-222222222222",
-  organizationId: "33333333-3333-4333-8333-333333333333",
-  watchlistId: "44444444-4444-4444-8444-444444444444",
-  retailerSlug: "fake",
-  itemsTotal: null,
-};
-
-const SERP_BODY = `<h3>Kingwin CF-08LB Fan</h3><h3>Kingwin CF-08LB 80mm</h3><p>CF-08LB CF-08LB</p>`;
-
-/** A retailer whose every search yields one probeable candidate. */
-const ADAPTER: RetailerAdapter = {
-  slug: "fake",
-  querySupport: {
-    maxNumericQueryDigits: 9,
-    barcodeIsSearchable: false,
-    partNumberNeedsBrand: false,
-  },
-  pacing: { pagesAtOnce: 1 },
-  fetchProfile: { country: null, timeoutMs: null },
-  maxProbes: null,
-  productIndex: null,
-  hosts: ["r.test"],
-  buildSearchUrl: (q) => `https://r.test/s?q=${encodeURIComponent(q)}`,
-  parseSearchResults: (html): ParsedCandidate[] =>
-    html.startsWith("SEARCH ")
-      ? [
-          {
-            itemId: "I1",
-            url: `https://r.test/p/${encodeURIComponent(html.slice(7))}`,
-            model: "CF-08LB",
-            title: "Kingwin CF-08LB 80mm Fan",
-            brand: "Kingwin",
-            priceCents: 899,
-            inStock: true,
-            isFirstParty: true,
-            sellerName: null,
-            imageUrl: null,
-            partialMatch: false,
-          },
-        ]
-      : [],
-  parseProductPage: (): ParsedProduct => ({
-    barcode: null,
-    additionalBarcodes: [],
-    priceCents: 899,
-    inStock: true,
-    title: "Kingwin CF-08LB 80mm Fan",
-    sellerName: null,
-    isFirstParty: null,
-    unverifiableReason: null,
-  }),
-};
-
-/**
- * Serves a body for any url and counts what it sold.
- *
- * `failFirst` refuses that many fetches first — with a plain error, which is
- * the pipeline not completing, so the item is deferred to the retry pass.
- * `onFetch` lets a check move the clock while a page is in flight.
- */
-class ScriptedFetcher implements Fetcher {
-  liveRequestCount = 0;
-  fetches = 0;
-  get pagesDelivered(): number {
-    return this.liveRequestCount;
-  }
-  constructor(
-    private readonly failFirst = 0,
-    private readonly onFetch: (fetchNumber: number) => void = () => undefined,
-  ) {}
-  fetch(url: string): Promise<FetchResult> {
-    this.fetches++;
-    this.onFetch(this.fetches);
-    if (this.fetches <= this.failFirst) {
-      return Promise.reject(new Error(`boom on ${url}`));
-    }
-    this.liveRequestCount++;
-    const body = url.includes("google.com/search")
-      ? SERP_BODY
-      : url.includes("/s?q=")
-        ? `SEARCH ${url}`
-        : `PRODUCT ${url}`;
-    return Promise.resolve({ url, body, cached: false, attempts: 1 });
-  }
-}
-
-const barcodeOf = (i: number): string => `81234801054${i}`;
-
-/**
- * The event types in order, progress left out and a run of findings batches
- * read as one: how many batches a run takes depends on the minute, and what
- * matters here is that every finding comes before the one terminal event.
- */
-const types = (events: readonly Record<string, unknown>[]): unknown[] =>
-  typesOf(events).filter(
-    (t, i, all) => !(t === "resolutions" && all[i - 1] === "resolutions"),
-  );
 
 interface Setup {
   readonly items: number;
@@ -159,10 +59,10 @@ describe("a run with a time budget", () => {
   async function run(setup: Setup) {
     const clock = new FakeClock();
     const onFetch = setup.onFetch;
-    const fetcher = new ScriptedFetcher(
-      setup.failFirst ?? 0,
-      onFetch === undefined ? undefined : (n) => onFetch(n, clock),
-    );
+    const fetcher = new ScriptedFetcher({
+      failFirst: setup.failFirst ?? 0,
+      onFetch: (n) => onFetch?.(n, clock),
+    });
     const dir = path.join(runDir, setup.dir ?? "run");
     const job: Record<string, unknown> = {
       retailerSlug: "fake",

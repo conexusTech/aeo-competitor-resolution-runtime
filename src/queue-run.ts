@@ -27,6 +27,12 @@ import type { DispatchPayload } from "./queue/task-record.js";
 import type { GatewayReporter } from "./reporting/reporter.js";
 import type { Resolution, ResolveRequest } from "./resolve.js";
 import type { RunOptions, RunProgress } from "./run.js";
+import {
+  NEVER_STOPPED,
+  SHUTDOWN,
+  boundAfterStop,
+  type StopRequest,
+} from "./stop-signal.js";
 
 /** Progress ticks and log lines are emitted on this boundary. */
 export const PROGRESS_EVERY = 25;
@@ -55,10 +61,15 @@ export interface QueueRunDeps {
   readonly baseOptions: RunOptions;
   readonly log?: (message: string) => void;
   /**
-   * What the job's time budget is measured on. The system clock unless a
-   * check moves one by hand.
+   * What the job's time budget and the shutdown's waits are measured on. The
+   * system clock unless a check moves one by hand.
    */
   readonly clock?: Clock;
+  /**
+   * The cluster telling this container to stop (SIGTERM). Never, unless the
+   * caller wires one — see `watchForTermination`.
+   */
+  readonly stop?: StopRequest;
 }
 
 export interface QueueRunResult {
@@ -68,7 +79,8 @@ export interface QueueRunResult {
   readonly stoppedEarly: boolean;
   /**
    * True when this container handed the run back unfinished with `yielded`:
-   * its time budget was spent with items not yet taken.
+   * its time budget was spent, or it was told to stop, with items not yet
+   * finished.
    */
   readonly yielded: boolean;
   /** One per resolution offered, whatever happened to it. */
@@ -80,6 +92,27 @@ export async function runDispatchedJob(
 ): Promise<QueueRunResult> {
   const log = deps.log ?? console.log;
   const clock = deps.clock ?? SYSTEM_CLOCK;
+  const stop = deps.stop ?? NEVER_STOPPED;
+  const stopAsked = (): boolean => stop.askedAt !== null;
+  /**
+   * A closing report: waited for in full, unless the container has been told
+   * to stop — then only until `SHUTDOWN.finishByMs` after the signal, so a
+   * gateway that never answers cannot keep it alive until SIGKILL.
+   */
+  const closing = async (work: Promise<void>, what: string): Promise<void> => {
+    const outcome = await boundAfterStop(
+      work,
+      stop,
+      clock,
+      SHUTDOWN.finishByMs,
+    );
+    if (outcome.kind === "timed-out") {
+      log(
+        `gave up waiting to ${what}: the cluster's grace period is nearly ` +
+          `over, and the gateway learns how this container ended from the queue`,
+      );
+    }
+  };
   // 🔑 The budget counts from here, before the job is even fetched: it exists
   // to finish this container well inside the queue's deadline, and that
   // deadline started earlier still.
@@ -176,9 +209,14 @@ export async function runDispatchedJob(
   }
 
   let lastTick = 0;
+  /**
+   * The findings this container made, in the order they were made — what it
+   * can say it finished when it stops waiting on an item still in flight.
+   */
+  const finishedHere: Resolution[] = [];
 
   try {
-    const resolutions = await deps.runList(
+    const work = deps.runList(
       job.items.map((item) => ({
         barcode: item.barcode,
         clientSku: item.clientSku,
@@ -201,11 +239,14 @@ export async function runDispatchedJob(
           // Never throws — see `Capturer`. A run must not lose a paid finding
           // because a page could not be stored.
           await capturer.offer(resolution);
+          finishedHere.push(resolution);
         },
-        // Two things stop a run early. The gateway saying the run is gone:
-        // buying pages for findings nobody will accept is pure waste. And the
-        // time budget: past it, the rest belongs to the next container.
-        shouldContinue: () => !deps.reporter.isRunGone && !budgetSpent(),
+        // Three things stop a run early. The gateway saying the run is gone:
+        // buying pages for findings nobody will accept is pure waste. The time
+        // budget, and the cluster's SIGTERM: past either, the rest belongs to
+        // the next container.
+        shouldContinue: () =>
+          !deps.reporter.isRunGone && !budgetSpent() && !stopAsked(),
         onProgress: (progress: RunProgress) => {
           if (progress.completed % PROGRESS_EVERY !== 0) return;
           log(
@@ -231,6 +272,14 @@ export async function runDispatchedJob(
       },
     );
 
+    // 🔑 **The items run to the end — unless the container is told to stop.**
+    // Then no new item is taken, and the ones in flight get
+    // `SHUTDOWN.inFlightMs` from the signal to finish; one still going after
+    // that is abandoned to the next container, so the last findings and
+    // `yielded` still go out before SIGKILL.
+    const ran = await boundAfterStop(work, stop, clock, SHUTDOWN.inFlightMs);
+    const resolutions = ran.kind === "done" ? ran.value : [...finishedHere];
+
     if (deps.reporter.isRunGone) {
       // Not a completion. The gateway already knows this run ended, and calling
       // it finished would claim work that was cut short.
@@ -244,12 +293,14 @@ export async function runDispatchedJob(
       };
     }
 
-    // 🔑 **`yielded` only when something is left.** A budget that ran out
-    // during the last item leaves nothing to hand back, and a `yielded` then
-    // would start a container with no work — so it is `completed`, as it
-    // would have been without a budget.
+    // 🔑 **`yielded` only when something is left.** A budget that ran out, or
+    // a stop that came, during the last item leaves nothing to hand back, and
+    // a `yielded` then would start a container with no work — so it is
+    // `completed`, as it would have been without either.
     const unfinished = job.items.length - resolutions.length;
-    const yielding = budgetSpent() && unfinished > 0;
+    const yielding =
+      (budgetSpent() || stopAsked()) &&
+      (ran.kind === "timed-out" || unfinished > 0);
 
     if (job.capture.enabled) {
       const tally = tallyCaptures(capturer.records);
@@ -262,19 +313,32 @@ export async function runDispatchedJob(
     }
 
     if (yielding) {
+      const why = stopAsked()
+        ? "the container was told to stop"
+        : "the time budget ran out";
+      const abandoned =
+        ran.kind === "timed-out"
+          ? `; an item still in flight after ` +
+            `${SHUTDOWN.inFlightMs / 1000}s was abandoned`
+          : "";
       log(
         `yielding: ${resolutions.length} of ${job.items.length} item(s) ` +
-          `finished when the time budget ran out; the other ${unfinished} ` +
-          `go to the next container`,
+          `finished when ${why}${abandoned}; the rest go to the next container`,
       );
-      await deps.reporter.reportYielded(
-        deps.fetcher.liveRequestCount,
-        deps.fetcher.pagesDelivered,
+      await closing(
+        deps.reporter.reportYielded(
+          deps.fetcher.liveRequestCount,
+          deps.fetcher.pagesDelivered,
+        ),
+        "hand the run back",
       );
     } else {
-      await deps.reporter.reportCompleted(
-        deps.fetcher.liveRequestCount,
-        deps.fetcher.pagesDelivered,
+      await closing(
+        deps.reporter.reportCompleted(
+          deps.fetcher.liveRequestCount,
+          deps.fetcher.pagesDelivered,
+        ),
+        "report completion",
       );
     }
     return {
@@ -290,14 +354,17 @@ export async function runDispatchedJob(
     // resolution run holds its whole watchlist in `resolving` until it ends, so
     // a silent death locks the list rather than merely misreporting one row.
     const message = error instanceof Error ? error.message : String(error);
-    await deps.reporter.reportError(message, {
-      requests_spent: deps.fetcher.liveRequestCount,
-    });
+    await closing(
+      deps.reporter.reportError(message, {
+        requests_spent: deps.fetcher.liveRequestCount,
+      }),
+      "report the error",
+    );
     throw error;
   } finally {
     // Whatever happened, findings that were paid for get one last chance to be
     // filed. Both terminal reports flush first, so this covers the case where
     // neither ran — and `flush` is total, so it cannot mask the original error.
-    await deps.reporter.flush();
+    await closing(deps.reporter.flush(), "file the last findings");
   }
 }

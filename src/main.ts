@@ -46,6 +46,11 @@ import {
 } from "./queue/task-record.js";
 import { runDispatchedJob } from "./queue-run.js";
 import { runReadJob } from "./read-run.js";
+import {
+  processHooks,
+  watchForTermination,
+  type StopRequest,
+} from "./stop-signal.js";
 import { GatewayReporter } from "./reporting/reporter.js";
 import {
   describeSearchTally,
@@ -187,15 +192,18 @@ function tally(
  * differs. No reporter journal, no capturer and no run directory: a read is one
  * fetch per listing with nothing to resume and nothing to keep.
  */
-async function readFromQueue(read: ReadDispatch): Promise<void> {
+async function readFromQueue(
+  read: ReadDispatch,
+  stop: StopRequest,
+): Promise<void> {
   const client = new ReadRunClient(gatewayFromEnv(), read.listingReadRunId);
   // 🔴 The cache is off: a reading is the page now, never one bought earlier.
   const fetcher = readFetcherFromEnv();
   console.log(`resolution-runtime ${version()}: listing read mode`);
-  await runReadJob({ client, readerFor: requireAdapter, fetcher });
+  await runReadJob({ client, readerFor: requireAdapter, fetcher, stop });
 }
 
-async function runFromQueue(): Promise<void> {
+async function runFromQueue(stop: StopRequest): Promise<void> {
   const queued = await bootstrapFromQueue();
   if (queued === null) {
     // Unreachable: the caller checked. An assertion rather than a non-null
@@ -203,7 +211,7 @@ async function runFromQueue(): Promise<void> {
     throw new Error("queue mode was selected but no dispatch was resolved");
   }
   if (queued.mode === "read") {
-    await readFromQueue(queued.read);
+    await readFromQueue(queued.read, stop);
     return;
   }
   const dispatch = queued.resolution;
@@ -246,6 +254,7 @@ async function runFromQueue(): Promise<void> {
       clientCatalogueUrlTemplate:
         process.env["RESOLUTION_CLIENT_CATALOGUE_URL_TEMPLATE"] ?? null,
     },
+    stop,
   });
 
   tally(
@@ -294,16 +303,30 @@ async function main(): Promise<void> {
     await runFromFile();
     return;
   }
+  // 🔴 **Listening before anything else.** The cluster sends SIGTERM at the
+  // queue's deadline, on a cancel, on a node drain and on an eviction; with no
+  // listener Node dies on the spot and every buffered finding goes with it.
+  // File mode does not listen: it reports to standard output and resumes from
+  // its journal.
+  const stop = watchForTermination(processHooks());
   try {
-    await runFromQueue();
+    await runFromQueue(stop);
   } catch (error) {
-    if (error instanceof RunGone || error instanceof ReadRunGone) {
-      // Not a failure of this container. The run ended before it started, so
-      // there is nothing to report and nothing to retry.
-      console.log(error.message);
-      return;
+    if (!(error instanceof RunGone || error instanceof ReadRunGone)) {
+      throw error;
     }
-    throw error;
+    // Not a failure of this container. The run ended before it started, so
+    // there is nothing to report and nothing to retry.
+    console.log(error.message);
+  } finally {
+    stop.dispose();
+  }
+  if (stop.askedAt !== null) {
+    // 🔴 **Leave now, inside the grace period.** An item abandoned in flight
+    // is still running, and left alone it would go on fetching — and might
+    // report — after `yielded` was sent. The hand-back is done; exit 0 says
+    // so, and the backstop would otherwise end the process with 1.
+    process.exit(0);
   }
 }
 
