@@ -1,7 +1,7 @@
 ---
 type: Capability
 title: A run is taken from the queue, streamed back to the gateway, and resumable
-description: How this container is started, where it gets the client's list, how findings reach the gateway as they are made, and what a run killed part-way does and does not repeat when it starts again.
+description: How this container is started, where it gets the client's list, how findings reach the gateway as they are made — at least every minute — how a run hands back unfinished work when its time limit is spent or the cluster stops it, and what a run killed part-way does and does not repeat when it starts again.
 ---
 
 # A run is taken from the queue, streamed back to the gateway, and resumable
@@ -14,6 +14,11 @@ them — reporting to the same durable callback the gateway built for it.
 **Seeded 2026-09-10** by `resolution-runtime-gateway-dispatch`. Every scenario
 below was executed, and **thirteen invariants were each broken deliberately and
 shown to turn exactly the right check red**, then reverted.
+
+**Extended 2026-11-11** by `insights-long-run-continues-past-the-job-timeout`,
+the runtime's half: the last three scenarios — a run given a time limit, a run
+the cluster stops, and findings sent at least every minute. Continuing a
+handed-back run in a fresh container is the gateway's half, in `aeo-backend`.
 
 ⚠️ **Nothing here decides what a finding *is*.** Resolving one item and proving
 the pairing is [competitor-resolution](/capabilities/competitor-resolution.md);
@@ -144,3 +149,40 @@ Module map and the traps: [service.md](/service.md).
 - AND the adapter is chosen from the job rather than from the dispatch
 
 **Checked by:** dispatch-unknown-retailer-refused-by-name, dispatch-adapter-comes-from-the-job
+
+#### Scenario: A run given a time limit hands back what it has not reached
+
+- GIVEN a run whose job says to take no new item after a set number of seconds
+- WHEN that time passes with items still to do
+- THEN no further item is started, and nothing is bought for one
+- AND an item already started is finished and its finding is filed
+- AND items that could not be looked up the first time are not tried a second time in this container; they are left for the next
+- AND every finding is filed before the run is handed back, and the hand-back carries what this container spent
+- AND a run that finished every item inside its time reports completion, exactly as a run with no limit does
+- AND a job with no time limit is worked to the end however long it takes, while a malformed limit is refused before anything is bought
+
+**Checked by:** dispatch-time-limit-read-from-the-job, dispatch-time-limit-takes-no-new-item, dispatch-time-limit-finishes-the-item-in-flight, dispatch-time-limit-skips-the-second-attempt, dispatch-hand-back-files-findings-first, dispatch-hand-back-carries-the-spend, dispatch-time-limit-completes-when-nothing-is-left, dispatch-no-time-limit-never-hands-back
+
+#### Scenario: A run the cluster stops files what it found and hands back the rest before it is killed
+
+- GIVEN a run under way when the cluster tells its container to stop — an eviction, the queue's deadline, a cancel or a node drain
+- WHEN the signal arrives
+- THEN no further item is started
+- AND items already started get up to 20 seconds to finish, and one still going after that is left for the next container
+- AND every finding made is filed, then the run is handed back, all inside the cluster's 30-second grace period
+- AND a gateway that does not answer cannot keep the container alive past that grace period: at worst the hand-back is not sent, and the container ends itself
+- AND a second signal changes nothing
+- AND a run told to stop after its last item finished reports completion
+
+**Checked by:** dispatch-stop-takes-no-new-item, dispatch-stop-waits-for-items-in-flight, dispatch-stop-abandons-a-stuck-item, dispatch-stop-never-outlasts-the-grace, dispatch-stop-ends-the-process-itself, dispatch-stop-ignores-a-second-signal, dispatch-stop-after-the-last-item-completes, dispatch-stop-in-a-real-process
+
+#### Scenario: A finding never waits more than a minute to reach the gateway
+
+- GIVEN a run making findings slowly, or a short list that never fills a batch
+- WHEN a finding has waited a minute
+- THEN it is sent, with everything waiting beside it, without waiting for the batch to fill
+- AND the minute counts from the oldest waiting finding, so a steady trickle cannot hold them back
+- AND a full batch is still sent at once
+- AND the end of the run is never reported ahead of a batch still on its way, and a finished run is not kept alive by the wait
+
+**Checked by:** dispatch-findings-wait-at-most-a-minute, dispatch-minute-counts-from-the-oldest, dispatch-short-list-reports-as-it-goes, dispatch-end-never-overtakes-a-batch, dispatch-no-wait-left-behind

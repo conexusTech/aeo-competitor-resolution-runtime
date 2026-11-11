@@ -1225,3 +1225,74 @@ npx vitest run test/fetch-profile.spec.ts -t "byte for byte as before profiles|v
 The request bodies for Newegg and Amazon, fetched and as screenshots, are
 byte for byte what they were before fetch profiles: no `country`, no client
 timeout. Both state the vendor's defaults.
+
+
+### Check: listing-read-stop-takes-no-new-listing
+
+**Requirement:** A read the cluster stops files its readings and ends its batch at once
+**Surface:** `runReadJob` with a `StopSwitch`
+**Automated:** test/read-run-sigterm.spec.ts
+
+**Do**
+
+Ask for the stop as the third of five pages is fetched.
+
+**Expect**
+
+Three fetches in all; readings for the first three filed; then `error` naming "told to stop" and "3 of 5"; never `completed`. 🔑 `error` is what the gateway records from the queue for a killed batch anyway — now at once, after the readings, so the retailer's next batch is handed over without waiting for the five-minute poll. 🔴 Mutations: a read loop ignoring the stop, or a stopped batch reported `completed`, turn this red.
+
+### Check: listing-read-stop-cuts-a-reread-wait-short
+
+**Requirement:** A read the cluster stops files its readings and ends its batch at once
+**Surface:** `runReadJob`
+**Automated:** test/read-run-sigterm.spec.ts
+
+**Do**
+
+Throttle a one-listing job's only page, so its worker waits out a 20 s re-read delay, then ask for the stop.
+
+**Expect**
+
+The run ends without the clock moving: `error` naming "0 of 1". A re-read delay is up to 80 s, far past the grace period. 🔴 Mutation: waiting the delay out hangs this check.
+
+### Check: listing-read-stop-abandons-a-stuck-page
+
+**Requirement:** A read the cluster stops files its readings and ends its batch at once
+**Surface:** `runReadJob`, `SHUTDOWN.inFlightMs`
+**Automated:** test/read-run-sigterm.spec.ts
+
+**Do**
+
+Ask for the stop as the third page is fetched, and never answer it.
+
+**Expect**
+
+Not done at 19.999 s; at 20 s the first two readings are filed and the batch ends in `error`. 🔴 Mutation: an unbounded wait for pages in flight hangs this check.
+
+### Check: listing-read-stop-never-outlasts-the-grace
+
+**Requirement:** A read the cluster stops files its readings and ends its batch at once
+**Surface:** `runReadJob`, `SHUTDOWN.finishByMs`
+**Automated:** test/read-run-sigterm.spec.ts
+
+**Do**
+
+Ask for the stop, and have the gateway never answer the readings batch.
+
+**Expect**
+
+Not done at 26.999 s; done at 27 s, inside the 30 s grace. 🔴 Mutation: unbounded closing steps hang this check.
+
+### Check: listing-read-stop-after-the-last-completes
+
+**Requirement:** A read the cluster stops files its readings and ends its batch at once
+**Surface:** `runReadJob`
+**Automated:** test/read-run-sigterm.spec.ts
+
+**Do**
+
+Ask for the stop as the last of three pages is fetched; separately, never ask.
+
+**Expect**
+
+Both read every listing and report `completed`, with `stopped` false.

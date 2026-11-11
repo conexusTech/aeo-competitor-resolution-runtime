@@ -90,9 +90,56 @@ the finding permanently, since it is journalled (so never re-resolved) and
 marked reported (so never re-sent). At-least-once delivery to an idempotent
 receiver is the only pair that cannot lose data.
 
+🔴 **Both journals are files on the container's own disk.** The next
+container for a run — after this one was evicted, stopped or handed the run
+back — starts with neither. So what protects
+paid work across containers is what reached the gateway, and findings are
+sent **at least every minute** as well as at every 100: the minute counts from
+the oldest waiting finding, and a finished run cancels it. Measured
+2026-11-11: an evicted 20-row run had reported 0 of 20, because a short list
+never filled a batch. ⚠️ **Sends are serialised.** A timed send can be in
+flight when the run ends, and the gateway drops a batch that lands after a
+terminal event, so every flush waits for the one before it.
+
 ⚠️ **File mode is kept deliberately.** Every offline proof — including the 53-row
 replay that is the previous change's exit criterion — runs through it, with no
 queue, no gateway and no network.
+
+## A long run is handed back, not lost — since 2026-11-11
+
+A container ends before its run does in two ways, and both now end with
+`yielded` rather than nothing (`insights-long-run-continues-past-the-job-timeout`).
+Full behaviour: the last three scenarios of
+[resolution-run-dispatch](/capabilities/resolution-run-dispatch.md).
+
+| Ending | What the runtime does |
+|---|---|
+| **The job's time limit** (`stopTakingItemsAfterSec`) is spent | takes no new item, finishes the one in flight, skips the end-of-run second attempt, files every finding, sends `yielded` |
+| **SIGTERM** — eviction, the queue's deadline, a cancel, a node drain | the same, but items in flight get 20 s; every closing step ends 27 s after the signal; exit 0 |
+
+🔑 **`yielded` carries exactly `completed`'s fields and this container's own
+totals**, and comes after every finding it filed: the gateway sums the spend
+across a run's containers and gives the items with no finding to a fresh one.
+A run that finished everything says `completed` instead, limit or signal
+notwithstanding. No limit in the job means none, exactly as before.
+
+🔴 **Nothing may outlast Kubernetes' 30-second grace.** Every wait after the
+signal is bounded from the signal itself, and a backstop ends the process with
+code 1 at 28.5 s if the hand-back hangs — so a gateway that never answers
+costs the hand-back, never a SIGKILL mid-write. A second SIGTERM is ignored.
+The limits live in `SHUTDOWN`. The real-process proof is
+`node scripts/sigterm-smoke.mjs`.
+
+⚠️ **A read run has no `yielded`.** Told to stop, it files its readings and
+ends its batch in `error`, saying how many listings it read — the terminal the
+gateway already records from the queue for a killed batch, now at once and
+with the readings filed.
+
+⚠️ **A container that hands back having filed nothing still says `yielded`**,
+on SIGTERM and on a limit shorter than one item. The gateway's rule that a
+killed container continues the run only if it made progress has to cover
+`yielded` too, or a container stopped before its first finding every time
+would loop.
 
 ## Five competitors behind one seam — since 2026-11-11
 
@@ -286,8 +333,10 @@ src/fetcher/         the live fetcher, and the offline replay behind one interfa
 src/run.ts           journal, resume, concurrency, cost meter
 src/queue/           the task record — the queue's by-reference handover
 src/gateway/         the gateway seam: the job in, the findings out
-src/reporting/       batching, and remembering what was accepted
+src/reporting/       batching, the one-minute send, remembering what was accepted
 src/queue-run.ts     the sequence a dispatched run follows — testable
+src/stop-signal.ts   SIGTERM, the shutdown's limits, and waits bounded by them
+src/clock.ts         the clock every limit and wait is measured on — injectable
 src/read-run.ts      a listing read: one fetch per listing, readings out
 src/job-file.ts      a job from a file, for a run with no services
 src/main.ts          reads the environment, picks a mode. No logic.

@@ -330,8 +330,9 @@ available.
 
 ⚠️ **Deferred BEFORE being reported, never retried after.** The reporter skips a
 client SKU the gateway has already acknowledged, so a sweep that ran after
-reporting would be silently dropped — and would appear to work on a short list,
-because nothing is flushed until a hundred findings have piled up.
+reporting would be silently dropped — and would appear to work on a short, fast
+list, because nothing is flushed until a hundred findings have piled up or the
+oldest has waited a minute.
 
 ## The second retailer: Amazon
 

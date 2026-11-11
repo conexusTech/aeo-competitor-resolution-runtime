@@ -1,7 +1,7 @@
 ---
 type: Capability
 title: The runtime reads listings the platform already knows, once each
-description: Read mode — a read job names a retailer and its listings; each page is fetched once, fresh, read by the adapter, and reported with which listing the page says it is, when it was read and what the container bought. A page the vendor throttles is read again at a measured pace, within a per-job cap, before it is reported as not read. A page nobody could read is a failed reading, never a finding.
+description: Read mode — a read job names a retailer and its listings; each page is fetched once, fresh, read by the adapter, and reported with which listing the page says it is, when it was read and what the container bought. A page the vendor throttles is read again at a measured pace, within a per-job cap, before it is reported as not read. A page nobody could read is a failed reading, never a finding. A read the cluster stops files its readings and ends its batch in error at once.
 ---
 
 # The runtime reads listings, once each
@@ -374,3 +374,19 @@ and T-9 (filing). The runtime is built against them.
 - **A read run keeps no journal.** A restarted container's counter starts again
   from zero, so `requests_spent` under-reports that case; T-7 serving only the
   unread listings bounds what it re-buys.
+
+#### Scenario: A read the cluster stops files its readings and ends its batch at once
+
+- GIVEN a read job under way when the cluster tells its container to stop
+- WHEN the signal arrives
+- THEN no further listing is read, and a throttled page waiting to be read again is not waited for
+- AND a page already being read gets up to 20 seconds, then is abandoned
+- AND every reading made is filed, then the batch ends in error saying how many of its listings were read
+- AND a gateway that does not answer cannot keep the container past the cluster's grace period
+- AND a job told to stop after its last listing was read completes as usual
+
+**Checked by:** listing-read-stop-takes-no-new-listing
+**Checked by:** listing-read-stop-cuts-a-reread-wait-short
+**Checked by:** listing-read-stop-abandons-a-stuck-page
+**Checked by:** listing-read-stop-never-outlasts-the-grace
+**Checked by:** listing-read-stop-after-the-last-completes

@@ -9,14 +9,19 @@ description: One check per requirement in the resolution-run-dispatch capability
 Checks for [resolution-run-dispatch](/capabilities/resolution-run-dispatch.md).
 Written at plan time, before the code existed.
 
-🔑 **Every check is automated, and that is a property of the change rather than
-of diligence.** The queue, the gateway and the retailer are all reached through
-seams with doubles behind them, so nothing here needs a person, a credential or
-a card. Run the lot with:
+🔑 **Every check but one is automated, and that is a property of the change
+rather than of diligence.** The queue, the gateway, the retailer, the clock and
+the cluster's SIGTERM are all reached through seams with doubles behind them,
+so nothing here needs a person, a credential or a card. Run the lot with:
 
 ```bash
 npm test
 ```
+
+⚠️ **The exception is `dispatch-stop-in-a-real-process`**: the entry point's
+own `process.on` and `process.exit` can only be shown with a real signal to a
+real process, so it is a script a person runs against the built code. It
+needs no credential and buys nothing.
 
 🔑 **Thirteen invariants were each broken deliberately and shown to turn exactly
 the right check red, then reverted** — the acknowledge-before-accept inversion,
@@ -480,3 +485,298 @@ Dispatch naming `newegg` while the gateway's job names something else.
 **Expect**
 
 The **job** decides, and the mismatch is refused. The gateway's registry is the authority on what a run resolves against; the dispatch payload is a reference to it, not a second copy of it.
+
+
+### Check: dispatch-time-limit-read-from-the-job
+
+**Requirement:** A run given a time limit hands back what it has not reached
+**Surface:** `parseJob`
+**Automated:** test/job-time-budget.spec.ts
+
+**Do**
+
+Parse a job with no `stopTakingItemsAfterSec`, with `null`, with `3600` and `1`, and with each of `0`, `-1`, `2.5`, `"3600"`, `true`, `{}` and `NaN`.
+
+**Expect**
+
+Absent and `null` are no limit; whole numbers of at least 1 arrive as sent; every other value is refused naming the field, the way a bad `pagesAtOnce` is. ⚠️ Reading a malformed value as "no limit" would hide two builds disagreeing behind a run that never hands back. 🔴 Mutation: dropping the field from the parse turns this red.
+
+### Check: dispatch-time-limit-takes-no-new-item
+
+**Requirement:** A run given a time limit hands back what it has not reached
+**Surface:** `runDispatchedJob` with the real `runList`
+**Automated:** test/time-budget-yield.spec.ts
+
+**Do**
+
+Run five items at one at a time, each taking ten minutes on a fake clock, with a 25-minute limit.
+
+**Expect**
+
+Items 0 to 2 are filed (the third is taken at minute 20), items 3 and 4 are never fetched, and the run ends with `yielded`, not `completed`. 🔴 Mutation: a `shouldContinue` that ignores the limit turns five checks red.
+
+### Check: dispatch-time-limit-finishes-the-item-in-flight
+
+**Requirement:** A run given a time limit hands back what it has not reached
+**Surface:** `runDispatchedJob` with the real `runList`
+**Automated:** test/time-budget-yield.spec.ts
+
+**Do**
+
+Let the whole hour pass while the third item's first page is being fetched.
+
+**Expect**
+
+The third item is finished and filed; the fourth is never started; the run ends with `yielded`.
+
+### Check: dispatch-time-limit-skips-the-second-attempt
+
+**Requirement:** A run given a time limit hands back what it has not reached
+**Surface:** `runList`'s retry pass
+**Automated:** test/time-budget-yield.spec.ts
+
+**Do**
+
+Fail item 0's first page so it is held for the end-of-run retry, and let items 1 and 2 spend the limit. Then, as a control, the same with an hour of limit.
+
+**Expect**
+
+With the limit spent: items 1 and 2 filed, item 0 not filed, not one fetch after the last finished item, and `yielded`. With time left: all three filed and `completed`. ⚠️ Two guards hold this — the pass-level check and the per-item check inside the retry worker — so only breaking both turns it red; each alone is unobservable.
+
+### Check: dispatch-hand-back-files-findings-first
+
+**Requirement:** A run given a time limit hands back what it has not reached
+**Surface:** `GatewayReporter.reportYielded`
+**Automated:** test/reporter-yield-and-timed-flush.spec.ts, test/time-budget-yield.spec.ts
+
+**Do**
+
+Buffer two findings, hold the gateway's answer to their batch, and hand the run back.
+
+**Expect**
+
+`yielded` is not sent until the batch is answered, then follows it. 🔑 The gateway works out the next container's items from the findings it holds when `yielded` arrives, so a finding still buffered would be bought again. Not sent at all once the gateway has refused findings or says the run is gone, exactly as `completed` is not. 🔴 Mutation: sending before the flush turns seven checks red.
+
+### Check: dispatch-hand-back-carries-the-spend
+
+**Requirement:** A run given a time limit hands back what it has not reached
+**Surface:** `GatewayClient.reportYielded`
+**Automated:** test/gateway-client.spec.ts, test/time-budget-yield.spec.ts
+
+**Do**
+
+Send `completed` and `yielded` with the same figures, and one `yielded` with no pages figure; separately, end a time-limited run.
+
+**Expect**
+
+`yielded` goes to the same events route with exactly `completed`'s fields — `type`, `requests_spent`, `pages_delivered` beside the identity — and omits `pages_delivered` rather than sending a zero. A run's `yielded` carries the fetcher's own counters. 🔴 Mutation: sending `type: "completed"` turns this red.
+
+### Check: dispatch-time-limit-completes-when-nothing-is-left
+
+**Requirement:** A run given a time limit hands back what it has not reached
+**Surface:** `runDispatchedJob`
+**Automated:** test/time-budget-yield.spec.ts
+
+**Do**
+
+Run three items, ten minutes each, once with an hour of limit and once with 25 minutes, so the limit runs out during the last item.
+
+**Expect**
+
+Both report `completed`. A `yielded` with nothing left would start a container with no work. 🔴 Mutation: yielding whenever the limit is spent turns this red.
+
+### Check: dispatch-no-time-limit-never-hands-back
+
+**Requirement:** A run given a time limit hands back what it has not reached
+**Surface:** `runDispatchedJob`
+**Automated:** test/time-budget-yield.spec.ts
+
+**Do**
+
+Run five items of ten hours each with no limit field, and again with `null`.
+
+**Expect**
+
+Every item is filed and the run reports `completed` both times — the control that a stop which fired without a limit would fail.
+
+### Check: dispatch-stop-takes-no-new-item
+
+**Requirement:** A run the cluster stops files what it found and hands back the rest before it is killed
+**Surface:** `runDispatchedJob` with a `StopSwitch`
+**Automated:** test/sigterm-yield.spec.ts
+
+**Do**
+
+Ask for the stop after two of five items are filed; separately, before the first item.
+
+**Expect**
+
+Items 0 and 1 filed, not one page bought after the signal, and `yielded` carrying the container's own totals. Asked before the first item: nothing bought, and `yielded` with `requests_spent` 0. 🔴 Mutation: a `shouldContinue` that ignores the stop turns four checks red.
+
+### Check: dispatch-stop-waits-for-items-in-flight
+
+**Requirement:** A run the cluster stops files what it found and hands back the rest before it is killed
+**Surface:** `runDispatchedJob`, `boundAfterStop`
+**Automated:** test/sigterm-yield.spec.ts
+
+**Do**
+
+Ask for the stop as the third item's first page is fetched, and hold that page 15 seconds on the fake clock.
+
+**Expect**
+
+Nothing is handed back at 14.999 s; at 15 s the item finishes, all three are filed, then `yielded`.
+
+### Check: dispatch-stop-abandons-a-stuck-item
+
+**Requirement:** A run the cluster stops files what it found and hands back the rest before it is killed
+**Surface:** `runDispatchedJob`, `SHUTDOWN.inFlightMs`
+**Automated:** test/sigterm-yield.spec.ts
+
+**Do**
+
+As above, but the page is never answered.
+
+**Expect**
+
+Not done at 19.999 s; at 20 s items 0 and 1 are filed and `yielded` is sent, by 27 s at the latest. 🔴 Mutation: an unbounded wait for items in flight hangs this check.
+
+### Check: dispatch-stop-never-outlasts-the-grace
+
+**Requirement:** A run the cluster stops files what it found and hands back the rest before it is killed
+**Surface:** `runDispatchedJob`, `SHUTDOWN.finishByMs`
+**Automated:** test/sigterm-yield.spec.ts, test/stop-signal.spec.ts
+
+**Do**
+
+After the stop, have the gateway never answer the findings batch; separately, never answer `yielded`.
+
+**Expect**
+
+Either way the run ends at 27 s after the signal, inside the 30 s grace. With the batch unanswered, `yielded` is withheld rather than sent ahead of it. Limits are measured from the signal, so a wait begun after it gets only the remainder. 🔴 Mutations: unbounded closing reports, or a bound measured from the call rather than the signal, turn these red.
+
+### Check: dispatch-stop-ends-the-process-itself
+
+**Requirement:** A run the cluster stops files what it found and hands back the rest before it is killed
+**Surface:** `watchForTermination`
+**Automated:** test/stop-signal.spec.ts
+
+**Do**
+
+Send SIGTERM through the registered handler and move the fake clock.
+
+**Expect**
+
+No exit at 28.499 s; exit code 1 at 28.5 s, before the 30 s grace — the bound on any wait the shutdown did not think to bound. The limits are ordered: in flight 20 s, closing 27 s, backstop 28.5 s, grace 30 s. 🔴 Mutation: no backstop turns this red.
+
+### Check: dispatch-stop-ignores-a-second-signal
+
+**Requirement:** A run the cluster stops files what it found and hands back the rest before it is killed
+**Surface:** `watchForTermination`
+**Automated:** test/stop-signal.spec.ts
+
+**Do**
+
+Send SIGTERM, wait 3 s, send it again.
+
+**Expect**
+
+The stop keeps the first signal's time, one backstop is armed, not two, and the second is logged as ignored. 🔴 Mutation: restarting on the second signal turns this red.
+
+### Check: dispatch-stop-after-the-last-item-completes
+
+**Requirement:** A run the cluster stops files what it found and hands back the rest before it is killed
+**Surface:** `runDispatchedJob`
+**Automated:** test/sigterm-yield.spec.ts
+
+**Do**
+
+Ask for the stop after the last of three items is filed.
+
+**Expect**
+
+`completed`, not `yielded`: there is nothing to hand back. 🔴 Mutation: a stop that never yields turns five checks red; one that always yields turns this one red.
+
+### Check: dispatch-stop-in-a-real-process
+
+**Requirement:** A run the cluster stops files what it found and hands back the rest before it is killed
+**Surface:** `main.ts`
+**Automated:** Manual — `npm run build`, then `node scripts/sigterm-smoke.mjs yield`, `twice` and `hang`
+
+**Do**
+
+Run the built entry point in queue mode against a local fake queue and gateway with the committed replay corpus, and send it a real SIGTERM mid-run.
+
+**Expect**
+
+`yield` and `twice` print PASS: exit code 0 and one `yielded` event, the second signal logged as ignored. `hang`, where the gateway never answers, prints PASS with exit code 1 at about 28.6 s. Nothing is bought and nothing leaves the machine. ⚠️ Manual because it needs the built image of the code; the unit checks cover every decision, and this covers only `process.on` and `process.exit`.
+
+### Check: dispatch-findings-wait-at-most-a-minute
+
+**Requirement:** A finding never waits more than a minute to reach the gateway
+**Surface:** `GatewayReporter`
+**Automated:** test/reporter-yield-and-timed-flush.spec.ts
+
+**Do**
+
+Offer one finding to a reporter whose batch size is 100, and move the fake clock.
+
+**Expect**
+
+Nothing sent at 59.999 s; sent at 60 s. A finding offered after a timed send starts a fresh minute. 100 findings are still sent at once. 🔴 Mutation: no timed send turns six checks red.
+
+### Check: dispatch-minute-counts-from-the-oldest
+
+**Requirement:** A finding never waits more than a minute to reach the gateway
+**Surface:** `GatewayReporter`
+**Automated:** test/reporter-yield-and-timed-flush.spec.ts
+
+**Do**
+
+Offer a finding, wait 30 s, offer another.
+
+**Expect**
+
+Both are sent in one batch at 60 s, and nothing more at 120 s. 🔴 Mutation: restarting the minute on every finding turns this red.
+
+### Check: dispatch-short-list-reports-as-it-goes
+
+**Requirement:** A finding never waits more than a minute to reach the gateway
+**Surface:** `runDispatchedJob` with the real reporter
+**Automated:** test/time-budget-yield.spec.ts
+
+**Do**
+
+Run 20 items of 10 s each with no time limit; then the same with the minute set out of reach.
+
+**Expect**
+
+At least three findings batches, and at least 12 of the 20 filed before the last item is finished; the control files nothing before the end. 🔴 The production case this exists for: a 20-row run evicted after seven minutes reported 0 of 20.
+
+### Check: dispatch-end-never-overtakes-a-batch
+
+**Requirement:** A finding never waits more than a minute to reach the gateway
+**Surface:** `GatewayReporter.flush`
+**Automated:** test/reporter-yield-and-timed-flush.spec.ts
+
+**Do**
+
+Let a timed send go out and hold its answer, offer another finding, and end the run.
+
+**Expect**
+
+Neither the second batch nor `completed` is sent until the first is answered; then batch, batch, `completed`, answered in that order. 🔴 The gateway drops a batch that lands after a terminal event. Mutation: unserialised sends turn this red.
+
+### Check: dispatch-no-wait-left-behind
+
+**Requirement:** A finding never waits more than a minute to reach the gateway
+**Surface:** `GatewayReporter.flush`
+**Automated:** test/reporter-yield-and-timed-flush.spec.ts
+
+**Do**
+
+Offer one finding, then report completion; separately, offer a full batch.
+
+**Expect**
+
+No timer is left pending either way, so a finished run is never kept alive for a minute by a wait with nothing to send. 🔴 Mutation: a flush that leaves the timer armed turns two checks red.
