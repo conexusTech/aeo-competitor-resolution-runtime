@@ -165,27 +165,51 @@ export interface ResolutionJob {
    * way `pagesAtOnce()` clamps it to `MAX_PAGES_AT_ONCE`.
    */
   readonly pagesAtOnce: number | null;
+  /**
+   * Seconds after the job started past which this container takes no new
+   * item. `null` is no budget: the container works the whole list.
+   *
+   * 🔑 **What lets a list longer than one container's life finish.** The
+   * queue kills a Job at its deadline and reports nothing to the gateway, so a
+   * run that is still going then loses its work. With a budget, the container
+   * stops taking items in good time, files what it found and answers
+   * `yielded`, and the gateway hands the unfinished items to a fresh
+   * container under the same run.
+   */
+  readonly stopTakingItemsAfterSec: number | null;
 }
 
 /**
- * The job's pages-at-once figure: `null` when absent, the number when it is a
- * whole number of at least one.
+ * An optional whole number of at least one: `null` when absent, the number
+ * when it is one.
  *
  * ⚠️ Tolerant of absence, strict about type — the rule every optional field on
  * a job follows. A zero, a fraction or a string is two builds disagreeing, and
- * reading it as "not said" would hide that behind the adapter's fallback.
+ * reading it as "not said" would hide that behind a fallback.
+ */
+function parseWholeNumber(
+  value: unknown,
+  field: string,
+  what: string,
+): number | null {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== "number" || !Number.isInteger(value) || value < 1) {
+    throw new Error(
+      `${what} has a '${field}' that is not a whole number of at least 1`,
+    );
+  }
+  return value;
+}
+
+/**
+ * The job's pages-at-once figure.
+ *
  * ⚠️ **A figure above the runtime's ceiling is NOT refused here**: it is a
  * legitimate registry value the runtime declines to honour in full, and
  * `pagesAtOnce()` clamps it.
  */
 function parsePagesAtOnce(value: unknown, what: string): number | null {
-  if (value === undefined || value === null) return null;
-  if (typeof value !== "number" || !Number.isInteger(value) || value < 1) {
-    throw new Error(
-      `${what} has a 'pagesAtOnce' that is not a whole number of at least 1`,
-    );
-  }
-  return value;
+  return parseWholeNumber(value, "pagesAtOnce", what);
 }
 
 /**
@@ -839,6 +863,13 @@ export function parseJob(body: unknown, runId: string): ResolutionJob {
     capture: parseCapturePolicy(raw["capture"], runId),
     pagesAtOnce: parsePagesAtOnce(
       raw["pagesAtOnce"],
+      `the job for run ${runId}`,
+    ),
+    // ⚠️ Absent is no budget, so a gateway that predates the field gets a run
+    // that works the whole list, exactly as before.
+    stopTakingItemsAfterSec: parseWholeNumber(
+      raw["stopTakingItemsAfterSec"],
+      "stopTakingItemsAfterSec",
       `the job for run ${runId}`,
     ),
   };

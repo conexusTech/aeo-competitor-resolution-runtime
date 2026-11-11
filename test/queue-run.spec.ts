@@ -64,6 +64,7 @@ const JOB: ResolutionJob = {
   ],
   capture: CAPTURE_DISABLED,
   pagesAtOnce: null,
+  stopTakingItemsAfterSec: null,
 };
 
 const resolution = (clientSku: string): Resolution =>
