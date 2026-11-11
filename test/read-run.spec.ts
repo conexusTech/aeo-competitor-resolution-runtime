@@ -311,6 +311,13 @@ const quiet = (): void => undefined;
 
 // ════════════════════════════════════════════════════════════════════════
 
+/** The breadcrumb category of the committed Amazon product page. */
+const AMAZON_MEMORY = {
+  id: "172500",
+  name: "Memory",
+  url: "https://www.amazon.com/b?node=172500",
+};
+
 describe("the adapter reads a product page it already knows", () => {
   it("reads identity, barcode, price and stock off each real Newegg product page", () => {
     expect(readNeweggPage(PAGES.barcode12)).toEqual({
@@ -321,6 +328,11 @@ describe("the adapter reads a product page it already knows", () => {
         additionalBarcodes: [],
         priceCents: 7126,
         inStock: true,
+        category: {
+          id: "696",
+          name: "TV Mounts & Install Accessories",
+          url: "https://www.newegg.com/TV-Mounts-Install-Accessories/SubCategory/ID-696",
+        },
       },
     });
     expect(readNeweggPage(PAGES.barcode13)).toEqual({
@@ -331,6 +343,11 @@ describe("the adapter reads a product page it already knows", () => {
         additionalBarcodes: [],
         priceCents: 1953,
         inStock: true,
+        category: {
+          id: "2820",
+          name: "Internal Power Cables",
+          url: "https://www.newegg.com/Internal-Power-Cables/SubCategory/ID-2820",
+        },
       },
     });
     // The 14-digit page is discounted: 299.99 struck through, 199.99 offered.
@@ -342,6 +359,11 @@ describe("the adapter reads a product page it already knows", () => {
         additionalBarcodes: [],
         priceCents: 19999,
         inStock: true,
+        category: {
+          id: "3929",
+          name: "Driving Simulators",
+          url: "https://www.newegg.com/Driving-Simulators/SubCategory/ID-3929",
+        },
       },
     });
   });
@@ -377,6 +399,7 @@ describe("the adapter reads a product page it already knows", () => {
         additionalBarcodes: [],
         priceCents: 47200,
         inStock: true,
+        category: AMAZON_MEMORY,
       },
     });
   });
@@ -449,6 +472,7 @@ describe("the adapter reads a product page it already knows", () => {
         additionalBarcodes: [],
         priceCents: null,
         inStock: null,
+        category: AMAZON_MEMORY,
       },
     });
   });
@@ -498,6 +522,11 @@ describe("the adapter reads a product page it already knows", () => {
       additionalBarcodes: [],
       priceCents: null,
       inStock: false,
+      category: {
+        id: "696",
+        name: "TV Mounts & Install Accessories",
+        url: "https://www.newegg.com/TV-Mounts-Install-Accessories/SubCategory/ID-696",
+      },
     });
   });
 
@@ -515,6 +544,11 @@ describe("the adapter reads a product page it already knows", () => {
       sellerName: null,
       isFirstParty: null,
       unverifiableReason: null,
+      category: {
+        id: "696",
+        name: "TV Mounts & Install Accessories",
+        url: "https://www.newegg.com/TV-Mounts-Install-Accessories/SubCategory/ID-696",
+      },
     });
   });
 

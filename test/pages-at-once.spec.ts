@@ -95,6 +95,7 @@ function retailer(limit: number): RetailerAdapter {
       sellerName: null,
       isFirstParty: null,
       unverifiableReason: null,
+      category: null,
     }),
   };
 }
@@ -113,6 +114,7 @@ function reader(limit: number): ListingReader {
         additionalBarcodes: [],
         priceCents: 100,
         inStock: true,
+        category: null,
       },
     }),
   };

@@ -258,6 +258,8 @@ describe("parseProductPage", () => {
       // The page's `seller.classification`: `1P`.
       isFirstParty: true,
       unverifiableReason: null,
+      // Best Buy has no category reads, so no listing is placed in one.
+      category: null,
     });
   });
 
@@ -481,6 +483,7 @@ describe("readListingPage", () => {
         additionalBarcodes: [],
         priceCents: 1699,
         inStock: true,
+        category: null,
       },
     });
   });
@@ -494,6 +497,7 @@ describe("readListingPage", () => {
         additionalBarcodes: [],
         priceCents: 12310,
         inStock: false,
+        category: null,
       },
     });
   });

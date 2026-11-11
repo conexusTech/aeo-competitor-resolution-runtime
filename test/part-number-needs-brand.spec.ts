@@ -63,6 +63,7 @@ const product = (barcode: string | null): ParsedProduct => ({
   sellerName: null,
   isFirstParty: null,
   unverifiableReason: null,
+  category: null,
 });
 
 const ALLSOP_UPC = "035286295383";

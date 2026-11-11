@@ -243,6 +243,7 @@ describe("the meter charges failed attempts to the item that made them", () => {
       sellerName: null,
       isFirstParty: null,
       unverifiableReason: null,
+      category: null,
     }),
   };
 

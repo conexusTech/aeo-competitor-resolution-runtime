@@ -174,6 +174,32 @@ export interface ParsedProduct {
    * the next adapter states its answer.
    */
   readonly unverifiableReason: string | null;
+  /**
+   * The retailer's own category this product sits in — the deepest level of
+   * the page's breadcrumb — or `null` where the page names none this build
+   * can read.
+   *
+   * 🔑 **Required, so the next adapter states its answer.** It is how a
+   * watched listing is placed in a category a category read can cover; a
+   * retailer without category reads answers `null`.
+   */
+  readonly category: ListingCategory | null;
+}
+
+/**
+ * A retailer category, as the retailer's own breadcrumb names it.
+ *
+ * 🔴 **All three or nothing.** A category with no address cannot be read, and
+ * one with no name cannot be shown to a person, so an adapter that finds only
+ * part of it answers `null` rather than a partial category.
+ */
+export interface ListingCategory {
+  /** The retailer's own id for the category, as a string. */
+  readonly id: string;
+  /** Its name, entities decoded, as the breadcrumb shows it. */
+  readonly name: string;
+  /** Its page, absolute https on the retailer's own host. */
+  readonly url: string;
 }
 
 /**
@@ -494,6 +520,8 @@ export interface ListingPageReading {
   readonly priceCents: number | null;
   /** `null` where the page states no availability this build recognises. */
   readonly inStock: boolean | null;
+  /** The page's breadcrumb category, as `ParsedProduct.category` reads it. */
+  readonly category: ListingCategory | null;
 }
 
 /**
@@ -539,6 +567,90 @@ export interface ListingReader {
   readonly fetchProfile: FetchProfile;
   /** Raw product-page body -> what it says. Pure. */
   readListingPage(html: string): ListingPageResult;
+}
+
+/** One product a category page lists, and what its card says. */
+export interface CategoryCard {
+  /**
+   * The listing's id, in exactly the form a search names it — so a card
+   * finds the watched listing it prices.
+   */
+  readonly itemId: string;
+  /**
+   * The price the card offers it at, or `null` where it shows none: a price
+   * withheld, a card with no offer. 🔴 **Never 0** — a price that reads 0 is
+   * not a price, and a card with none is never a free product.
+   */
+  readonly priceCents: number | null;
+  /** `null` where the card states no availability this build recognises. */
+  readonly inStock: boolean | null;
+}
+
+/** One page of a category, read. */
+export interface CategoryPage {
+  /** Every product the page lists, in page order, once each. */
+  readonly products: readonly CategoryCard[];
+  /**
+   * How many products the retailer says the whole category holds, or `null`
+   * where it states no count this build trusts.
+   *
+   * ⚠️ **A claim, not a promise that a walk reaches them all.** Newegg states
+   * a count its browsing stops short of; whether a category is read whole is
+   * the walk's decision, against the competitor's browse ceiling.
+   */
+  readonly total: number | null;
+  /**
+   * The last page number the retailer says this category has, or `null`
+   * where the page does not say. A walk need never buy the page past it.
+   */
+  readonly lastPage: number | null;
+}
+
+/**
+ * What a category reader made of a body.
+ *
+ * Three answers, because the walk does three different things with them:
+ * - `page`: a page of the category, and every product on it;
+ * - `end`: the retailer saying there is no such page — the walk is done;
+ * - `not-a-category-page`: a refusal, a robot check, a product page, a search
+ *   page, an empty body, a page cut short — nothing about the category.
+ *
+ * 🔴 **`not-a-category-page` is a failure, never an empty category.** Reading
+ * a block page as "nothing on this page" would end a walk early and leave
+ * every product after it looking as if the category no longer lists it.
+ */
+export type CategoryPageResult =
+  | { readonly kind: "page"; readonly page: CategoryPage }
+  | { readonly kind: "end"; readonly detail: string }
+  | { readonly kind: "not-a-category-page"; readonly detail: string };
+
+/**
+ * Reading a retailer's category pages: one page, every product it lists.
+ *
+ * 🔑 **A third seam, beside `RetailerAdapter` and `ListingReader`**, for the
+ * same reason the second is one: the paths that do not read categories keep
+ * their types untouched. Pure, like the others — it builds addresses and
+ * parses bodies, and never fetches.
+ */
+export interface CategoryReader {
+  /**
+   * The address of page `n` (1-based) of the category at `categoryUrl`, or
+   * `null` when `categoryUrl` is not a category address on this retailer's
+   * own hosts, or `n` is not a whole page number.
+   */
+  pageUrl(categoryUrl: string, n: number): string | null;
+  /** The body served for page `n` -> what it says. Pure. */
+  readCategoryPage(html: string, n: number): CategoryPageResult;
+}
+
+/**
+ * Whether a competitor's categories can be read, as each adapter states it.
+ *
+ * Required, so the next adapter states its answer: `null` for a retailer
+ * whose category pages carry no products a server-side read can see.
+ */
+export interface CategoryReading {
+  readonly categoryReader: CategoryReader | null;
 }
 
 /**

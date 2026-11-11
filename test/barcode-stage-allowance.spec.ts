@@ -173,6 +173,7 @@ const scripted = (maxProbes: number | null): RetailerAdapter => ({
     sellerName: null,
     isFirstParty: null,
     unverifiableReason: null,
+    category: null,
   }),
 });
 

@@ -50,6 +50,7 @@ const NO_BARCODE: ParsedProduct = {
   sellerName: null,
   isFirstParty: null,
   unverifiableReason: null,
+  category: null,
 };
 
 function retailer(

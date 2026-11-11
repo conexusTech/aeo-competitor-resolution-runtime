@@ -86,6 +86,7 @@ const product = (barcode: string | null): ParsedProduct => ({
   sellerName: null,
   isFirstParty: null,
   unverifiableReason: null,
+  category: null,
 });
 
 /** A search-engine page whose result titles say `titles`. */

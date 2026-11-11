@@ -79,6 +79,7 @@ const PRODUCT: ParsedProduct = {
   sellerName: null,
   isFirstParty: null,
   unverifiableReason: null,
+  category: null,
 };
 
 function resolveAmong(found: readonly ParsedCandidate[]) {

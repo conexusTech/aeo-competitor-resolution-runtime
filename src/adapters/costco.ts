@@ -1,4 +1,5 @@
 import type {
+  CategoryReading,
   ListingPageResult,
   ListingReader,
   ParsedCandidate,
@@ -365,6 +366,8 @@ export function parseProductPage(html: string): ParsedProduct | null {
     isFirstParty: true,
     // A Costco page says nothing about why it publishes no barcode.
     unverifiableReason: null,
+    // Costco has no category reads (see `categoryReader`).
+    category: null,
   };
 }
 
@@ -405,6 +408,7 @@ export function readListingPage(html: string): ListingPageResult {
       additionalBarcodes: page.upcs.slice(1),
       priceCents: page.priceCents,
       inStock: null,
+      category: null,
     },
   };
 }
@@ -678,24 +682,29 @@ const QUERY_SUPPORT: QuerySupport = {
   partNumberNeedsBrand: false,
 };
 
-export const costcoAdapter: RetailerAdapter & ListingReader = {
-  slug: "costco",
-  querySupport: QUERY_SUPPORT,
-  // Jody's politeness rule of two to four pages at once, at its top: the
-  // registry's figure arrives with the job and wins over this.
-  pacing: { pagesAtOnce: 4 },
-  // 🔴 Product pages take 60-150 s through the vendor, which waits out a
-  // 60-second timer for an element of Costco's previous page design before
-  // answering; 280 s per attempt, as the investigation settled on after
-  // 150 s timed out.
-  fetchProfile: { country: "us", timeoutMs: 280_000 },
-  // The investigation probed at most three product pages per row.
-  maxProbes: 3,
-  productIndex: COSTCO_PRODUCT_INDEX,
-  buildSearchUrl: (query) =>
-    `${COSTCO_ORIGIN}/s?keyword=${encodeURIComponent(query)}`,
-  parseSearchResults,
-  parseProductPage,
-  hosts: ["www.costco.com"],
-  readListingPage,
-};
+export const costcoAdapter: RetailerAdapter & ListingReader & CategoryReading =
+  {
+    slug: "costco",
+    querySupport: QUERY_SUPPORT,
+    // Jody's politeness rule of two to four pages at once, at its top: the
+    // registry's figure arrives with the job and wins over this.
+    pacing: { pagesAtOnce: 4 },
+    // 🔴 Product pages take 60-150 s through the vendor, which waits out a
+    // 60-second timer for an element of Costco's previous page design before
+    // answering; 280 s per attempt, as the investigation settled on after
+    // 150 s timed out.
+    fetchProfile: { country: "us", timeoutMs: 280_000 },
+    // The investigation probed at most three product pages per row.
+    maxProbes: 3,
+    productIndex: COSTCO_PRODUCT_INDEX,
+    buildSearchUrl: (query) =>
+      `${COSTCO_ORIGIN}/s?keyword=${encodeURIComponent(query)}`,
+    parseSearchResults,
+    parseProductPage,
+    hosts: ["www.costco.com"],
+    readListingPage,
+    // 🔴 **No category reads.** Costco's category pages arrive as the same
+    // client-rendered shell as its searches — no product in the body a
+    // server-side read can see.
+    categoryReader: null,
+  };

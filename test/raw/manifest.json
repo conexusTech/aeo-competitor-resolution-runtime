@@ -1,5 +1,5 @@
 {
-  "note": "Real captured pages from the launch retailer, gzipped. Public retailer pages, not customer data. Chosen one per parser case; the facts below were produced by the committed parsers at selection time and are re-asserted by the spec. Amazon fixtures added 2026-09-13 from the PO's second handover package; the search page's session values were redacted on 2026-10-22, the product page is unmodified. Best Buy fixtures added 2026-11-10 from the Best Buy investigation, distilled rather than raw (see each entry's facts.distilled). B&H fixtures added 2026-11-10 from the B&H investigation, distilled rather than raw (see each entry's facts.distilled).",
+  "note": "Real captured pages from the launch retailer, gzipped. Public retailer pages, not customer data. Chosen one per parser case; the facts below were produced by the committed parsers at selection time and are re-asserted by the spec. Amazon fixtures added 2026-09-13 from the PO's second handover package; the search page's session values were redacted on 2026-10-22, the product page is unmodified. Best Buy fixtures added 2026-11-10 from the Best Buy investigation, distilled rather than raw (see each entry's facts.distilled). B&H fixtures added 2026-11-10 from the B&H investigation, distilled rather than raw (see each entry's facts.distilled). Category pages added 2026-11-11 (B&H, Newegg and Amazon, distilled), and the B&H product pages re-distilled to keep their breadcrumb category.",
   "capturedBy": "handover recon spike",
   "selectedOn": "2026-09-10",
   "fixtures": [
@@ -351,9 +351,11 @@
         "source": "meriwether-data-scraper packages/scraper/test/fixtures",
         "capturedOn": "2026-11-10",
         "capturedThrough": "the vendor, country us, by the B&H investigation (row investigate-bh-competitor)",
-        "distilled": "Distilled by scripts/distil-bh.mjs: only the fields the adapter reads are kept (the preloaded state's listing response and single-item product entry, trimmed to the fields parsed; the JSON-LD Product's url, mpn and gtin fields; the rendered \"UPC:\" lines), and the adapter's parsers were proven to give identical output on the raw capture and on this file. Every session value the raw page carried — bhTraceId, ssrReqId and qasAuthToken in its state, Cloudflare's __CF$cv$params and challenge ray=, the watchdog beacon's reqId= — is gone by construction, and test/bh-fixtures.spec.ts checks that none remains."
+        "distilled": "Distilled by scripts/distil-bh.mjs: only the fields the adapter reads are kept (the preloaded state's listing response and single-item product entry, trimmed to the fields parsed; the JSON-LD Product's url, mpn and gtin fields; the rendered \"UPC:\" lines), and the adapter's parsers were proven to give identical output on the raw capture and on this file. Every session value the raw page carried — bhTraceId, ssrReqId and qasAuthToken in its state, Cloudflare's __CF$cv$params and challenge ray=, the watchdog beacon's reqId= — is gone by construction, and test/bh-fixtures.spec.ts checks that none remains.",
+        "category": "Mice & Touchpads (ci/18369)",
+        "redistilled": "2026-11-11, to keep the breadcrumb category (categoryInfo.primaryCategoryPath); every other field byte for byte as before"
       },
-      "gzBytes": 830
+      "gzBytes": 980
     },
     {
       "name": "bh-pdp-z623-discontinued",
@@ -370,9 +372,11 @@
         "source": "meriwether-data-scraper packages/scraper/test/fixtures",
         "capturedOn": "2026-11-10",
         "capturedThrough": "the vendor, country us, by the B&H investigation (row investigate-bh-competitor)",
-        "distilled": "Distilled by scripts/distil-bh.mjs: only the fields the adapter reads are kept (the preloaded state's listing response and single-item product entry, trimmed to the fields parsed; the JSON-LD Product's url, mpn and gtin fields; the rendered \"UPC:\" lines), and the adapter's parsers were proven to give identical output on the raw capture and on this file. Every session value the raw page carried — bhTraceId, ssrReqId and qasAuthToken in its state, Cloudflare's __CF$cv$params and challenge ray=, the watchdog beacon's reqId= — is gone by construction, and test/bh-fixtures.spec.ts checks that none remains."
+        "distilled": "Distilled by scripts/distil-bh.mjs: only the fields the adapter reads are kept (the preloaded state's listing response and single-item product entry, trimmed to the fields parsed; the JSON-LD Product's url, mpn and gtin fields; the rendered \"UPC:\" lines), and the adapter's parsers were proven to give identical output on the raw capture and on this file. Every session value the raw page carried — bhTraceId, ssrReqId and qasAuthToken in its state, Cloudflare's __CF$cv$params and challenge ray=, the watchdog beacon's reqId= — is gone by construction, and test/bh-fixtures.spec.ts checks that none remains.",
+        "category": "Computer Speakers (ci/6565)",
+        "redistilled": "2026-11-11, to keep the breadcrumb category (categoryInfo.primaryCategoryPath); every other field byte for byte as before"
       },
-      "gzBytes": 796
+      "gzBytes": 925
     },
     {
       "name": "bh-pdp-replacement",
@@ -401,9 +405,11 @@
         "source": "meriwether-data-scraper recon/captures/bh-upc/cache",
         "capturedOn": "2026-11-10",
         "capturedThrough": "the vendor, country us, by the B&H investigation (row investigate-bh-competitor)",
-        "distilled": "Distilled by scripts/distil-bh.mjs: only the fields the adapter reads are kept (the preloaded state's listing response and single-item product entry, trimmed to the fields parsed; the JSON-LD Product's url, mpn and gtin fields; the rendered \"UPC:\" lines), and the adapter's parsers were proven to give identical output on the raw capture and on this file. Every session value the raw page carried — bhTraceId, ssrReqId and qasAuthToken in its state, Cloudflare's __CF$cv$params and challenge ray=, the watchdog beacon's reqId= — is gone by construction, and test/bh-fixtures.spec.ts checks that none remains."
+        "distilled": "Distilled by scripts/distil-bh.mjs: only the fields the adapter reads are kept (the preloaded state's listing response and single-item product entry, trimmed to the fields parsed; the JSON-LD Product's url, mpn and gtin fields; the rendered \"UPC:\" lines), and the adapter's parsers were proven to give identical output on the raw capture and on this file. Every session value the raw page carried — bhTraceId, ssrReqId and qasAuthToken in its state, Cloudflare's __CF$cv$params and challenge ray=, the watchdog beacon's reqId= — is gone by construction, and test/bh-fixtures.spec.ts checks that none remains.",
+        "category": "Mice & Touchpads (ci/18369)",
+        "redistilled": "2026-11-11, to keep the breadcrumb category (categoryInfo.primaryCategoryPath); every other field byte for byte as before"
       },
-      "gzBytes": 891
+      "gzBytes": 1038
     },
     {
       "name": "bh-pdp-bk350-special-order",
@@ -418,9 +424,11 @@
         "source": "meriwether-data-scraper recon/captures/bh-upc/cache",
         "capturedOn": "2026-11-10",
         "capturedThrough": "the vendor, country us, by the B&H investigation (row investigate-bh-competitor)",
-        "distilled": "Distilled by scripts/distil-bh.mjs: only the fields the adapter reads are kept (the preloaded state's listing response and single-item product entry, trimmed to the fields parsed; the JSON-LD Product's url, mpn and gtin fields; the rendered \"UPC:\" lines), and the adapter's parsers were proven to give identical output on the raw capture and on this file. Every session value the raw page carried — bhTraceId, ssrReqId and qasAuthToken in its state, Cloudflare's __CF$cv$params and challenge ray=, the watchdog beacon's reqId= — is gone by construction, and test/bh-fixtures.spec.ts checks that none remains."
+        "distilled": "Distilled by scripts/distil-bh.mjs: only the fields the adapter reads are kept (the preloaded state's listing response and single-item product entry, trimmed to the fields parsed; the JSON-LD Product's url, mpn and gtin fields; the rendered \"UPC:\" lines), and the adapter's parsers were proven to give identical output on the raw capture and on this file. Every session value the raw page carried — bhTraceId, ssrReqId and qasAuthToken in its state, Cloudflare's __CF$cv$params and challenge ray=, the watchdog beacon's reqId= — is gone by construction, and test/bh-fixtures.spec.ts checks that none remains.",
+        "category": "UPS Backup (ci/12831)",
+        "redistilled": "2026-11-11, to keep the breadcrumb category (categoryInfo.primaryCategoryPath); every other field byte for byte as before"
       },
-      "gzBytes": 819
+      "gzBytes": 955
     },
     {
       "name": "bh-search-mfr-z623",
@@ -650,6 +658,140 @@
         "distilled": "Distilled by scripts/distil-costco.mjs: a product page keeps only its app marker, the JSON-LD Product (name, sku, url, offers) and the flight data's productDetailsData trimmed to the fields parsed (product id and UPC, each item's id, UPC, member-only and price-in-cart flags and short description, the selected item's price); a product sitemap keeps each <url><loc> and nothing else; the sitemap index is kept byte for byte. The adapter's parsers were proven to give identical output on the raw capture and on this file, and test/costco-fixtures.spec.ts checks that no session value (the sign-in link's nonce= and client_id, the monitoring agent's dtTrId, the per-item clientId uuid) remains."
       },
       "gzBytes": 176
+    },
+    {
+      "name": "bh-category-mice-p1",
+      "why": "page 1 of a B&H category (Mice & Touchpads, ci/18369): 28 cards, three of them MAP items whose price B&H withholds",
+      "facts": {
+        "url": "https://www.bhphotovideo.com/c/buy/mice-wireless-bluetooth-usb/ci/18369",
+        "responseType": "/api/navigation/category",
+        "pageNumber": 1,
+        "count": 412,
+        "itemsPerPage": 28,
+        "products": 28,
+        "priceWithheld": ["1431406", "1760693", "1849969"],
+        "source": "meriwether-data-scraper packages/scraper/test/fixtures",
+        "capturedOn": "2026-11-10",
+        "capturedThrough": "the vendor, country us, by the B&H investigation (row investigate-bh-competitor)",
+        "distilled": "Distilled by scripts/distil-bh.mjs: only the fields the adapter reads are kept (the preloaded state listing response — its type, page number, count, items per page and each card — trimmed to the fields parsed), and the adapter parsers, the category reader at pages 1, 2, 15 and 16 among them, were proven to give identical output on the raw capture and on this file. Every session value the raw page carried — bhTraceId, ssrReqId and qasAuthToken in its state, Cloudflare __CF$cv$params and challenge ray=, the watchdog beacon reqId= — is gone by construction, and test/bh-fixtures.spec.ts checks that none remains."
+      },
+      "gzBytes": 2984
+    },
+    {
+      "name": "bh-category-mice-p2",
+      "why": "page 2 of the same category, its own 28 cards, one MAP item",
+      "facts": {
+        "pageNumber": 2,
+        "count": 412,
+        "products": 28,
+        "priceWithheld": ["1760694"],
+        "source": "meriwether-data-scraper packages/scraper/test/fixtures",
+        "capturedOn": "2026-11-10",
+        "capturedThrough": "the vendor, country us, by the B&H investigation (row investigate-bh-competitor)",
+        "distilled": "Distilled by scripts/distil-bh.mjs: only the fields the adapter reads are kept (the preloaded state listing response — its type, page number, count, items per page and each card — trimmed to the fields parsed), and the adapter parsers, the category reader at pages 1, 2, 15 and 16 among them, were proven to give identical output on the raw capture and on this file. Every session value the raw page carried — bhTraceId, ssrReqId and qasAuthToken in its state, Cloudflare __CF$cv$params and challenge ray=, the watchdog beacon reqId= — is gone by construction, and test/bh-fixtures.spec.ts checks that none remains."
+      },
+      "gzBytes": 3409
+    },
+    {
+      "name": "bh-category-mice-p15-last",
+      "why": "the last page: 20 cards, 14 x 28 + 20 = 412",
+      "facts": {
+        "pageNumber": 15,
+        "count": 412,
+        "products": 20,
+        "source": "meriwether-data-scraper packages/scraper/test/fixtures",
+        "capturedOn": "2026-11-10",
+        "capturedThrough": "the vendor, country us, by the B&H investigation (row investigate-bh-competitor)",
+        "distilled": "Distilled by scripts/distil-bh.mjs: only the fields the adapter reads are kept (the preloaded state listing response — its type, page number, count, items per page and each card — trimmed to the fields parsed), and the adapter parsers, the category reader at pages 1, 2, 15 and 16 among them, were proven to give identical output on the raw capture and on this file. Every session value the raw page carried — bhTraceId, ssrReqId and qasAuthToken in its state, Cloudflare __CF$cv$params and challenge ray=, the watchdog beacon reqId= — is gone by construction, and test/bh-fixtures.spec.ts checks that none remains."
+      },
+      "gzBytes": 2444
+    },
+    {
+      "name": "bh-category-mice-p16-past-end",
+      "why": "the page past the end: B&H answers with a SEARCH for the url slug (115 unrelated results, responseType /api/navigation/search), not an empty category page",
+      "facts": {
+        "asked": "https://www.bhphotovideo.com/c/buy/mice-wireless-bluetooth-usb/ci/18369/pn/16",
+        "responseType": "/api/navigation/search",
+        "searchTerm": "mice-wireless-bluetooth-usb",
+        "count": 115,
+        "source": "meriwether-data-scraper packages/scraper/test/fixtures",
+        "capturedOn": "2026-11-10",
+        "capturedThrough": "the vendor, country us, by the B&H investigation (row investigate-bh-competitor)",
+        "distilled": "Distilled by scripts/distil-bh.mjs: only the fields the adapter reads are kept (the preloaded state listing response — its type, page number, count, items per page and each card — trimmed to the fields parsed), and the adapter parsers, the category reader at pages 1, 2, 15 and 16 among them, were proven to give identical output on the raw capture and on this file. Every session value the raw page carried — bhTraceId, ssrReqId and qasAuthToken in its state, Cloudflare __CF$cv$params and challenge ray=, the watchdog beacon reqId= — is gone by construction, and test/bh-fixtures.spec.ts checks that none remains."
+      },
+      "gzBytes": 3239
+    },
+    {
+      "name": "newegg-category-desktop-memory-p1",
+      "why": "page 1 of a Newegg subcategory (Desktop Memory, SubCategory/ID-147): 36 cards, Page 1/20, TotalItemCount 3564",
+      "facts": {
+        "url": "https://www.newegg.com/Desktop-Memory/SubCategory/ID-147",
+        "products": 36,
+        "pagination": "1/20",
+        "totalItemCount": 3564,
+        "source": "meriwether-data-scraper packages/scraper/test/fixtures",
+        "capturedOn": "2026-07-13",
+        "capturedThrough": "the vendor, by the Newegg investigation",
+        "distilled": "Distilled by scripts/distil-category.mjs: only the embedded state fields the adapter reads (each card, TotalItemCount, the breadcrumb stores) and the rendered pagination marker are kept, and the category reader at pages 1, 2, 3, 20 and 21, the search parse and both product-page parses were proven to give identical output on the raw capture and on this file. No session value survives by construction, and test/category-reads.spec.ts checks for every marker known."
+      },
+      "gzBytes": 2587
+    },
+    {
+      "name": "newegg-category-desktop-memory-p2",
+      "why": "page 2 of the same subcategory: its own 36 cards, Page 2/20",
+      "facts": {
+        "url": "https://www.newegg.com/Desktop-Memory/SubCategory/ID-147/Page-2",
+        "products": 36,
+        "pagination": "2/20",
+        "totalItemCount": 3568,
+        "source": "meriwether-data-scraper packages/scraper/test/fixtures",
+        "capturedOn": "2026-07-13",
+        "capturedThrough": "the vendor, by the Newegg investigation",
+        "distilled": "Distilled by scripts/distil-category.mjs: only the embedded state fields the adapter reads (each card, TotalItemCount, the breadcrumb stores) and the rendered pagination marker are kept, and the category reader at pages 1, 2, 3, 20 and 21, the search parse and both product-page parses were proven to give identical output on the raw capture and on this file. No session value survives by construction, and test/category-reads.spec.ts checks for every marker known."
+      },
+      "gzBytes": 2867
+    },
+    {
+      "name": "newegg-category-laptop-memory-p1",
+      "why": "page 1 of another subcategory (Laptop Memory, SubCategory/ID-381), with marketplace ids among its 36 cards",
+      "facts": {
+        "url": "https://www.newegg.com/Laptop-Memory/SubCategory/ID-381",
+        "products": 36,
+        "pagination": "1/20",
+        "totalItemCount": 2017,
+        "source": "meriwether-data-scraper packages/scraper/test/fixtures",
+        "capturedOn": "2026-07-13",
+        "capturedThrough": "the vendor, by the Newegg investigation",
+        "distilled": "Distilled by scripts/distil-category.mjs: only the embedded state fields the adapter reads (each card, TotalItemCount, the breadcrumb stores) and the rendered pagination marker are kept, and the category reader at pages 1, 2, 3, 20 and 21, the search parse and both product-page parses were proven to give identical output on the raw capture and on this file. No session value survives by construction, and test/category-reads.spec.ts checks for every marker known."
+      },
+      "gzBytes": 3293
+    },
+    {
+      "name": "amazon-grid-desktop-memory-p1",
+      "why": "page 1 of an Amazon results grid the investigation walked as a category (a search, k=desktop memory ddr5): 16 cells, every one priced",
+      "facts": {
+        "url": "https://www.amazon.com/s?k=desktop+memory+ddr5",
+        "products": 16,
+        "source": "meriwether-data-scraper packages/scraper/test/fixtures",
+        "capturedOn": "2026-09-11",
+        "capturedThrough": "the vendor, by the Amazon investigation",
+        "distilled": "Distilled by scripts/distil-category.mjs: only the results container, each result cell (its ASIN, title, image, offered price and any Currently unavailable), the no-results widget and the shown page are kept, and the category reader at pages 1, 2 and 3, the search parse and both product-page parses were proven to give identical output on the raw capture and on this file. The raw page carried the proxy session id and anti-CSRF tokens; none survives by construction, and test/category-reads.spec.ts checks for every marker known."
+      },
+      "gzBytes": 1391
+    },
+    {
+      "name": "amazon-grid-desktop-memory-p2",
+      "why": "page 2 of the same grid: 16 cells, one of them showing no price (B0D2P1CVQD); its first card is page 1 last, B0D95ZYN8N",
+      "facts": {
+        "url": "https://www.amazon.com/s?k=desktop+memory+ddr5&page=2",
+        "products": 16,
+        "unpriced": ["B0D2P1CVQD"],
+        "source": "meriwether-data-scraper packages/scraper/test/fixtures",
+        "capturedOn": "2026-09-11",
+        "capturedThrough": "the vendor, by the Amazon investigation",
+        "distilled": "Distilled by scripts/distil-category.mjs: only the results container, each result cell (its ASIN, title, image, offered price and any Currently unavailable), the no-results widget and the shown page are kept, and the category reader at pages 1, 2 and 3, the search parse and both product-page parses were proven to give identical output on the raw capture and on this file. The raw page carried the proxy session id and anti-CSRF tokens; none survives by construction, and test/category-reads.spec.ts checks for every marker known."
+      },
+      "gzBytes": 1611
     }
   ]
 }

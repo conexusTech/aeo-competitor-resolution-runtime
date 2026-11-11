@@ -12,6 +12,11 @@
  */
 
 import type {
+  CategoryCard,
+  CategoryPageResult,
+  CategoryReader,
+  CategoryReading,
+  ListingCategory,
   ListingPageResult,
   ListingReader,
   ParsedCandidate,
@@ -222,7 +227,72 @@ export function parseProductPage(html: string): ParsedProduct {
     // Not read from the page: the search cell's answer stands.
     isFirstParty: null,
     unverifiableReason: null,
+    category: breadcrumbCategory(html),
   };
+}
+
+/** Named, decimal and hex entities, as Newegg writes them in an attribute. */
+function decodeEntities(value: string): string {
+  const named: Readonly<Record<string, string>> = {
+    quot: '"',
+    amp: "&",
+    lt: "<",
+    gt: ">",
+    apos: "'",
+    nbsp: " ",
+  };
+  return value.replace(
+    /&(#x[0-9a-fA-F]+|#\d+|[a-zA-Z]+);/g,
+    (whole, entity: string) => {
+      if (entity.startsWith("#")) {
+        const code =
+          entity[1] === "x" || entity[1] === "X"
+            ? parseInt(entity.slice(2), 16)
+            : parseInt(entity.slice(1), 10);
+        return Number.isInteger(code) && code >= 0 && code <= 0x10ffff
+          ? String.fromCodePoint(code)
+          : whole;
+      }
+      // Only the entities named above: never a lookup on Object's prototype.
+      return Object.hasOwn(named, entity) ? (named[entity] ?? whole) : whole;
+    },
+  );
+}
+
+/**
+ * The product page's breadcrumb, as rendered. Bounded, so a page with no
+ * closing tag cannot make the match run to the end of a megabyte.
+ */
+const BREADCRUMBS = /class="breadcrumbs"><ol>([\s\S]{0,8000}?)<\/ol>/;
+
+/**
+ * A breadcrumb link to a category: `…/SubCategory/ID-696` or
+ * `…/Category/ID-358`, its title the category's name.
+ *
+ * ⚠️ **A brand-in-category link is not the category.** The crumb after the
+ * subcategory is `…/BrandSubCat/ID-1762-696`, "STARTECH" — the same products
+ * narrowed to one brand. Its id is two numbers, so `ID-(\d+)"` cannot match it.
+ */
+const CATEGORY_CRUMB =
+  /href="(https:\/\/www\.newegg\.com\/[^"]*\/(?:SubCategory|Category)\/ID-(\d+))"[^>]*title="([^"]*)"/g;
+
+/**
+ * The deepest category a product page's breadcrumb names — `TV Mounts &
+ * Install Accessories` (`SubCategory/ID-696`) on the 12-digit page — ported
+ * from the investigation's `neweggLeafCategory`.
+ */
+export function breadcrumbCategory(html: string): ListingCategory | null {
+  const crumbs = BREADCRUMBS.exec(html)?.[1];
+  if (crumbs === undefined) return null;
+  let leaf: ListingCategory | null = null;
+  for (const link of crumbs.matchAll(CATEGORY_CRUMB)) {
+    const url = link[1];
+    const id = link[2];
+    const name = decodeEntities(link[3] ?? "").trim();
+    if (url === undefined || id === undefined || name === "") continue;
+    leaf = { id, name, url };
+  }
+  return leaf;
 }
 
 /**
@@ -289,26 +359,179 @@ export function readListingPage(html: string): ListingPageResult {
       additionalBarcodes: [],
       priceCents,
       inStock,
+      category: breadcrumbCategory(html),
     },
   };
 }
 
-export const neweggAdapter: RetailerAdapter & ListingReader = {
-  slug: "newegg",
-  querySupport: QUERY_SUPPORT,
-  // Three, as before the registry carried a figure (the lead, 2026-11-10).
-  pacing: { pagesAtOnce: 3 },
-  // The vendor's defaults: no country, no client timeout — as before profiles
-  // existed, so the request body is byte for byte what it was.
-  fetchProfile: { country: null, timeoutMs: null },
-  // The run's default, as before the limit was per competitor.
-  maxProbes: null,
-  // It answers a search, so its candidates come from searching.
-  productIndex: null,
-  buildSearchUrl: (query) =>
-    `https://www.newegg.com/p/pl?d=${encodeURIComponent(query)}`,
-  parseSearchResults,
-  parseProductPage,
-  hosts: ["newegg.com", "www.newegg.com"],
-  readListingPage,
+/**
+ * A listing page's pagination, "Page 1/20", as React renders it — with comment
+ * separators between the numbers (`<strong>1<!-- -->/<!-- -->20</strong>`).
+ * Present on every subcategory listing captured and absent from a hub page.
+ */
+const PAGINATION =
+  /list-tool-pagination-text">Page(?:<!-- -->)?\s*<strong>(\d+)(?:<!-- -->)?\/(?:<!-- -->)?(\d+)<\/strong>/;
+
+/**
+ * Page `n` of a Newegg category: the category's path, then `/Page-<n>` past
+ * the first — the form its own canonical link takes for page 2.
+ *
+ * 🔴 **Only a `SubCategory` or `Category` id path on Newegg's own hosts.**
+ */
+export function neweggCategoryPageUrl(
+  categoryUrl: string,
+  n: number,
+): string | null {
+  if (!Number.isInteger(n) || n < 1) return null;
+  let url: URL;
+  try {
+    url = new URL(categoryUrl);
+  } catch {
+    return null;
+  }
+  if (
+    url.protocol !== "https:" ||
+    (url.host !== "www.newegg.com" && url.host !== "newegg.com")
+  ) {
+    return null;
+  }
+  const path = url.pathname.replace(/\/Page-\d+\/?$/, "").replace(/\/$/, "");
+  if (!/\/(?:SubCategory|Category)\/ID-\d+$/.test(path)) return null;
+  return `https://www.newegg.com${path}${n === 1 ? "" : `/Page-${n}`}${url.search}`;
+}
+
+/**
+ * Whether the embedded state is a category listing's: its breadcrumb ends in
+ * a store of the catalogue (Desktop Memory is `StoreId` 147). A search page
+ * carries the same `Products` and pagination, and its one breadcrumb is the
+ * query, `StoreId` -1 — measured on the committed search pages.
+ */
+function isCategoryState(state: Record<string, unknown>): boolean {
+  const crumbs = state["Breadcrumbs"];
+  if (!Array.isArray(crumbs)) return false;
+  const last = asRecord(crumbs[crumbs.length - 1]);
+  const store = last === null ? null : last["StoreId"];
+  return typeof store === "number" && Number.isInteger(store) && store > 0;
+}
+
+/**
+ * One page of a Newegg category, read off the embedded state — 36 products a
+ * page, measured on Desktop Memory and Laptop Memory.
+ *
+ * 🔑 **A card's id is derived exactly as a search derives a listing's** —
+ * `ParentItem` when there is one, else `Item`, in its public form — so a card
+ * finds the listing the platform already watches. A combo is skipped, as a
+ * search skips it: it is not a single product.
+ *
+ * ⚠️ **The end of a category is read off the page's own "Page k/M".** A page
+ * past M has not been captured, so what Newegg serves there is unmeasured;
+ * whatever it serves, a body saying it is page k of M, for a page n past M,
+ * is the end. A body naming another page within M is a failure.
+ */
+export function readCategoryPage(html: string, n: number): CategoryPageResult {
+  const state = asRecord(extractInitialState(html));
+  if (state === null) {
+    return { kind: "not-a-category-page", detail: "no embedded state" };
+  }
+  if (asRecord(state["ItemDetail"]) !== null) {
+    return { kind: "not-a-category-page", detail: "a product page" };
+  }
+  const pagination = PAGINATION.exec(html);
+  if (pagination === null) {
+    return {
+      kind: "not-a-category-page",
+      detail: "no listing pagination: a hub page, or not a listing at all",
+    };
+  }
+  if (!isCategoryState(state)) {
+    return {
+      kind: "not-a-category-page",
+      detail: "a search results page, not a category",
+    };
+  }
+  const shown = Number(pagination[1]);
+  const lastPage = Number(pagination[2]);
+  if (shown !== n) {
+    return n > lastPage
+      ? { kind: "end", detail: `page ${n} is past the last page, ${lastPage}` }
+      : {
+          kind: "not-a-category-page",
+          detail: `Newegg served page ${shown} when page ${n} was asked`,
+        };
+  }
+
+  const raw = state["Products"];
+  if (!Array.isArray(raw) || raw.length === 0) {
+    return { kind: "end", detail: "the category page lists no products" };
+  }
+  const products: CategoryCard[] = [];
+  const seen = new Set<string>();
+  for (const entry of raw) {
+    const product = asRecord(entry);
+    if (product === null || product["IsCombo"] === true) continue;
+    const cell = asRecord(product["ItemCell"]);
+    if (cell === null) continue;
+    const rawId = str(cell["Item"]);
+    if (rawId === null) continue;
+    const itemId = toPublicItemId(str(cell["ParentItem"]) ?? rawId);
+    if (seen.has(itemId)) continue;
+    seen.add(itemId);
+    const price = cell["FinalPrice"];
+    const stock = cell["Instock"];
+    products.push({
+      itemId,
+      // 🔴 Never 0: a card whose price reads 0 shows no price.
+      priceCents:
+        typeof price === "number" && Number.isFinite(price) && price > 0
+          ? Math.round(price * 100)
+          : null,
+      inStock: typeof stock === "boolean" ? stock : null,
+    });
+  }
+  // 🔴 Products and not one readable: the markup moved under us.
+  if (products.length === 0) {
+    return {
+      kind: "not-a-category-page",
+      detail: "a category page whose products could not be read",
+    };
+  }
+  const count = state["TotalItemCount"];
+  return {
+    kind: "page",
+    page: {
+      products,
+      total:
+        typeof count === "number" && Number.isInteger(count) && count >= 0
+          ? count
+          : null,
+      lastPage,
+    },
+  };
+}
+
+export const neweggCategoryReader: CategoryReader = {
+  pageUrl: neweggCategoryPageUrl,
+  readCategoryPage,
 };
+
+export const neweggAdapter: RetailerAdapter & ListingReader & CategoryReading =
+  {
+    slug: "newegg",
+    querySupport: QUERY_SUPPORT,
+    // Three, as before the registry carried a figure (the lead, 2026-11-10).
+    pacing: { pagesAtOnce: 3 },
+    // The vendor's defaults: no country, no client timeout — as before profiles
+    // existed, so the request body is byte for byte what it was.
+    fetchProfile: { country: null, timeoutMs: null },
+    // The run's default, as before the limit was per competitor.
+    maxProbes: null,
+    // It answers a search, so its candidates come from searching.
+    productIndex: null,
+    buildSearchUrl: (query) =>
+      `https://www.newegg.com/p/pl?d=${encodeURIComponent(query)}`,
+    parseSearchResults,
+    parseProductPage,
+    hosts: ["newegg.com", "www.newegg.com"],
+    readListingPage,
+    categoryReader: neweggCategoryReader,
+  };

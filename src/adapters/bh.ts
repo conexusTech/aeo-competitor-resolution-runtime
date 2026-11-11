@@ -1,4 +1,9 @@
 import type {
+  CategoryCard,
+  CategoryPageResult,
+  CategoryReader,
+  CategoryReading,
+  ListingCategory,
   ListingPageResult,
   ListingReader,
   ParsedCandidate,
@@ -34,8 +39,8 @@ import { safeImageUrl } from "./types.js";
  * investigation's threw, and it never counts a kit's component UPC as the kit's
  * own — which the investigation's did, through the kit page's JSON-LD.
  *
- * Pure, and no dependency. Category pages are another row's
- * (`insights-reads-category-pages`), so no category parser lives here.
+ * Pure, and no dependency. Category pages are read by `bhCategoryReader`,
+ * ported from the same investigation's category parser and held to this seam.
  */
 
 type Json = Record<string, unknown>;
@@ -322,6 +327,25 @@ interface PageItem {
   readonly discontinued: boolean;
   readonly inStock: boolean | null;
   readonly title: string | null;
+  /** The leaf of the item's primary category path, or `null`. */
+  readonly category: ListingCategory | null;
+}
+
+/**
+ * The leaf of an item's primary category path — `categoryInfo.
+ * primaryCategoryPath`, root first, so the last entry is the category the
+ * item is listed in (Mice & Touchpads, `ci/18369`, for the M310).
+ *
+ * ⚠️ All three of its id, name and url, or `null`: see `ListingCategory`.
+ */
+function categoryOf(item: Json): ListingCategory | null {
+  const path = arr(obj(item, "categoryInfo"), "primaryCategoryPath");
+  const leaf = path[path.length - 1];
+  const id = idAt(leaf, "id");
+  const name = strAt(leaf, "name");
+  const url = absolute(strAt(leaf, "url"));
+  if (id === null || name === null || url === null) return null;
+  return { id, name, url };
 }
 
 /**
@@ -449,6 +473,7 @@ function pageItem(html: string): PageItem | null {
     discontinued: isDiscontinued(item),
     inStock: inStockOf(item),
     title: strAt(core, "shortDescription"),
+    category: categoryOf(item),
   };
 }
 
@@ -479,6 +504,7 @@ export function parseProductPage(html: string): ParsedProduct | null {
     // A discontinued item's page says why it publishes no barcode.
     unverifiableReason:
       page.upcs.length === 0 && page.discontinued ? DISCONTINUED_NO_UPC : null,
+    category: page.category,
   };
 }
 
@@ -531,9 +557,149 @@ export function readListingPage(html: string): ListingPageResult {
       additionalBarcodes: page.upcs.slice(1),
       priceCents: page.priceCents,
       inStock: page.inStock,
+      category: page.category,
     },
   };
 }
+
+/**
+ * The response type B&H's app states for a category page. A search page
+ * states `/api/navigation/search`.
+ */
+const CATEGORY_RESPONSE = "/api/navigation/category";
+const SEARCH_RESPONSE = "/api/navigation/search";
+
+/**
+ * Page `n` of a B&H category: the category's own path, then `/pn/<n>` past
+ * the first — the page's own pagination link (fetched for pages 2, 15 and 16
+ * of Mice & Touchpads).
+ *
+ * 🔴 **Only a `/ci/<id>` path on B&H's own host.** Anything else is not a
+ * category address, and a walk must not buy it.
+ */
+export function bhCategoryPageUrl(
+  categoryUrl: string,
+  n: number,
+): string | null {
+  if (!Number.isInteger(n) || n < 1) return null;
+  let url: URL;
+  try {
+    url = new URL(categoryUrl);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== "https:" || url.host !== "www.bhphotovideo.com") {
+    return null;
+  }
+  const path = url.pathname.replace(/\/pn\/\d+\/?$/, "").replace(/\/$/, "");
+  if (!/\/ci\/\d+(?:\/|$)/.test(path)) return null;
+  return `${BH_ORIGIN}${path}${n === 1 ? "" : `/pn/${n}`}${url.search}`;
+}
+
+/** A category card: the listing's id, the price B&H shows, its stock. */
+function toCategoryCard(item: Json): CategoryCard | null {
+  const itemId = idAt(obj(item, "itemKey"), "skuNo");
+  if (itemId === null) return null;
+  // 🔑 The same rules as a search card's, so a category read and a search
+  // never disagree about one card: a MAP item's price is withheld (`null`),
+  // never the number the state holds beside the flag.
+  return { itemId, priceCents: shownPrice(item), inStock: inStockOf(item) };
+}
+
+/**
+ * One page of a B&H category.
+ *
+ * ── 🔴 Past the last page B&H answers with a SEARCH ────────────────────
+ * Measured on Mice & Touchpads (412 products, 28 a page, 15 pages): page 16
+ * does not come back empty. B&H answers with a search for the url's slug —
+ * 115 unrelated results, `responseType` `/api/navigation/search`. So a search
+ * payload, or a category payload naming a different page than the one asked
+ * for, is the END of the category past page 1.
+ *
+ * ⚠️ **On page 1 the same answer is a failure, not an empty category.** A
+ * category B&H no longer has would answer its first page the same way, and
+ * reading that as "the category lists nothing" would file every watched
+ * listing in it as no longer listed.
+ *
+ * Everything else that is not a category payload — an empty body, a refusal,
+ * a product page — is `not-a-category-page`.
+ */
+export function readCategoryPage(html: string, n: number): CategoryPageResult {
+  const pre = extractPreloadedData(html);
+  if (pre === null) {
+    return { kind: "not-a-category-page", detail: "no preloaded state" };
+  }
+  const data = obj(
+    obj(obj(obj(pre, "ListingStore"), "state"), "response"),
+    "data",
+  );
+  if (data === null) {
+    return {
+      kind: "not-a-category-page",
+      detail: "no listing payload: a product page, or not a listing at all",
+    };
+  }
+  const type = strAt(data, "responseType");
+  const pageNumber = data["pageNumber"];
+  // A category payload that does not say which page it is, is the one asked.
+  const samePage = typeof pageNumber !== "number" || pageNumber === n;
+  if (type === SEARCH_RESPONSE || (type === CATEGORY_RESPONSE && !samePage)) {
+    const what =
+      type === SEARCH_RESPONSE
+        ? "B&H answered with a search"
+        : `B&H answered with page ${String(pageNumber)}`;
+    return n > 1
+      ? { kind: "end", detail: `${what}, past the category's last page` }
+      : { kind: "not-a-category-page", detail: `${what} for page 1` };
+  }
+  if (type !== CATEGORY_RESPONSE) {
+    return {
+      kind: "not-a-category-page",
+      detail: `a listing of type ${type ?? "unknown"}, not a category`,
+    };
+  }
+
+  const items = arr(data, "items");
+  if (items.length === 0) {
+    return { kind: "end", detail: "the category page lists no products" };
+  }
+  const products: CategoryCard[] = [];
+  const seen = new Set<string>();
+  for (const item of items) {
+    if (!isObj(item)) continue;
+    const card = toCategoryCard(item);
+    if (card === null || seen.has(card.itemId)) continue;
+    seen.add(card.itemId);
+    products.push(card);
+  }
+  // 🔴 Products and not one readable: the markup moved under us. Reading that
+  // as a page of nothing would end the walk on a parse.
+  if (products.length === 0) {
+    return {
+      kind: "not-a-category-page",
+      detail: "a category page whose products could not be read",
+    };
+  }
+  const count = data["count"];
+  const perPage = data["itemsPerPage"];
+  const total =
+    typeof count === "number" && Number.isInteger(count) && count >= 0
+      ? count
+      : null;
+  const lastPage =
+    total !== null &&
+    typeof perPage === "number" &&
+    Number.isInteger(perPage) &&
+    perPage > 0
+      ? Math.max(1, Math.ceil(total / perPage))
+      : null;
+  return { kind: "page", page: { products, total, lastPage } };
+}
+
+export const bhCategoryReader: CategoryReader = {
+  pageUrl: bhCategoryPageUrl,
+  readCategoryPage,
+};
 
 /**
  * 🔑 **B&H answers a barcode search**, measured on the 20-row sample: a
@@ -566,7 +732,7 @@ const QUERY_SUPPORT: QuerySupport = {
   partNumberNeedsBrand: true,
 };
 
-export const bhAdapter: RetailerAdapter & ListingReader = {
+export const bhAdapter: RetailerAdapter & ListingReader & CategoryReading = {
   slug: "bh",
   querySupport: QUERY_SUPPORT,
   // Jody's politeness rule of two to four pages at once, at its top: the
@@ -585,4 +751,5 @@ export const bhAdapter: RetailerAdapter & ListingReader = {
   parseProductPage,
   hosts: ["www.bhphotovideo.com"],
   readListingPage,
+  categoryReader: bhCategoryReader,
 };

@@ -1,4 +1,5 @@
 import type {
+  CategoryReading,
   ListingPageResult,
   ListingReader,
   ParsedCandidate,
@@ -492,6 +493,9 @@ export function parseProductPage(html: string): ParsedProduct | null {
     // The page's `seller.classification`, which an unhydrated card lacks.
     isFirstParty: product.isFirstParty,
     unverifiableReason: null,
+    // Best Buy has no category reads (see `categoryReader`), so no listing is
+    // placed in a category.
+    category: null,
   };
 }
 
@@ -521,6 +525,7 @@ export function readListingPage(html: string): ListingPageResult {
       additionalBarcodes: product.upcs.slice(1),
       priceCents: product.priceCents,
       inStock: product.inStock,
+      category: null,
     },
   };
 }
@@ -538,23 +543,29 @@ const QUERY_SUPPORT: QuerySupport = {
   partNumberNeedsBrand: false,
 };
 
-export const bestbuyAdapter: RetailerAdapter & ListingReader = {
-  slug: "bestbuy",
-  querySupport: QUERY_SUPPORT,
-  // Jody's politeness rule of two to four pages at once, at its top: the
-  // registry's figure arrives with the job and wins over this.
-  pacing: { pagesAtOnce: 4 },
-  // A delivered page took one to three minutes, and about a third of attempts
-  // failed inside the vendor; 150 s per attempt is what the investigation ran.
-  fetchProfile: { country: "us", timeoutMs: 150_000 },
-  // The investigation probed at most three product pages per row.
-  maxProbes: 3,
-  // It answers a search, so its candidates come from searching.
-  productIndex: null,
-  buildSearchUrl: (query) =>
-    `https://www.bestbuy.com/site/searchpage.jsp?st=${encodeURIComponent(query)}`,
-  parseSearchResults,
-  parseProductPage,
-  hosts: ["www.bestbuy.com", "bestbuy.com"],
-  readListingPage,
-};
+export const bestbuyAdapter: RetailerAdapter & ListingReader & CategoryReading =
+  {
+    slug: "bestbuy",
+    querySupport: QUERY_SUPPORT,
+    // Jody's politeness rule of two to four pages at once, at its top: the
+    // registry's figure arrives with the job and wins over this.
+    pacing: { pagesAtOnce: 4 },
+    // A delivered page took one to three minutes, and about a third of attempts
+    // failed inside the vendor; 150 s per attempt is what the investigation ran.
+    fetchProfile: { country: "us", timeoutMs: 150_000 },
+    // The investigation probed at most three product pages per row.
+    maxProbes: 3,
+    // It answers a search, so its candidates come from searching.
+    productIndex: null,
+    buildSearchUrl: (query) =>
+      `https://www.bestbuy.com/site/searchpage.jsp?st=${encodeURIComponent(query)}`,
+    parseSearchResults,
+    parseProductPage,
+    hosts: ["www.bestbuy.com", "bestbuy.com"],
+    readListingPage,
+    // 🔴 **No category reads.** A category page hydrates only its first few
+    // cards: the committed Wireless & Bluetooth Mice page states 947 products
+    // and carries 4 readable listings (`bestbuy-category-sponsored`). A read of
+    // it would report a handful of prices for a page of 18 products.
+    categoryReader: null,
+  };

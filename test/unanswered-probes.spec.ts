@@ -165,6 +165,7 @@ const product = (over: Partial<ParsedProduct> = {}): ParsedProduct => ({
   sellerName: null,
   isFirstParty: null,
   unverifiableReason: null,
+  category: null,
   ...over,
 });
 

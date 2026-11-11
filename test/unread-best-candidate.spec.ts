@@ -80,6 +80,7 @@ const product = (barcode: string | null): ParsedProduct => ({
   sellerName: null,
   isFirstParty: null,
   unverifiableReason: null,
+  category: null,
 });
 
 /** The listing that is the item. */

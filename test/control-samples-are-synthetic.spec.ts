@@ -13,7 +13,7 @@ import { describe, expect, it } from "vitest";
  * sessions, committed in a test file the distiller never sees. A synthetic
  * value of the same shape proves the same thing and leaks nothing.
  *
- * This reads the three fixture specs' own source and requires every value of
+ * This reads the fixture specs' own source and requires every value of
  * a session shape in them to be synthetic:
  * - a uuid, or a run of 8+ hex digits with a letter in it, made of at most
  *   three distinct characters (`11111111-1111-4111-8111-111111111111`);
@@ -25,6 +25,7 @@ const SPECS = [
   "costco-fixtures.spec.ts",
   "bh-fixtures.spec.ts",
   "bestbuy-fixtures.spec.ts",
+  "category-reads.spec.ts",
 ];
 
 const source = (name: string): string =>

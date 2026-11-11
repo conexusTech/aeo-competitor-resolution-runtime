@@ -74,6 +74,7 @@ function fakeAdapter(
         sellerName: null,
         isFirstParty: null,
         unverifiableReason: null,
+        category: null,
       },
   };
 }
@@ -149,6 +150,7 @@ describe("resolveItem outcomes", () => {
           sellerName: null,
           isFirstParty: null,
           unverifiableReason: null,
+          category: null,
         },
       },
     );
@@ -190,6 +192,7 @@ describe("resolveItem outcomes", () => {
           sellerName: null,
           isFirstParty: null,
           unverifiableReason: null,
+          category: null,
         },
       },
     );
@@ -227,6 +230,7 @@ describe("resolveItem outcomes", () => {
           sellerName: null,
           isFirstParty: null,
           unverifiableReason: null,
+          category: null,
         },
       },
     );
@@ -259,6 +263,7 @@ describe("resolveItem outcomes", () => {
           sellerName: null,
           isFirstParty: null,
           unverifiableReason: null,
+          category: null,
         },
       },
     );
@@ -290,6 +295,7 @@ describe("resolveItem outcomes", () => {
           sellerName: null,
           isFirstParty: null,
           unverifiableReason: null,
+          category: null,
         },
       },
     );
@@ -328,6 +334,7 @@ describe("resolveItem outcomes", () => {
           sellerName: null,
           isFirstParty: null,
           unverifiableReason: null,
+          category: null,
         },
         B: {
           barcode: "099999999999",
@@ -338,6 +345,7 @@ describe("resolveItem outcomes", () => {
           sellerName: null,
           isFirstParty: null,
           unverifiableReason: null,
+          category: null,
         },
       },
     );
@@ -414,6 +422,7 @@ describe("resolveItem outcomes", () => {
           sellerName: null,
           isFirstParty: null,
           unverifiableReason: null,
+          category: null,
         },
       },
     );
@@ -873,6 +882,7 @@ describe("a barcode read once is known for the rest of the run", () => {
           sellerName: null,
           isFirstParty: null,
           unverifiableReason: null,
+          category: null,
         },
       },
     );
@@ -1041,6 +1051,7 @@ describe("a barcode read once is known for the rest of the run", () => {
           sellerName: null,
           isFirstParty: null,
           unverifiableReason: null,
+          category: null,
         },
       },
     );

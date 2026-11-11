@@ -65,6 +65,7 @@ const adapter: RetailerAdapter = {
     sellerName: null,
     isFirstParty: null,
     unverifiableReason: null,
+    category: null,
   }),
 };
 

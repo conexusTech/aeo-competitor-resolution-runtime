@@ -121,6 +121,7 @@ const indexed: RetailerAdapter = {
           sellerName: "R",
           isFirstParty: null,
           unverifiableReason: null,
+          category: null,
         };
   },
 };

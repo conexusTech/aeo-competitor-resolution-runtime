@@ -131,6 +131,8 @@ describe("parseProductPage", () => {
       sellerName: "Costco",
       isFirstParty: true,
       unverifiableReason: null,
+      // Costco has no category reads, so no listing is placed in one.
+      category: null,
     });
   });
 
@@ -245,6 +247,7 @@ describe("readListingPage", () => {
         additionalBarcodes: [],
         priceCents: 6997,
         inStock: null,
+        category: null,
       },
     });
   });

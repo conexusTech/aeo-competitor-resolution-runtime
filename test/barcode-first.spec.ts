@@ -189,6 +189,7 @@ function retailer(support: QuerySupport): RetailerAdapter {
       sellerName: null,
       isFirstParty: null,
       unverifiableReason: null,
+      category: null,
     }),
   };
 }

@@ -9,7 +9,8 @@
  *
  * 🔑 **The distillation is PROVEN equivalent, not asserted.** For every page it
  * runs the committed adapter's parsers (`parseSearchResults`,
- * `parseProductPage`, `readListingPage`, `noBarcodeReason`) on the raw body
+ * `parseProductPage`, `readListingPage`, `noBarcodeReason`, and the category
+ * reader at pages 1, 2, 15 and 16) on the raw body
  * AND on the distilled one and requires identical JSON. A page whose parse
  * differs fails the run.
  *
@@ -105,6 +106,10 @@ const productItem = fields({
   ...ITEM,
   overview: upcEntries,
   specifications: upcEntries,
+  // The breadcrumb category: each level's id, name and url.
+  categoryInfo: fields({
+    primaryCategoryPath: each(fields({ id: true, name: true, url: true })),
+  }),
 });
 
 /** The preloaded state, trimmed to the stores the parser reads. */
@@ -119,6 +124,7 @@ function distilState(pre) {
             responseType: true,
             pageNumber: true,
             count: true,
+            itemsPerPage: true,
             searchTerm: true,
             responseInfo: fields({ type: true, status: true }),
             infoMessages: each(fields({ type: true })),
@@ -235,6 +241,10 @@ const parses = (body) =>
     product: bhAdapter.parseProductPage(body),
     reading: bhAdapter.readListingPage(body),
     noBarcode: noBarcodeReason(body),
+    // A category page as each page number a walk could ask it for.
+    category: [1, 2, 15, 16].map((n) =>
+      bhAdapter.categoryReader.readCategoryPage(body, n),
+    ),
   });
 
 /**

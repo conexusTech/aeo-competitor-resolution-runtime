@@ -40,6 +40,7 @@ const READER: ListingReader = {
       additionalBarcodes: [],
       priceCents: 999,
       inStock: true,
+      category: null,
     },
   }),
 };

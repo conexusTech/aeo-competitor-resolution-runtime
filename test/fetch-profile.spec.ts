@@ -260,6 +260,7 @@ describe("resolve sends the competitor's profile on competitor pages only", () =
       sellerName: null,
       isFirstParty: null,
       unverifiableReason: null,
+      category: null,
     }),
   };
 

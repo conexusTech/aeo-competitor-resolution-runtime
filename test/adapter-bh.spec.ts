@@ -70,6 +70,19 @@ const KIT_MOUSE_UPC = "097855195760";
 const C2G_URL =
   "https://www.bhphotovideo.com/c/product/1421339-REG/c2g_29538_100_displayport_active_optical.html";
 
+/** The leaf of the M310's breadcrumb (`categoryInfo.primaryCategoryPath`). */
+const MICE_AND_TOUCHPADS = {
+  id: "18369",
+  name: "Mice & Touchpads",
+  url: "https://www.bhphotovideo.com/c/buy/Mice-Touchpads/ci/18369",
+};
+/** The leaf of the Z623's. */
+const COMPUTER_SPEAKERS = {
+  id: "6565",
+  name: "Computer Speakers",
+  url: "https://www.bhphotovideo.com/c/buy/Computer-Speakers/ci/6565",
+};
+
 /** A page B&H's edge could answer with in place of the app — no state. */
 const REFUSAL =
   "<html><head><title>Access Denied</title></head><body></body></html>";
@@ -314,6 +327,7 @@ describe("parseProductPage", () => {
       sellerName: "B&H Photo",
       isFirstParty: true,
       unverifiableReason: null,
+      category: MICE_AND_TOUCHPADS,
     });
   });
 
@@ -349,6 +363,7 @@ describe("parseProductPage", () => {
       isFirstParty: true,
       // 🔑 Why it has no barcode, on the evidence a reviewer reads.
       unverifiableReason: "discontinued at B&H, no UPC published",
+      category: COMPUTER_SPEAKERS,
     });
     expect(
       child(itemOf(extractPreloadedData(PDP_Z623) ?? {}), "priceInfo")["price"],
@@ -399,6 +414,7 @@ describe("readListingPage", () => {
         additionalBarcodes: [],
         priceCents: 2299,
         inStock: true,
+        category: MICE_AND_TOUCHPADS,
       },
     });
   });
@@ -425,6 +441,7 @@ describe("readListingPage", () => {
         additionalBarcodes: [],
         priceCents: null,
         inStock: false,
+        category: COMPUTER_SPEAKERS,
       },
     });
   });

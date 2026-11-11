@@ -1,4 +1,9 @@
 import type {
+  CategoryCard,
+  CategoryPageResult,
+  CategoryReader,
+  CategoryReading,
+  ListingCategory,
   ListingPageResult,
   ListingReader,
   ParsedCandidate,
@@ -296,7 +301,42 @@ export function parseProductPage(html: string): ParsedProduct {
     // Not read from the page: the search cell's answer stands.
     isFirstParty: null,
     unverifiableReason: null,
+    category: breadcrumbCategory(html),
   };
+}
+
+/**
+ * Where a product page's breadcrumb starts. The breadcrumb itself is a few
+ * thousand characters at most — 2,400 on the committed page — so the window
+ * after the marker is bounded.
+ */
+const BREADCRUMB_MARKER = "wayfinding-breadcrumbs_feature_div";
+const BREADCRUMB_WINDOW = 6000;
+/** A breadcrumb link to a browse node: its `node=<id>` and its text. */
+const NODE_LINK = /href="[^"]*[?&](?:amp;)?node=(\d+)[^"]*"[^>]*>([^<]*)</g;
+
+/**
+ * The deepest browse node a product page's breadcrumb names — `Memory`
+ * (node 172500) on the committed page — ported from the investigation's
+ * `amazonLeafCategory`. Its address is the node's own browse page.
+ *
+ * ⚠️ **The address is a browse page, not a results grid.** Measured by the
+ * investigation: of ten such pages fetched, four served a grid of 24 results
+ * and six a department landing page with none; `readCategoryPage` reads the
+ * second as not a category page.
+ */
+export function breadcrumbCategory(html: string): ListingCategory | null {
+  const at = html.indexOf(BREADCRUMB_MARKER);
+  if (at < 0) return null;
+  const crumbs = html.slice(at, at + BREADCRUMB_WINDOW);
+  let leaf: ListingCategory | null = null;
+  for (const link of crumbs.matchAll(NODE_LINK)) {
+    const id = link[1];
+    const name = textOf(link[2] ?? "");
+    if (id === undefined || name === "") continue;
+    leaf = { id, name, url: `https://www.amazon.com/b?node=${id}` };
+  }
+  return leaf;
 }
 
 /**
@@ -466,26 +506,132 @@ export function readListingPage(html: string): ListingPageResult {
       additionalBarcodes: product.additionalBarcodes,
       priceCents,
       inStock,
+      category: product.category,
     },
   };
 }
 
-export const amazonAdapter: RetailerAdapter & ListingReader = {
-  slug: "amazon",
-  querySupport: QUERY_SUPPORT,
-  // Three, as before the registry carried a figure (the lead, 2026-11-10).
-  pacing: { pagesAtOnce: 3 },
-  // The vendor's defaults: no country, no client timeout — as before profiles
-  // existed, so the request body is byte for byte what it was.
-  fetchProfile: { country: null, timeoutMs: null },
-  // The run's default, as before the limit was per competitor.
-  maxProbes: null,
-  // It answers a search, so its candidates come from searching.
-  productIndex: null,
-  buildSearchUrl: (query) =>
-    `https://www.amazon.com/s?k=${encodeURIComponent(query)}`,
-  parseSearchResults,
-  parseProductPage,
-  hosts: ["amazon.com", "www.amazon.com"],
-  readListingPage,
+/**
+ * Page `n` of an Amazon results grid: the same address with `page=<n>` past
+ * the first, as the investigation walked it. Only on Amazon's own hosts.
+ */
+export function amazonCategoryPageUrl(
+  categoryUrl: string,
+  n: number,
+): string | null {
+  if (!Number.isInteger(n) || n < 1) return null;
+  let url: URL;
+  try {
+    url = new URL(categoryUrl);
+  } catch {
+    return null;
+  }
+  if (
+    url.protocol !== "https:" ||
+    (url.host !== "www.amazon.com" && url.host !== "amazon.com")
+  ) {
+    return null;
+  }
+  if (n === 1) url.searchParams.delete("page");
+  else url.searchParams.set("page", String(n));
+  return `https://www.amazon.com${url.pathname}${url.search}`;
+}
+
+/** The page the grid's pagination marks as the one shown. */
+const SHOWN_PAGE = /aria-current="page" aria-label="Page (\d+)"/;
+
+/** An ASIN: ten capitals and digits. A cell with anything else is not a product. */
+const ASIN_SHAPE = /^[A-Z0-9]{10}$/;
+
+/**
+ * One page of an Amazon results grid.
+ *
+ * 🔑 **A grid is recognised exactly as a search page is**: the results
+ * container. A robot check, a product page, a department landing page and an
+ * empty body carry none.
+ *
+ * 🔴 **No cells is the end only when Amazon says there are no results.** The
+ * same rule the search parse keeps, for the same reason: a body cut short
+ * before its first cell looks identical otherwise. A page past the last has
+ * not been captured, so a real one that says nothing reads as a failure — the
+ * safe direction — until one is.
+ *
+ * ⚠️ **A body whose pagination names another page is a failure**, not that
+ * page: reading it would count its cards twice.
+ *
+ * Price is the offer's own `a-price`, never the struck-through list price; a
+ * card without one is `null`. Stock is `false` where the card says "Currently
+ * unavailable" and `null` otherwise — a card that does not say is not known
+ * to be in stock. No count is reported: Amazon's "over 2,000 results" is an
+ * estimate that shifts between pages of the same grid.
+ */
+export function readCategoryPage(html: string, n: number): CategoryPageResult {
+  if (!html.includes(RESULTS_CONTAINER)) {
+    return { kind: "not-a-category-page", detail: "no results grid" };
+  }
+  const cells = splitResultCells(html);
+  if (cells.length === 0) {
+    return html.includes(NO_RESULTS_WIDGET)
+      ? { kind: "end", detail: "Amazon says the grid has no results" }
+      : {
+          kind: "not-a-category-page",
+          detail: "a results grid with no cells and no word that it is empty",
+        };
+  }
+  const shown = SHOWN_PAGE.exec(html)?.[1];
+  if (shown !== undefined && Number(shown) !== n) {
+    return {
+      kind: "not-a-category-page",
+      detail: `Amazon served page ${shown} when page ${n} was asked`,
+    };
+  }
+  const products: CategoryCard[] = [];
+  const seen = new Set<string>();
+  for (const cell of cells) {
+    const itemId = ASIN.exec(cell)?.[1]?.trim();
+    if (itemId === undefined || !ASIN_SHAPE.test(itemId)) continue;
+    if (seen.has(itemId)) continue;
+    seen.add(itemId);
+    const cents = priceCentsOf(PRICE.exec(cell)?.[1]);
+    products.push({
+      itemId,
+      // 🔴 Never 0: a card whose price reads 0 shows no price.
+      priceCents: cents !== null && cents > 0 ? cents : null,
+      inStock: cell.includes("Currently unavailable") ? false : null,
+    });
+  }
+  if (products.length === 0) {
+    return {
+      kind: "not-a-category-page",
+      detail: "a results grid whose cards could not be read",
+    };
+  }
+  return { kind: "page", page: { products, total: null, lastPage: null } };
+}
+
+export const amazonCategoryReader: CategoryReader = {
+  pageUrl: amazonCategoryPageUrl,
+  readCategoryPage,
 };
+
+export const amazonAdapter: RetailerAdapter & ListingReader & CategoryReading =
+  {
+    slug: "amazon",
+    querySupport: QUERY_SUPPORT,
+    // Three, as before the registry carried a figure (the lead, 2026-11-10).
+    pacing: { pagesAtOnce: 3 },
+    // The vendor's defaults: no country, no client timeout — as before profiles
+    // existed, so the request body is byte for byte what it was.
+    fetchProfile: { country: null, timeoutMs: null },
+    // The run's default, as before the limit was per competitor.
+    maxProbes: null,
+    // It answers a search, so its candidates come from searching.
+    productIndex: null,
+    buildSearchUrl: (query) =>
+      `https://www.amazon.com/s?k=${encodeURIComponent(query)}`,
+    parseSearchResults,
+    parseProductPage,
+    hosts: ["amazon.com", "www.amazon.com"],
+    readListingPage,
+    categoryReader: amazonCategoryReader,
+  };
