@@ -137,7 +137,9 @@ real-process proof is `node scripts/sigterm-smoke.mjs`.
 `completed`, `yielded` or `error`, the reporter is sealed: what was buffered is
 sent, a progress tick still on its way is waited for, then the terminal event
 goes, and afterwards no finding, flush or tick is sent. An item abandoned in
-flight that finishes late is dropped — the next container buys it again.
+flight that finishes late is dropped whole — no finding, and no evidence
+upload either, which would be an orphan charged to the organization's
+allowance. The next container buys it again.
 Found in review, 2026-11-11: without the seal such an item was filed after
 `yielded`, reported twice, and its pages were missing from `yielded`'s spend.
 A read run seals the same way after its in-flight wait.

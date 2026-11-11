@@ -808,3 +808,17 @@ Start a progress tick, hold its answer, and report completion.
 **Expect**
 
 `completed` is not sent until the tick is answered; the gateway answers `progress` then `completed`. A tick is not awaited by the run, so without this one in flight could land after the terminal event. 🔴 Mutation: a terminal that does not wait for ticks turns this red.
+
+### Check: dispatch-stop-uploads-no-evidence-after-the-hand-back
+
+**Requirement:** A run the cluster stops files what it found and hands back the rest before it is killed
+**Surface:** `runDispatchedJob`'s `onResolved`, gated on `GatewayReporter.isSealed`
+**Automated:** test/sigterm-yield.spec.ts
+
+**Do**
+
+With capture on for every item, stop a five-item run after two items, holding the third item's page 22 s and the answer to `yielded` until after that. As a control, run three items with capture on and no stop.
+
+**Expect**
+
+Evidence is uploaded for items 0 and 1 only; the third item, finishing after the hand-back, has neither a finding nor an upload. The control uploads all three, so the check can see uploads. 🔑 Evidence no finding points at would be an orphan, still charged against the organization's allowance; the next container captures the item with its finding. 🔴 Mutation: removing the gate turns this red.

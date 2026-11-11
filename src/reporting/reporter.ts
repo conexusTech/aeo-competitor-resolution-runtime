@@ -202,6 +202,14 @@ export class GatewayReporter {
     return this.runGone;
   }
 
+  /**
+   * Whether the run's end has been decided, so nothing more is filed for it.
+   * A caller holding a late finding drops everything that goes with it.
+   */
+  get isSealed(): boolean {
+    return this.sealed;
+  }
+
   /** Whether anything is still being sent. */
   get isReporting(): boolean {
     return !this.reportingDisabled && !this.runGone;

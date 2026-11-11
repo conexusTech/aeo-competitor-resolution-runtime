@@ -82,6 +82,11 @@ export interface FetchScript {
   /** Hold the page this long on `clock` before answering, or for ever. */
   readonly holdFor?: ((fetchNumber: number) => number | "forever") | undefined;
   readonly clock?: FakeClock | undefined;
+  /**
+   * Give each search its own listing. Otherwise every item matches the same
+   * page, and a run keeps that page as evidence once.
+   */
+  readonly distinctListings?: boolean | undefined;
 }
 
 /** Serves a body for any url and counts what it sold. */
@@ -92,6 +97,7 @@ export class ScriptedFetcher implements Fetcher {
     return this.liveRequestCount;
   }
   constructor(private readonly script: FetchScript = {}) {}
+  private searches = 0;
   fetch(url: string): Promise<FetchResult> {
     const n = ++this.fetches;
     this.script.onFetch?.(n);
@@ -103,7 +109,7 @@ export class ScriptedFetcher implements Fetcher {
       const body = url.includes("google.com/search")
         ? SERP_BODY
         : url.includes("/s?q=")
-          ? `SEARCH ${url}`
+          ? `SEARCH ${url}${this.script.distinctListings === true ? `&listing=${++this.searches}` : ""}`
           : `PRODUCT ${url}`;
       return { url, body, cached: false, attempts: 1 };
     };

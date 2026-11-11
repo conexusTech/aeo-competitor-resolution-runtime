@@ -35,6 +35,8 @@ export interface GatewayDouble {
   readonly events: Record<string, unknown>[];
   /** Events whose 200 has been sent, in the order they were answered. */
   readonly answered: Record<string, unknown>[];
+  /** Evidence uploads, stored and answered with a key; not events. */
+  readonly captures: Record<string, unknown>[];
   /** Answer every held event now. */
   release(): void;
 }
@@ -50,12 +52,13 @@ export function gatewayDouble(
 ): GatewayDouble {
   const events: Record<string, unknown>[] = [];
   const answered: Record<string, unknown>[] = [];
+  const captures: Record<string, unknown>[] = [];
   const held: (() => void)[] = [];
   const applied = (event: Record<string, unknown>): Response => {
     answered.push(event);
     return new Response(JSON.stringify({ applied: 1 }), { status: 200 });
   };
-  const fetch: typeof globalThis.fetch = (_input, init) => {
+  const fetch: typeof globalThis.fetch = (input, init) => {
     if (init?.method !== "POST") {
       return Promise.resolve(
         new Response(JSON.stringify(job), { status: 200 }),
@@ -63,6 +66,21 @@ export function gatewayDouble(
     }
     const body = init.body;
     if (typeof body !== "string") throw new Error("no string body");
+    const url =
+      typeof input === "string"
+        ? input
+        : input instanceof URL
+          ? input.href
+          : input.url;
+    if (url.endsWith("/captures")) {
+      const capture = record(JSON.parse(body));
+      captures.push(capture);
+      return Promise.resolve(
+        new Response(JSON.stringify({ storage_key: `k/${captures.length}` }), {
+          status: 201,
+        }),
+      );
+    }
     const event = record(JSON.parse(body));
     events.push(event);
     switch (answer(event)) {
@@ -87,6 +105,7 @@ export function gatewayDouble(
     client,
     events,
     answered,
+    captures,
     release: () => {
       for (const go of held.splice(0, held.length)) go();
     },

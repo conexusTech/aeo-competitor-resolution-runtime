@@ -49,6 +49,8 @@ interface Setup {
   readonly stopWhile?: "between" | { readonly hold: number | "forever" };
   readonly answer?: (event: Record<string, unknown>) => Answer;
   readonly budgetSec?: number;
+  /** Keep every item's page as evidence, within a budget of ten. */
+  readonly capture?: boolean;
 }
 
 describe("a run told to stop", () => {
@@ -68,6 +70,7 @@ describe("a run told to stop", () => {
     let stopFetch: number | null = null;
     const fetcher = new ScriptedFetcher({
       clock,
+      distinctListings: setup.capture === true,
       onFetch: (n) => {
         if (
           stopWhile !== "between" &&
@@ -86,8 +89,12 @@ describe("a run told to stop", () => {
       items: Array.from({ length: setup.items }, (_, i) => ({
         barcode: barcodeOf(i),
         clientSku: `SKU-${i}`,
+        capture: setup.capture === true,
       })),
       pagesAtOnce: 1,
+      ...(setup.capture === true
+        ? { capture: { enabled: true, budget: 10, format: "page_html" } }
+        : {}),
       ...(setup.budgetSec === undefined
         ? {}
         : { stopTakingItemsAfterSec: setup.budgetSec }),
@@ -257,6 +264,46 @@ describe("a run told to stop", () => {
     await clock.advance(FLUSH_EVERY_MS);
     expect(types(gateway.events)).toEqual(["resolutions", "yielded"]);
     expect(filed(gateway.events)).toEqual(["SKU-0", "SKU-1"]);
+  });
+
+  it("uploads no evidence for an item that finishes after the hand-back", async () => {
+    // 🔴 Its finding is dropped, so its page would be evidence no finding
+    // points at — and it would still count against the organization's
+    // allowance. The next container captures it with its finding.
+    const { done, gateway, clock, stopped } = start({
+      items: 5,
+      stopAfterFinished: 2,
+      stopWhile: { hold: 22_000 },
+      answer: (e) => (e["type"] === "yielded" ? "hold" : "apply"),
+      capture: true,
+    });
+    await stopped();
+    await clock.advance(SHUTDOWN.inFlightMs);
+    await clock.advance(2_000);
+    gateway.release();
+    await done;
+    await clock.advance(FLUSH_EVERY_MS);
+    await settle();
+    expect(filed(gateway.events)).toEqual(["SKU-0", "SKU-1"]);
+    expect(gateway.captures.map((c) => c["client_sku"])).toEqual([
+      "SKU-0",
+      "SKU-1",
+    ]);
+  });
+
+  it("CONTROL: with capture on and no stop, every item's evidence is uploaded", async () => {
+    // Proves the check above sees uploads at all.
+    const { done, gateway } = start({
+      items: 3,
+      stopAfterFinished: 99,
+      capture: true,
+    });
+    await done;
+    expect(gateway.captures.map((c) => c["client_sku"])).toEqual([
+      "SKU-0",
+      "SKU-1",
+      "SKU-2",
+    ]);
   });
 
   it("answers `completed` when told to stop after the last item finished — nothing is left", async () => {

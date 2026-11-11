@@ -232,6 +232,13 @@ export async function runDispatchedJob(
         ...deps.baseOptions,
         concurrency,
         onResolved: async (resolution) => {
+          // 🔴 **After the run's end is decided, a finding is dropped whole.**
+          // An item abandoned in flight that finishes late is not filed (see
+          // `GatewayReporter.isSealed`), so its page must not be uploaded
+          // either: evidence no finding points at, still charged against the
+          // organization's allowance. The next container captures it with its
+          // finding. Checked here, before the capture re-reads the page.
+          if (deps.reporter.isSealed) return;
           // 🔴 The finding first, the evidence second, and the order is a
           // priority rather than a correctness argument: the finding is the
           // product and the capture is a convenience. `offer` here is also
