@@ -822,3 +822,45 @@ With capture on for every item, stop a five-item run after two items, holding th
 **Expect**
 
 Evidence is uploaded for items 0 and 1 only; the third item, finishing after the hand-back, has neither a finding nor an upload. The control uploads all three, so the check can see uploads. 🔑 Evidence no finding points at would be an orphan, still charged against the organization's allowance; the next container captures the item with its finding. 🔴 Mutation: removing the gate turns this red.
+
+### Check: dispatch-leg-id-read-from-the-job
+
+**Requirement:** Every report says which container of the run sent it
+**Surface:** `parseJob`
+**Automated:** test/leg-id.spec.ts
+
+**Do**
+
+Parse a job with no `legId`, with `null`, with a uuid in lower and upper case, and with each of `123`, `true`, `{}`, `""`, `"not-a-uuid"`, a uuid with a trailing character, one with a leading space, and one without hyphens.
+
+**Expect**
+
+Absent and `null` are no leg; a uuid arrives exactly as sent; every other value is refused naming `legId`. 🔴 Mutation: accepting any string turns this red.
+
+### Check: dispatch-every-event-names-its-leg
+
+**Requirement:** Every report says which container of the run sent it
+**Surface:** `GatewayClient.fetchJob` / `postEvent`
+**Automated:** test/leg-id.spec.ts, test/time-budget-yield.spec.ts
+
+**Do**
+
+Fetch a job naming a leg, then send one of each run event: progress, resolutions, yielded, completed, error. Separately, run a five-item job naming a leg through `runDispatchedJob` until it yields.
+
+**Expect**
+
+Every body carries `leg_id` equal to the job's `legId`, through the real job fetch as well as directly. 🔑 The client remembers the leg from the job it fetched, so no report can be sent without it. 🔴 Mutations: never stamping it, or not remembering the fetched leg, each turn this red.
+
+### Check: dispatch-no-leg-no-change
+
+**Requirement:** Every report says which container of the run sent it
+**Surface:** `GatewayClient.postEvent`
+**Automated:** test/leg-id.spec.ts, test/time-budget-yield.spec.ts
+
+**Do**
+
+Send one of each run event from a client whose job named no leg, and the same from a client that never fetched a job; separately, run a job naming no leg to completion.
+
+**Expect**
+
+The two clients' bodies are identical, byte for byte, and none contains `leg_id`; no event of the run carries the key. 🔴 Mutation: sending `leg_id: null` when no leg was named turns this red.

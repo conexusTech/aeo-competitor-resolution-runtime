@@ -178,6 +178,34 @@ export interface ResolutionJob {
    * container under the same run.
    */
   readonly stopTakingItemsAfterSec: number | null;
+  /**
+   * Which container of the run this is, as the gateway named it: a uuid, or
+   * `null` from a gateway that names none.
+   *
+   * 🔑 **A run can span several containers, one after another**, and a late
+   * callback from an earlier one must not be read as the current one's. So
+   * every run event this container posts carries it back as `leg_id` — see
+   * `GatewayClient.postEvent`. With none named, every body is unchanged.
+   */
+  readonly legId: string | null;
+}
+
+/** A uuid in its usual written form, either case. */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * The job's leg id: `null` when absent, the string when it is a uuid.
+ *
+ * ⚠️ Tolerant of absence, strict about type and form, like every optional
+ * field on a job. A leg id the gateway cannot match would make every callback
+ * from this container look like a stranger's.
+ */
+function parseLegId(value: unknown, what: string): string | null {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== "string" || !UUID.test(value)) {
+    throw new Error(`${what} has a 'legId' that is not a uuid`);
+  }
+  return value;
 }
 
 /**
@@ -345,6 +373,11 @@ export class GatewayClient {
   private readonly fetchImpl: typeof globalThis.fetch;
   private readonly log: (message: string) => void;
   private readonly sleep: (ms: number) => Promise<void>;
+  /**
+   * The leg the fetched job named, put on every run event. Remembered here
+   * rather than passed to each report, so no event can be sent without it.
+   */
+  private legId: string | null = null;
 
   constructor(
     private readonly credentials: GatewayCredentials,
@@ -396,7 +429,9 @@ export class GatewayClient {
     }
 
     const body: unknown = await response.json();
-    return parseJob(body, this.identity.runId);
+    const job = parseJob(body, this.identity.runId);
+    this.legId = job.legId;
+    return job;
   }
 
   async reportProgress(args: {
@@ -642,6 +677,9 @@ export class GatewayClient {
       tenant_id: this.identity.tenantId,
       organization_id: this.identity.organizationId,
       runtime_version: buildVersion(),
+      // Absent, not null, when the job named no leg: the body is then exactly
+      // what it was before legs existed.
+      ...(this.legId === null ? {} : { leg_id: this.legId }),
       ...event,
     });
 
@@ -912,6 +950,7 @@ export function parseJob(body: unknown, runId: string): ResolutionJob {
       `the job for run ${runId}`,
       MAX_STOP_TAKING_ITEMS_AFTER_SEC,
     ),
+    legId: parseLegId(raw["legId"], `the job for run ${runId}`),
   };
 }
 

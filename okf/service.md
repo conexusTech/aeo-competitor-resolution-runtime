@@ -123,6 +123,14 @@ across a run's containers and gives the items with no finding to a fresh one.
 A run that finished everything says `completed` instead, limit or signal
 notwithstanding. No limit in the job means none, exactly as before.
 
+🔑 **Every run event names the container that sent it.** A run can now span
+several containers, so the job may carry `legId`, a uuid. When it does, every
+run event this container posts — `progress`, `resolutions`, `completed`,
+`yielded`, `error` — carries it back as `leg_id`, and the gateway matches each
+callback to its container. With none named, every body is byte for byte what
+it was. A `legId` that is not a uuid string is refused before anything is
+bought. Evidence uploads and read runs carry no leg id.
+
 🔴 **Nothing may outlast Kubernetes' 30-second grace.** Once the run is under
 way, every wait after the signal is bounded from the signal itself: items in
 flight at 20 s, the last findings and `yielded` at 27 s. A gateway that never

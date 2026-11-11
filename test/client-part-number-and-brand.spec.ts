@@ -276,6 +276,7 @@ describe("the job carries the client's part number and brand", () => {
       capture: CAPTURE_DISABLED,
       pagesAtOnce: null,
       stopTakingItemsAfterSec: null,
+      legId: null,
     };
     await runDispatchedJob({
       dispatch: {

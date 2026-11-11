@@ -16,8 +16,9 @@ below was executed, and **thirteen invariants were each broken deliberately and
 shown to turn exactly the right check red**, then reverted.
 
 **Extended 2026-11-11** by `insights-long-run-continues-past-the-job-timeout`,
-the runtime's half: the last three scenarios — a run given a time limit, a run
-the cluster stops, and findings sent at least every minute. Continuing a
+the runtime's half: the last four scenarios — a run given a time limit, a run
+the cluster stops, findings sent at least every minute, and every report naming
+the container that sent it. Continuing a
 handed-back run in a fresh container is the gateway's half, in `aeo-backend`.
 
 ⚠️ **Nothing here decides what a finding *is*.** Resolving one item and proving
@@ -187,3 +188,13 @@ Module map and the traps: [service.md](/service.md).
 - AND the end of the run is never reported ahead of a batch still on its way, and a finished run is not kept alive by the wait
 
 **Checked by:** dispatch-findings-wait-at-most-a-minute, dispatch-minute-counts-from-the-oldest, dispatch-short-list-reports-as-it-goes, dispatch-end-never-overtakes-a-batch, dispatch-no-wait-left-behind
+
+#### Scenario: Every report says which container of the run sent it
+
+- GIVEN a run that may be worked by several containers, one after another
+- WHEN the job names the container it was given to
+- THEN every report that container sends about the run — progress, findings, completion, hand-back, failure — names it
+- AND a job that names no container gets reports exactly as before
+- AND a name that is not a well-formed identifier is refused before anything is bought
+
+**Checked by:** dispatch-leg-id-read-from-the-job, dispatch-every-event-names-its-leg, dispatch-no-leg-no-change

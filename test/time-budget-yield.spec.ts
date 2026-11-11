@@ -45,6 +45,8 @@ interface Setup {
   readonly dir?: string;
   /** The reporter's longest wait; its own default unless a check says. */
   readonly flushEveryMs?: number;
+  /** The leg the job names, if any. */
+  readonly legId?: string;
 }
 
 describe("a run with a time budget", () => {
@@ -74,6 +76,7 @@ describe("a run with a time budget", () => {
       ...(setup.budgetSec === undefined
         ? {}
         : { stopTakingItemsAfterSec: setup.budgetSec }),
+      ...(setup.legId === undefined ? {} : { legId: setup.legId }),
     };
     const { client, events } = gatewayDouble(job);
     // 🔑 The same clock as the run's, as in production: the budget and the
@@ -264,5 +267,16 @@ describe("a run with a time budget", () => {
     });
     expect(filed(events)).toHaveLength(20);
     expect(filedAtFinish[19]).toBe(0);
+  });
+
+  it("names the job's leg on every event a run posts, and on none when the job names no leg", async () => {
+    // The real fetch of the job is what tells the client its leg.
+    const leg = "9f1c2b3a-4d5e-4f60-8a7b-0c1d2e3f4a5b";
+    const named = await run({ items: 5, budgetSec: 25 * 60, legId: leg });
+    expect(types(named.events)).toEqual(["resolutions", "yielded"]);
+    for (const event of named.events) expect(event["leg_id"]).toBe(leg);
+    const unnamed = await run({ items: 3, dir: "unnamed" });
+    expect(types(unnamed.events)).toEqual(["resolutions", "completed"]);
+    for (const event of unnamed.events) expect("leg_id" in event).toBe(false);
   });
 });
