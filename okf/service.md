@@ -114,8 +114,19 @@ Full behaviour: the last three scenarios of
 
 | Ending | What the runtime does |
 |---|---|
-| **The job's time limit** (`stopTakingItemsAfterSec`) is spent | takes no new item, finishes the one in flight, skips the end-of-run second attempt, files every finding, sends `yielded` |
-| **SIGTERM** — eviction, the queue's deadline, a cancel, a node drain | the same, but items in flight get 20 s; every closing step ends 27 s after the signal; exit 0 |
+| **The job's time limit** (`stopTakingItemsAfterSec`) is spent | takes no new item, finishes the one in flight, still retries the items it held back after a failed first attempt — for up to 30 minutes past the limit, filing any not reached with their first attempt — files every finding, sends `yielded` |
+| **SIGTERM** — eviction, the queue's deadline, a cancel, a node drain | takes no new item; items in flight get 20 s; held-back items are not retried but filed with their first attempt, if the first pass ends inside those 20 s; every closing step ends 27 s after the signal; exit 0 |
+
+🔴 **What `yielded` leaves unfinished is only what this container never took**
+(the lead, 2026-11-11, from the architecture review). Held-back items used to
+be left unfiled on a budget yield, so unfinished; the gateway serves
+unfinished items first, so every later container bought every persistent
+failure again before reaching new work, and around the fiftieth container of
+a 9,000-item list with 2% persistent failures one could file nothing. Now a
+held-back item is retried or filed with its first attempt — a failure with
+its reason, never "not carried". The one exception is SIGTERM with an item
+stuck in flight: the held-back items are then never reached, stay
+unfinished, and the log says how many.
 
 🔑 **`yielded` carries exactly `completed`'s fields and this container's own
 totals**, and comes after every finding it filed: the gateway sums the spend

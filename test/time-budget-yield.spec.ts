@@ -8,7 +8,7 @@ import { runDispatchedJob, type QueueRunDeps } from "../src/queue-run.js";
 import { GatewayReporter } from "../src/reporting/reporter.js";
 import { RUN_DEFAULTS, runList } from "../src/run.js";
 import { FakeClock } from "./fake-clock.js";
-import { filed, gatewayDouble } from "./gateway-double.js";
+import { filed, gatewayDouble, record } from "./gateway-double.js";
 import {
   ADAPTER,
   DISPATCH,
@@ -30,6 +30,23 @@ import {
  */
 
 const MINUTE = 60_000;
+
+/** Each filed finding, by client SKU. */
+function findings(
+  events: readonly Record<string, unknown>[],
+): Map<string, Record<string, unknown>> {
+  const out = new Map<string, Record<string, unknown>>();
+  for (const event of events) {
+    if (event["type"] !== "resolutions") continue;
+    const list = event["resolutions"];
+    if (!Array.isArray(list)) continue;
+    for (const entry of list) {
+      const finding = record(entry);
+      out.set(String(finding["clientSku"]), finding);
+    }
+  }
+  return out;
+}
 
 interface Setup {
   readonly items: number;
@@ -215,19 +232,77 @@ describe("a run with a time budget", () => {
     expect(events.filter((e) => e["type"] === "yielded")).toHaveLength(1);
   });
 
-  it("skips the end-of-run retry pass once the budget is spent, leaving the failed item for the next container", async () => {
-    // Item 0's first page fails, so it is held for the retry pass. Items 1 and
-    // 2 spend the budget. The retry would buy item 0 again in THIS container,
-    // after the budget — so it is not run, and item 0 is not filed.
+  it("retries this container's held-back items before handing back, and files them", async () => {
+    // 🔴 Architecture review, 2026-11-11. Items whose first attempt failed are
+    // held for the end-of-run retry. Skipped on a budget yield, they were never
+    // filed, so they were unfinished — and the gateway serves unfinished items
+    // first, so every later container re-bought every persistent failure
+    // before reaching new work, until a container could file nothing at all.
+    // Items 0 and 1 fail first; 2–4 spend the 25 minutes; 5 and 6 are never
+    // taken. The retry runs within the 30 minutes after the limit.
     const { events, fetcher, fetchesAtFinish } = await run({
-      items: 3,
-      budgetSec: 15 * 60,
-      failFirst: 1,
+      items: 7,
+      budgetSec: 25 * 60,
+      failFirst: 2,
     });
-    expect(filed(events)).toEqual(["SKU-1", "SKU-2"]);
+    expect(filed(events)).toEqual([
+      "SKU-2",
+      "SKU-3",
+      "SKU-4",
+      "SKU-0",
+      "SKU-1",
+    ]);
+    const byItem = findings(events);
+    expect(byItem.get("SKU-0")?.["failure"]).toBeNull();
+    expect(byItem.get("SKU-1")?.["failure"]).toBeNull();
     expect(types(events)).toEqual(["resolutions", "yielded"]);
-    // Not one fetch after the last finished item: no retry was attempted.
+    // Items 5 and 6 are left unfinished and bought nothing.
     expect(fetcher.fetches).toBe(fetchesAtFinish[fetchesAtFinish.length - 1]);
+  });
+
+  it("stops retrying 30 minutes past the limit and files what is left as the failure it was", async () => {
+    // 20 minutes an item: 2 and 3 finish at minutes 20 and 40, past the
+    // 25-minute limit. The retry of item 0 starts at 40, before the cap at 55,
+    // and ends at 60; item 1 is not retried and is filed with its first
+    // attempt — a failure with its reason, never "not carried".
+    const { events, fetchesAtFinish } = await run({
+      items: 7,
+      budgetSec: 25 * 60,
+      perItemMs: 20 * MINUTE,
+      failFirst: 2,
+    });
+    expect(filed(events)).toEqual(["SKU-2", "SKU-3", "SKU-0", "SKU-1"]);
+    const byItem = findings(events);
+    expect(byItem.get("SKU-0")?.["failure"]).toBeNull();
+    expect(String(byItem.get("SKU-1")?.["failure"])).toMatch(/boom/);
+    expect(byItem.get("SKU-1")?.["outcome"]).toBe("not-found");
+    // Item 1's filing bought nothing: no retry was made for it.
+    expect(fetchesAtFinish[3]).toBe(fetchesAtFinish[2]);
+    expect(types(events)).toEqual(["resolutions", "yielded"]);
+  });
+
+  it("files every item at most once: nothing is both filed and handed back", async () => {
+    for (const perItemMs of [10 * MINUTE, 20 * MINUTE]) {
+      const { events, fetchesAtFinish } = await run({
+        items: 7,
+        budgetSec: 25 * 60,
+        perItemMs,
+        failFirst: 2,
+        dir: String(perItemMs),
+      });
+      const skus = filed(events);
+      expect(new Set(skus).size).toBe(skus.length);
+      // Settled once each, not merely sent once: the reporter drops a repeat
+      // it has already filed, which would hide one from the gateway's view.
+      expect(fetchesAtFinish).toHaveLength(skus.length);
+      // The unfinished are exactly the items never taken.
+      const unfinished = Array.from({ length: 7 }, (_, i) => `SKU-${i}`).filter(
+        (sku) => !skus.includes(sku),
+      );
+      expect(
+        unfinished.every((sku) => ["SKU-4", "SKU-5", "SKU-6"].includes(sku)),
+      ).toBe(true);
+    }
   });
 
   it("CONTROL: with budget left, the retry pass runs and the failed item is filed", async () => {

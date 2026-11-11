@@ -37,6 +37,21 @@ import {
 /** Progress ticks and log lines are emitted on this boundary. */
 export const PROGRESS_EVERY = 25;
 
+/**
+ * How long past a spent time budget the end-of-run retry may still run.
+ *
+ * 🔴 **A budget yield retries its own held-back items** (the lead, 2026-11-11,
+ * from the architecture review). Skipped, they were unfiled, so unfinished;
+ * the gateway serves unfinished items first, so every later container bought
+ * every persistent failure again before any new work — on a 9,000-item list
+ * with 2% persistent failures, a container around the fiftieth could file
+ * nothing at all. They were paid for once already, and a container yielding
+ * at its one-hour budget has about two hours of the queue's three left.
+ * Whatever the retry has not reached by this point is filed with its first
+ * attempt — a failure, never "not carried".
+ */
+export const RETRY_PAST_BUDGET_MS = 30 * 60_000;
+
 export interface QueueRunDeps {
   readonly dispatch: DispatchPayload;
   readonly client: GatewayClient;
@@ -193,10 +208,11 @@ export async function runDispatchedJob(
       `(${source}; at most ${MAX_PAGES_AT_ONCE})`,
   );
 
-  // 🔑 **The time budget.** Past it, no new item is taken: an item already
-  // taken is finished, the end-of-run retry pass is skipped (both are
-  // `runList` honouring `shouldContinue`), and whatever was not reached is
-  // handed back with `yielded` for the gateway to give a fresh container.
+  // 🔑 **The time budget.** Past it, no new item is taken and an item already
+  // taken is finished (`runList` honouring `shouldContinue`); the items this
+  // container held back are still retried, for up to `RETRY_PAST_BUDGET_MS`,
+  // and any not reached are filed with their first attempt (`shouldRetry`).
+  // Only what was never taken is handed back with `yielded`.
   const budgetMs =
     job.stopTakingItemsAfterSec === null
       ? null
@@ -216,6 +232,12 @@ export async function runDispatchedJob(
    * can say it finished when it stops waiting on an item still in flight.
    */
   const finishedHere: Resolution[] = [];
+  /**
+   * Items whose first attempt failed and that are not yet filed. Empty at the
+   * end of any run that finished its pass; after SIGTERM's wait runs out, the
+   * ones the run never got back to — and the log says how many.
+   */
+  const heldBack = new Set<string>();
 
   try {
     const work = deps.runList(
@@ -239,6 +261,7 @@ export async function runDispatchedJob(
           // organization's allowance. The next container captures it with its
           // finding. Checked here, before the capture re-reads the page.
           if (deps.reporter.isSealed) return;
+          heldBack.delete(resolution.clientSku);
           // 🔴 The finding first, the evidence second, and the order is a
           // priority rather than a correctness argument: the finding is the
           // product and the capture is a convenience. `offer` here is also
@@ -256,6 +279,16 @@ export async function runDispatchedJob(
         // the next container.
         shouldContinue: () =>
           !deps.reporter.isRunGone && !budgetSpent() && !stopAsked(),
+        // The retry of this container's own held-back items outlives a spent
+        // budget by `RETRY_PAST_BUDGET_MS` — but never a stop, which leaves
+        // no time for it, nor a run the gateway has ended. What it does not
+        // reach is filed with its first attempt.
+        shouldRetry: () =>
+          !deps.reporter.isRunGone &&
+          !stopAsked() &&
+          (budgetMs === null ||
+            clock.now() - startedAt < budgetMs + RETRY_PAST_BUDGET_MS),
+        onHeldBack: (item) => heldBack.add(item.clientSku),
         onProgress: (progress: RunProgress) => {
           if (progress.completed % PROGRESS_EVERY !== 0) return;
           log(
@@ -334,6 +367,14 @@ export async function runDispatchedJob(
         `yielding: ${resolutions.length} of ${job.items.length} item(s) ` +
           `finished when ${why}${abandoned}; the rest go to the next container`,
       );
+      if (heldBack.size > 0) {
+        // Only after SIGTERM's wait ran out: otherwise every held-back item is
+        // retried or filed with its first attempt before the run gets here.
+        log(
+          `${heldBack.size} item(s) whose first attempt failed were not ` +
+            `filed before the wait ran out; they go to the next container`,
+        );
+      }
       await closing(
         deps.reporter.reportYielded(
           deps.fetcher.liveRequestCount,

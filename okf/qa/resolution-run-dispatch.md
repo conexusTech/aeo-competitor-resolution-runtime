@@ -529,19 +529,47 @@ Let the whole hour pass while the third item's first page is being fetched.
 
 The third item is finished and filed; the fourth is never started; the run ends with `yielded`.
 
-### Check: dispatch-time-limit-skips-the-second-attempt
+### Check: dispatch-time-limit-retries-what-it-held-back
 
 **Requirement:** A run given a time limit hands back what it has not reached
-**Surface:** `runList`'s retry pass
+**Surface:** `runList`'s retry pass, asked through `shouldRetry`
 **Automated:** test/time-budget-yield.spec.ts
 
 **Do**
 
-Fail item 0's first page so it is held for the end-of-run retry, and let items 1 and 2 spend the limit. Then, as a control, the same with an hour of limit.
+Fail the first pages of items 0 and 1 so both are held back, run seven items of ten minutes each against a 25-minute limit, and as a control the same with an hour of limit.
 
 **Expect**
 
-With the limit spent: items 1 and 2 filed, item 0 not filed, not one fetch after the last finished item, and `yielded`. With time left: all three filed and `completed`. ⚠️ Two guards hold this — the pass-level check and the per-item check inside the retry worker — so only breaking both turns it red; each alone is unobservable.
+Items 2–4 filed, then items 0 and 1 retried and filed without a failure, then `yielded`; items 5 and 6 bought nothing. The control files all of them and completes. 🔴 Found by the architecture review: left unfiled, held-back items were unfinished, served first to every later container and bought again by each. Mutation: a retry pass that asks `shouldContinue` turns this red.
+
+### Check: dispatch-retry-cap-files-the-first-attempt
+
+**Requirement:** A run given a time limit hands back what it has not reached
+**Surface:** `RETRY_PAST_BUDGET_MS`, `runList`
+**Automated:** test/time-budget-yield.spec.ts
+
+**Do**
+
+As above with twenty-minute items, so the retry of item 0 starts at minute 40 and ends at 60, past the cap at 55.
+
+**Expect**
+
+Item 0 is retried and filed; item 1 is not retried — no page bought for it — and is filed with its first attempt: `not-found` with the failure's reason, never a clean miss. 🔴 Mutations: no cap, or leaving unreached items unfiled, each turn this red.
+
+### Check: dispatch-hand-back-is-only-what-was-never-taken
+
+**Requirement:** A run given a time limit hands back what it has not reached
+**Surface:** `runList`
+**Automated:** test/time-budget-yield.spec.ts
+
+**Do**
+
+Run both set-ups above and count what was filed and how many times each item was settled.
+
+**Expect**
+
+Each item settled and filed once; the unfinished are only items never taken. 🔴 Mutation: filing a retried item's first attempt as well turns this red — counted at `onResolved`, because the reporter's own de-duplication hides a repeat from the gateway.
 
 ### Check: dispatch-hand-back-files-findings-first
 
@@ -864,3 +892,31 @@ Send one of each run event from a client whose job named no leg, and the same fr
 **Expect**
 
 The two clients' bodies are identical, byte for byte, and none contains `leg_id`; no event of the run carries the key. 🔴 Mutation: sending `leg_id: null` when no leg was named turns this red.
+
+### Check: dispatch-stop-files-held-back-first-attempts
+
+**Requirement:** A run the cluster stops files what it found and hands back the rest before it is killed
+**Surface:** `runList`, `shouldRetry`
+**Automated:** test/sigterm-yield.spec.ts
+
+**Do**
+
+Fail item 0's first page so it is held back, and ask for the stop after two items are filed.
+
+**Expect**
+
+Items 1, 2 and then 0 are filed — item 0 with its first attempt's failure — then `yielded`, with nothing bought after the signal. There is no time for a retry inside the grace period, and the first attempt costs nothing to file. 🔴 Mutation: a stop that still retries turns this red.
+
+### Check: dispatch-stop-names-held-back-left-unfinished
+
+**Requirement:** A run the cluster stops files what it found and hands back the rest before it is killed
+**Surface:** `runDispatchedJob`
+**Automated:** test/sigterm-yield.spec.ts
+
+**Do**
+
+As above, but stop while the next item's page is never answered, so the first pass cannot end.
+
+**Expect**
+
+Items 1 and 2 filed, then `yielded` at 20 s; item 0 is unfiled, and the log says "1 item(s) whose first attempt failed were not filed before the wait ran out". 🔴 Mutation: not saying so turns this red.

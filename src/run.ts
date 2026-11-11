@@ -127,15 +127,36 @@ export interface RunOptions extends ResolveOptions {
     ((resolution: Resolution) => void | Promise<void>) | undefined;
 
   /**
-   * Asked before each item, and before the retry pass, whether to keep going.
+   * Asked before each item of the first pass whether to take another.
    *
    * The one thing that can stop a run early. A queue run answers no when the
    * gateway says the run no longer exists — buying pages for findings nobody
-   * will accept is pure waste — and when the job's time budget is spent, so
-   * the rest can go to a fresh container. Either way an item already taken is
-   * finished, and an item never taken is never bought.
+   * will accept is pure waste — when the job's time budget is spent, and when
+   * the cluster has told the container to stop, so the rest can go to a fresh
+   * container. Either way an item already taken is finished, and an item
+   * never taken is never bought.
    */
   readonly shouldContinue?: (() => boolean) | undefined;
+
+  /**
+   * Asked before each item of the end-of-run retry pass whether to retry it.
+   * Absent, `shouldContinue` answers.
+   *
+   * 🔑 **Separate from `shouldContinue` because the two stop for different
+   * reasons.** A spent time budget stops new items but not the retry: the
+   * held-back items are this container's own, already paid for once, and
+   * leaving them unfiled hands them to the next container — first in line,
+   * re-bought by every container after it. Whatever this says no to is filed
+   * with its first attempt's result: a failure with its reason, never a miss.
+   */
+  readonly shouldRetry?: (() => boolean) | undefined;
+
+  /**
+   * Told of each item whose first attempt failed and is held back for the
+   * retry pass. Every one is later filed through `onResolved` — unless the
+   * caller stops waiting first, and this is how it can say how many.
+   */
+  readonly onHeldBack?: ((item: ResolveRequest) => void) | undefined;
 }
 
 export const RUN_DEFAULTS: RunOptions = {
@@ -304,6 +325,31 @@ export async function runList(
   // remove, reintroduced by the retry. A check caught exactly that.
   const deferred: { item: ResolveRequest; first: Resolution }[] = [];
 
+  /**
+   * Settle one item: journal it, then tell the caller.
+   *
+   * Journalled per item, before anything else — a run must survive being
+   * killed between any two items — and `onResolved` only after: see it on why
+   * that ordering is the correctness argument rather than a preference.
+   */
+  const settle = async (resolution: Resolution): Promise<void> => {
+    done.set(resolution.barcode, resolution);
+    outcomes[resolution.outcome]++;
+    completed++;
+    await appendFile(journalPath, `${JSON.stringify(resolution)}\n`, "utf8");
+    await options.onResolved?.(resolution);
+    options.onProgress?.({
+      completed,
+      total: pending.length,
+      outcomes: { ...outcomes },
+      liveRequests: fetcher.liveRequestCount,
+      pagesDelivered: fetcher.pagesDelivered,
+      estimatedUsd: estimateUsd(fetcher.liveRequestCount),
+    });
+  };
+
+  const mayRetry = options.shouldRetry ?? options.shouldContinue;
+
   const worker = async (
     queue: readonly ResolveRequest[],
     isRetry = false,
@@ -311,7 +357,7 @@ export async function runList(
     while (cursor < queue.length) {
       // Checked before taking an item rather than after finishing one, so a
       // stop costs at most the item already in flight.
-      if (options.shouldContinue?.() === false) return;
+      if ((isRetry ? mayRetry : options.shouldContinue)?.() === false) return;
       const item = queue[cursor++];
       if (item === undefined) return;
 
@@ -365,6 +411,7 @@ export async function runList(
       // complete — never for a clean miss, which is a finding.
       if (resolution.failure !== null && !isRetry) {
         deferred.push({ item, first: resolution });
+        options.onHeldBack?.(item);
         continue;
       }
 
@@ -385,26 +432,7 @@ export async function runList(
         };
       }
 
-      done.set(resolution.barcode, resolution);
-      outcomes[resolution.outcome]++;
-      completed++;
-
-      // Journalled per item, before anything else. A run must survive being
-      // killed between any two items.
-      await appendFile(journalPath, `${JSON.stringify(resolution)}\n`, "utf8");
-
-      // Only now, and never before — see `onResolved` on why that ordering is
-      // the correctness argument rather than a preference.
-      await options.onResolved?.(resolution);
-
-      options.onProgress?.({
-        completed,
-        total: pending.length,
-        outcomes: { ...outcomes },
-        liveRequests: fetcher.liveRequestCount,
-        pagesDelivered: fetcher.pagesDelivered,
-        estimatedUsd: estimateUsd(fetcher.liveRequestCount),
-      });
+      await settle(resolution);
     }
   };
 
@@ -421,17 +449,30 @@ export async function runList(
   // of them pressing at once is what the vendor rate-limits; retrying them
   // three at a time would recreate the condition being recovered from.
   //
-  // ⚠️ Every item is settled after this pass whatever it returns — `isRetry`
-  // stops it being deferred a second time, so the queue cannot grow.
-  if (deferred.length > 0 && options.shouldContinue?.() !== false) {
-    const held = deferred.map((d) => d.item);
-    for (const d of deferred) carried.set(d.item.barcode, d.first);
-    deferred.length = 0;
+  // ⚠️ Every held-back item is settled after this pass — `isRetry` stops it
+  // being deferred a second time, so the queue cannot grow.
+  //
+  // 🔴 **And one the pass does not reach is filed with its first attempt.**
+  // `shouldRetry` can say no — a cap past a spent budget, a stop, a run the
+  // gateway ended — and until 2026-11-11 such items were simply left unfiled.
+  // Unfiled is unfinished, and the gateway serves unfinished items first: a
+  // budget yield handed every persistent failure to the next container, which
+  // bought it again before any new work, leg after leg. The first attempt is
+  // what a failed retry would have filed too: a failure with its reason.
+  if (deferred.length > 0) {
+    const held = deferred.splice(0, deferred.length);
+    for (const d of held) carried.set(d.item.barcode, d.first);
     cursor = 0;
     // An index that could not be read in the first pass is read once more,
     // now that the run has stopped pressing — by the retry's first item only.
     index?.forgetFailure();
-    await worker(held, true);
+    await worker(
+      held.map((d) => d.item),
+      true,
+    );
+    for (const d of held) {
+      if (!done.has(d.item.barcode)) await settle(d.first);
+    }
   }
 
   // Emit in input order regardless of completion order, so a run's output is

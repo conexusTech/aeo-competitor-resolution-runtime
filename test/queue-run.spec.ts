@@ -438,6 +438,16 @@ describe("the onResolved seam", () => {
   const emptyPipeline = () => ({
     adapter: {
       ...neweggAdapter,
+      // ⚠️ A barcode search is what makes this a clean miss. Without it every
+      // item failed with "no searchable identity" — held back for the retry
+      // pass rather than missed — and the checks below passed through that
+      // pass instead of the one they describe (found 2026-11-11, when items
+      // the retry pass does not reach began to be filed).
+      querySupport: {
+        ...neweggAdapter.querySupport,
+        barcodeIsSearchable: true,
+        maxNumericQueryDigits: 14,
+      },
       searchUrl: () => "https://example.test/search",
       parseSearchResults: () => [],
     } as unknown as RetailerAdapter,

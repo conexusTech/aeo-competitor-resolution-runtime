@@ -157,12 +157,13 @@ Module map and the traps: [service.md](/service.md).
 - WHEN that time passes with items still to do
 - THEN no further item is started, and nothing is bought for one
 - AND an item already started is finished and its finding is filed
-- AND items that could not be looked up the first time are not tried a second time in this container; they are left for the next
+- AND items whose first look-up failed are still tried a second time in this container, for up to 30 minutes past the limit; any not reached by then are filed as the failures they were, never as not carried
+- AND the items handed back are only those never started, so no item is both filed and handed back
 - AND every finding is filed before the run is handed back, and the hand-back carries what this container spent
 - AND a run that finished every item inside its time reports completion, exactly as a run with no limit does
 - AND a job with no time limit is worked to the end however long it takes, while a limit that is not a whole number of seconds from one to a day is refused before anything is bought
 
-**Checked by:** dispatch-time-limit-read-from-the-job, dispatch-time-limit-takes-no-new-item, dispatch-time-limit-finishes-the-item-in-flight, dispatch-time-limit-skips-the-second-attempt, dispatch-hand-back-files-findings-first, dispatch-hand-back-carries-the-spend, dispatch-time-limit-completes-when-nothing-is-left, dispatch-no-time-limit-never-hands-back
+**Checked by:** dispatch-time-limit-read-from-the-job, dispatch-time-limit-takes-no-new-item, dispatch-time-limit-finishes-the-item-in-flight, dispatch-time-limit-retries-what-it-held-back, dispatch-retry-cap-files-the-first-attempt, dispatch-hand-back-is-only-what-was-never-taken, dispatch-hand-back-files-findings-first, dispatch-hand-back-carries-the-spend, dispatch-time-limit-completes-when-nothing-is-left, dispatch-no-time-limit-never-hands-back
 
 #### Scenario: A run the cluster stops files what it found and hands back the rest before it is killed
 
@@ -172,11 +173,12 @@ Module map and the traps: [service.md](/service.md).
 - AND items already started get up to 20 seconds to finish, and one still going after that is left for the next container
 - AND every finding made is filed, then the run is handed back, all inside the cluster's 30-second grace period
 - AND a gateway that does not answer cannot keep the container alive past that grace period: at worst the hand-back is abandoned unconfirmed, and the container still ends
+- AND an item whose first look-up failed is not tried again but filed as that failure — unless an item stuck in flight uses up the wait first, when it is left for the next container and the log says how many
 - AND nothing is filed after the hand-back: an item that finishes late is left for the next container, with no finding and no evidence uploaded for it, and no progress report arrives after it
 - AND a second signal changes nothing
 - AND a run told to stop after its last item finished reports completion
 
-**Checked by:** dispatch-stop-takes-no-new-item, dispatch-stop-waits-for-items-in-flight, dispatch-stop-abandons-a-stuck-item, dispatch-stop-never-outlasts-the-grace, dispatch-stop-files-nothing-after-the-hand-back, dispatch-stop-uploads-no-evidence-after-the-hand-back, dispatch-end-is-the-last-event, dispatch-stop-ends-the-process-itself, dispatch-stop-ignores-a-second-signal, dispatch-stop-after-the-last-item-completes, dispatch-stop-in-a-real-process
+**Checked by:** dispatch-stop-takes-no-new-item, dispatch-stop-waits-for-items-in-flight, dispatch-stop-abandons-a-stuck-item, dispatch-stop-never-outlasts-the-grace, dispatch-stop-files-held-back-first-attempts, dispatch-stop-names-held-back-left-unfinished, dispatch-stop-files-nothing-after-the-hand-back, dispatch-stop-uploads-no-evidence-after-the-hand-back, dispatch-end-is-the-last-event, dispatch-stop-ends-the-process-itself, dispatch-stop-ignores-a-second-signal, dispatch-stop-after-the-last-item-completes, dispatch-stop-in-a-real-process
 
 #### Scenario: A finding never waits more than a minute to reach the gateway
 

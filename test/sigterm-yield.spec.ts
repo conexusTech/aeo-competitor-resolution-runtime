@@ -13,7 +13,7 @@ import { FLUSH_EVERY_MS, GatewayReporter } from "../src/reporting/reporter.js";
 import { RUN_DEFAULTS, runList } from "../src/run.js";
 import { SHUTDOWN, StopSwitch } from "../src/stop-signal.js";
 import { FakeClock, settle } from "./fake-clock.js";
-import { filed, gatewayDouble, type Answer } from "./gateway-double.js";
+import { filed, gatewayDouble, record, type Answer } from "./gateway-double.js";
 import {
   ADAPTER,
   DISPATCH,
@@ -51,6 +51,8 @@ interface Setup {
   readonly budgetSec?: number;
   /** Keep every item's page as evidence, within a budget of ten. */
   readonly capture?: boolean;
+  /** Fetches refused first, each holding an item back for the retry pass. */
+  readonly failFirst?: number;
 }
 
 describe("a run told to stop", () => {
@@ -70,6 +72,7 @@ describe("a run told to stop", () => {
     let stopFetch: number | null = null;
     const fetcher = new ScriptedFetcher({
       clock,
+      failFirst: setup.failFirst,
       distinctListings: setup.capture === true,
       onFetch: (n) => {
         if (
@@ -122,6 +125,7 @@ describe("a run told to stop", () => {
         },
       });
     let result: QueueRunResult | null = null;
+    const lines: string[] = [];
     const done = runDispatchedJob({
       dispatch: DISPATCH,
       client: gateway.client,
@@ -132,7 +136,7 @@ describe("a run told to stop", () => {
       baseOptions: { ...RUN_DEFAULTS, runDir },
       clock,
       stop,
-      log: () => undefined,
+      log: (line) => lines.push(line),
     }).then((r) => {
       result = r;
       return r;
@@ -144,6 +148,7 @@ describe("a run told to stop", () => {
       stop,
       fetcher,
       fetchesAtFinish,
+      lines,
       isDone: () => result !== null,
       /**
        * Once the stop has been asked for. ⚠️ Wait for this before moving the
@@ -304,6 +309,47 @@ describe("a run told to stop", () => {
       "SKU-1",
       "SKU-2",
     ]);
+  });
+
+  it("files a held-back item with its first attempt when told to stop, rather than retrying it", async () => {
+    // No time to retry inside the grace period, but its first attempt is
+    // already paid for and costs nothing to file: a failure with its reason.
+    const { done, gateway, fetcher, fetchesAtFinish } = start({
+      items: 5,
+      stopAfterFinished: 2,
+      failFirst: 1,
+    });
+    await done;
+    expect(filed(gateway.events)).toEqual(["SKU-1", "SKU-2", "SKU-0"]);
+    const first = gateway.events
+      .flatMap((e) => {
+        const list = e["resolutions"];
+        return Array.isArray(list) ? list.map((r: unknown) => record(r)) : [];
+      })
+      .find((r) => r["clientSku"] === "SKU-0");
+    expect(String(first?.["failure"])).toMatch(/boom/);
+    expect(types(gateway.events)).toEqual(["resolutions", "yielded"]);
+    // Filed without a retry: nothing bought after the stop.
+    expect(fetcher.fetches).toBe(fetchesAtFinish[1]);
+  });
+
+  it("leaves a held-back item unfinished, and says so, when the wait runs out first", async () => {
+    // An item stuck in flight keeps the first pass from ending, so the
+    // held-back item is never reached before the 20 s run out.
+    const { done, gateway, clock, stopped, lines } = start({
+      items: 5,
+      stopAfterFinished: 2,
+      failFirst: 1,
+      stopWhile: { hold: "forever" },
+    });
+    await stopped();
+    await clock.advance(SHUTDOWN.inFlightMs);
+    await done;
+    expect(filed(gateway.events)).toEqual(["SKU-1", "SKU-2"]);
+    expect(types(gateway.events)).toEqual(["resolutions", "yielded"]);
+    expect(lines.join("\n")).toMatch(
+      /1 item\(s\) whose first attempt failed .*next container/,
+    );
   });
 
   it("answers `completed` when told to stop after the last item finished — nothing is left", async () => {
