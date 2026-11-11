@@ -567,6 +567,26 @@ export class GatewayClient {
   }
 
   /**
+   * This container is handing the run back unfinished: its time budget is
+   * spent, or the cluster told it to stop.
+   *
+   * 🔑 **Exactly `completed`'s fields, and this container's own totals.** The
+   * gateway sums them across the run's containers and hands the items with no
+   * finding to the next one, so `yielded` must arrive after every finding
+   * this container filed — see `GatewayReporter.reportYielded`.
+   */
+  async reportYielded(
+    requestsSpent: number,
+    pagesDelivered?: number,
+  ): Promise<ReportOutcome> {
+    return this.postEvent({
+      type: "yielded",
+      requests_spent: requestsSpent,
+      ...delivered(pagesDelivered),
+    });
+  }
+
+  /**
    * @param requestsSpent What the run bought before it died. 🔴 **A failed run
    * still spent money**, and without this the gateway recorded zero for one
    * that crashed before its first progress tick — and ticks are throttled, so a

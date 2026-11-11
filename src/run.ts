@@ -127,11 +127,13 @@ export interface RunOptions extends ResolveOptions {
     ((resolution: Resolution) => void | Promise<void>) | undefined;
 
   /**
-   * Asked before each item whether to keep going.
+   * Asked before each item, and before the retry pass, whether to keep going.
    *
-   * The one thing that can stop a run early, and it exists for one case: the
-   * gateway saying the run no longer exists. Continuing to buy pages for
-   * findings nobody will accept is pure waste.
+   * The one thing that can stop a run early. A queue run answers no when the
+   * gateway says the run no longer exists — buying pages for findings nobody
+   * will accept is pure waste — and when the job's time budget is spent, so
+   * the rest can go to a fresh container. Either way an item already taken is
+   * finished, and an item never taken is never bought.
    */
   readonly shouldContinue?: (() => boolean) | undefined;
 }

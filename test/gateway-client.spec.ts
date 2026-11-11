@@ -367,6 +367,27 @@ describe("posting an event", () => {
     expect(calls[0]?.init?.method).toBe("POST");
   });
 
+  it("sends `yielded` with exactly completed's fields, to the same route", async () => {
+    // 🔑 The wire contract: `{ type: "yielded", requests_spent,
+    // pages_delivered? }`, this container's own totals, as `completed` carries
+    // them. The gateway sums them across a run's containers, so a field
+    // either side added or dropped would be summed as zero or not at all.
+    const { client: c, calls } = client([ok(), ok(), ok()]);
+    await c.reportCompleted(4211, 4000);
+    await c.reportYielded(4211, 4000);
+    await c.reportYielded(17);
+    const completed = bodyOf(calls[0]);
+    const yielded = bodyOf(calls[1]);
+    expect(calls[1]?.url).toBe(calls[0]?.url);
+    expect(yielded["type"]).toBe("yielded");
+    expect(yielded["requests_spent"]).toBe(4211);
+    expect(yielded["pages_delivered"]).toBe(4000);
+    expect(Object.keys(yielded).sort()).toEqual(Object.keys(completed).sort());
+    // No figure is never sent as a zero.
+    expect("pages_delivered" in bodyOf(calls[2])).toBe(false);
+    expect(bodyOf(calls[2])["requests_spent"]).toBe(17);
+  });
+
   it("stamps the build version so a finding traces to an image", async () => {
     const { client: c, calls } = client([ok()]);
     await c.reportCompleted(1);

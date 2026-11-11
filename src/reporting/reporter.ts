@@ -278,6 +278,27 @@ export class GatewayReporter {
   }
 
   /**
+   * Hand the run back unfinished: the time budget is spent, or the cluster
+   * told this container to stop.
+   *
+   * 🔴 **Flushes first, for a reason beyond `completed`'s.** The gateway works
+   * out the next container's items from the findings it holds when this
+   * arrives — every item in the run with no finding yet. A finding still in
+   * the buffer would be bought again by the next container.
+   *
+   * ⚠️ Not sent when reporting is off, exactly as `completed` is not: the
+   * gateway then learns how this container ended from the queue.
+   */
+  async reportYielded(
+    requestsSpent: number,
+    pagesDelivered?: number,
+  ): Promise<void> {
+    await this.flush();
+    if (!this.isReporting) return;
+    await this.client.reportYielded(requestsSpent, pagesDelivered);
+  }
+
+  /**
    * Report that the run could not finish.
    *
    * ⚠️ Flushes first as well. A crash after 4,000 items should file those 4,000

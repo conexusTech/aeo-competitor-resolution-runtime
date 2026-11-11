@@ -14,6 +14,7 @@
  */
 
 import { Capturer, tallyCaptures } from "./capture/capturer.js";
+import { SYSTEM_CLOCK, type Clock } from "./clock.js";
 import type { CaptureRecord } from "./capture/types.js";
 import {
   MAX_PAGES_AT_ONCE,
@@ -53,6 +54,11 @@ export interface QueueRunDeps {
   ) => Promise<Resolution[]>;
   readonly baseOptions: RunOptions;
   readonly log?: (message: string) => void;
+  /**
+   * What the job's time budget is measured on. The system clock unless a
+   * check moves one by hand.
+   */
+  readonly clock?: Clock;
 }
 
 export interface QueueRunResult {
@@ -60,6 +66,11 @@ export interface QueueRunResult {
   readonly liveRequests: number;
   /** True when the gateway said the run no longer exists and we stopped. */
   readonly stoppedEarly: boolean;
+  /**
+   * True when this container handed the run back unfinished with `yielded`:
+   * its time budget was spent with items not yet taken.
+   */
+  readonly yielded: boolean;
   /** One per resolution offered, whatever happened to it. */
   readonly captures: readonly CaptureRecord[];
 }
@@ -68,6 +79,11 @@ export async function runDispatchedJob(
   deps: QueueRunDeps,
 ): Promise<QueueRunResult> {
   const log = deps.log ?? console.log;
+  const clock = deps.clock ?? SYSTEM_CLOCK;
+  // 🔑 The budget counts from here, before the job is even fetched: it exists
+  // to finish this container well inside the queue's deadline, and that
+  // deadline started earlier still.
+  const startedAt = clock.now();
 
   // Before anything is spent: the job, and the adapter that can do it. A
   // terminal run answers 404 here — the guard that stops a container restarted
@@ -142,6 +158,23 @@ export async function runDispatchedJob(
       `(${source}; at most ${MAX_PAGES_AT_ONCE})`,
   );
 
+  // 🔑 **The time budget.** Past it, no new item is taken: an item already
+  // taken is finished, the end-of-run retry pass is skipped (both are
+  // `runList` honouring `shouldContinue`), and whatever was not reached is
+  // handed back with `yielded` for the gateway to give a fresh container.
+  const budgetMs =
+    job.stopTakingItemsAfterSec === null
+      ? null
+      : job.stopTakingItemsAfterSec * 1000;
+  const budgetSpent = (): boolean =>
+    budgetMs !== null && clock.now() - startedAt >= budgetMs;
+  if (job.stopTakingItemsAfterSec !== null) {
+    log(
+      `time budget: no new item after ${job.stopTakingItemsAfterSec}s; ` +
+        `whatever is left then is handed back as yielded`,
+    );
+  }
+
   let lastTick = 0;
 
   try {
@@ -169,9 +202,10 @@ export async function runDispatchedJob(
           // because a page could not be stored.
           await capturer.offer(resolution);
         },
-        // The one thing that stops a run early: the gateway saying the run is
-        // gone. Buying pages for findings nobody will accept is pure waste.
-        shouldContinue: () => !deps.reporter.isRunGone,
+        // Two things stop a run early. The gateway saying the run is gone:
+        // buying pages for findings nobody will accept is pure waste. And the
+        // time budget: past it, the rest belongs to the next container.
+        shouldContinue: () => !deps.reporter.isRunGone && !budgetSpent(),
         onProgress: (progress: RunProgress) => {
           if (progress.completed % PROGRESS_EVERY !== 0) return;
           log(
@@ -205,9 +239,17 @@ export async function runDispatchedJob(
         resolutions,
         liveRequests: deps.fetcher.liveRequestCount,
         stoppedEarly: true,
+        yielded: false,
         captures: capturer.records,
       };
     }
+
+    // 🔑 **`yielded` only when something is left.** A budget that ran out
+    // during the last item leaves nothing to hand back, and a `yielded` then
+    // would start a container with no work — so it is `completed`, as it
+    // would have been without a budget.
+    const unfinished = job.items.length - resolutions.length;
+    const yielding = budgetSpent() && unfinished > 0;
 
     if (job.capture.enabled) {
       const tally = tallyCaptures(capturer.records);
@@ -219,14 +261,27 @@ export async function runDispatchedJob(
       );
     }
 
-    await deps.reporter.reportCompleted(
-      deps.fetcher.liveRequestCount,
-      deps.fetcher.pagesDelivered,
-    );
+    if (yielding) {
+      log(
+        `yielding: ${resolutions.length} of ${job.items.length} item(s) ` +
+          `finished when the time budget ran out; the other ${unfinished} ` +
+          `go to the next container`,
+      );
+      await deps.reporter.reportYielded(
+        deps.fetcher.liveRequestCount,
+        deps.fetcher.pagesDelivered,
+      );
+    } else {
+      await deps.reporter.reportCompleted(
+        deps.fetcher.liveRequestCount,
+        deps.fetcher.pagesDelivered,
+      );
+    }
     return {
       resolutions,
       liveRequests: deps.fetcher.liveRequestCount,
       stoppedEarly: false,
+      yielded: yielding,
       captures: capturer.records,
     };
   } catch (error) {

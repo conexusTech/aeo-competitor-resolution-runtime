@@ -1,0 +1,318 @@
+import { mkdtemp, rm } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
+import type {
+  ParsedCandidate,
+  ParsedProduct,
+  RetailerAdapter,
+} from "../src/adapters/types.js";
+import type { Fetcher, FetchResult } from "../src/fetcher/types.js";
+import { runDispatchedJob, type QueueRunDeps } from "../src/queue-run.js";
+import type { DispatchPayload } from "../src/queue/task-record.js";
+import { GatewayReporter } from "../src/reporting/reporter.js";
+import { RUN_DEFAULTS, runList } from "../src/run.js";
+import { FakeClock } from "./fake-clock.js";
+import { filed, gatewayDouble, typesOf as types } from "./gateway-double.js";
+
+/**
+ * A run with a time budget takes no new item once it is spent, files what it
+ * found, and hands the rest back as `yielded`.
+ *
+ * 🔑 **Everything here is real except time, the retailer and the network.**
+ * The real `runList` decides what is taken and when the retry pass runs; the
+ * real reporter buffers and files; the real gateway client writes the wire
+ * bodies the gateway will read. Time is a fake clock moved by the items
+ * themselves — never a real sleep, which would make an hour's budget either
+ * slow to check or too short to mean anything.
+ */
+
+const MINUTE = 60_000;
+
+const DISPATCH: DispatchPayload = {
+  resolutionRunId: "11111111-1111-4111-8111-111111111111",
+  tenantId: "22222222-2222-4222-8222-222222222222",
+  organizationId: "33333333-3333-4333-8333-333333333333",
+  watchlistId: "44444444-4444-4444-8444-444444444444",
+  retailerSlug: "fake",
+  itemsTotal: null,
+};
+
+const SERP_BODY = `<h3>Kingwin CF-08LB Fan</h3><h3>Kingwin CF-08LB 80mm</h3><p>CF-08LB CF-08LB</p>`;
+
+/** A retailer whose every search yields one probeable candidate. */
+const ADAPTER: RetailerAdapter = {
+  slug: "fake",
+  querySupport: {
+    maxNumericQueryDigits: 9,
+    barcodeIsSearchable: false,
+    partNumberNeedsBrand: false,
+  },
+  pacing: { pagesAtOnce: 1 },
+  fetchProfile: { country: null, timeoutMs: null },
+  maxProbes: null,
+  productIndex: null,
+  hosts: ["r.test"],
+  buildSearchUrl: (q) => `https://r.test/s?q=${encodeURIComponent(q)}`,
+  parseSearchResults: (html): ParsedCandidate[] =>
+    html.startsWith("SEARCH ")
+      ? [
+          {
+            itemId: "I1",
+            url: `https://r.test/p/${encodeURIComponent(html.slice(7))}`,
+            model: "CF-08LB",
+            title: "Kingwin CF-08LB 80mm Fan",
+            brand: "Kingwin",
+            priceCents: 899,
+            inStock: true,
+            isFirstParty: true,
+            sellerName: null,
+            imageUrl: null,
+            partialMatch: false,
+          },
+        ]
+      : [],
+  parseProductPage: (): ParsedProduct => ({
+    barcode: null,
+    additionalBarcodes: [],
+    priceCents: 899,
+    inStock: true,
+    title: "Kingwin CF-08LB 80mm Fan",
+    sellerName: null,
+    isFirstParty: null,
+    unverifiableReason: null,
+  }),
+};
+
+/**
+ * Serves a body for any url and counts what it sold.
+ *
+ * `failFirst` refuses that many fetches first — with a plain error, which is
+ * the pipeline not completing, so the item is deferred to the retry pass.
+ * `onFetch` lets a check move the clock while a page is in flight.
+ */
+class ScriptedFetcher implements Fetcher {
+  liveRequestCount = 0;
+  fetches = 0;
+  get pagesDelivered(): number {
+    return this.liveRequestCount;
+  }
+  constructor(
+    private readonly failFirst = 0,
+    private readonly onFetch: (fetchNumber: number) => void = () => undefined,
+  ) {}
+  fetch(url: string): Promise<FetchResult> {
+    this.fetches++;
+    this.onFetch(this.fetches);
+    if (this.fetches <= this.failFirst) {
+      return Promise.reject(new Error(`boom on ${url}`));
+    }
+    this.liveRequestCount++;
+    const body = url.includes("google.com/search")
+      ? SERP_BODY
+      : url.includes("/s?q=")
+        ? `SEARCH ${url}`
+        : `PRODUCT ${url}`;
+    return Promise.resolve({ url, body, cached: false, attempts: 1 });
+  }
+}
+
+const barcodeOf = (i: number): string => `81234801054${i}`;
+
+interface Setup {
+  readonly items: number;
+  /** `undefined` sends no budget at all, as a gateway predating it does. */
+  readonly budgetSec?: number | null | undefined;
+  /** Clock time each finished item takes. */
+  readonly perItemMs?: number;
+  /** Fetches refused first, each a pipeline that could not complete. */
+  readonly failFirst?: number;
+  /** Called on every fetch with its number and the run's clock. */
+  readonly onFetch?: (fetchNumber: number, clock: FakeClock) => void;
+  /** Under the test's directory, so two runs in one check never share a journal. */
+  readonly dir?: string;
+}
+
+describe("a run with a time budget", () => {
+  let runDir = "";
+  beforeEach(async () => {
+    runDir = await mkdtemp(path.join(os.tmpdir(), "time-budget-"));
+  });
+  afterEach(async () => {
+    await rm(runDir, { recursive: true, force: true });
+  });
+
+  async function run(setup: Setup) {
+    const clock = new FakeClock();
+    const onFetch = setup.onFetch;
+    const fetcher = new ScriptedFetcher(
+      setup.failFirst ?? 0,
+      onFetch === undefined ? undefined : (n) => onFetch(n, clock),
+    );
+    const dir = path.join(runDir, setup.dir ?? "run");
+    const job: Record<string, unknown> = {
+      retailerSlug: "fake",
+      items: Array.from({ length: setup.items }, (_, i) => ({
+        barcode: barcodeOf(i),
+        clientSku: `SKU-${i}`,
+      })),
+      pagesAtOnce: 1,
+      ...(setup.budgetSec === undefined
+        ? {}
+        : { stopTakingItemsAfterSec: setup.budgetSec }),
+    };
+    const { client, events } = gatewayDouble(job);
+    const reporter = new GatewayReporter(client, {
+      runDir: dir,
+      log: () => undefined,
+      requestsSpent: () => fetcher.liveRequestCount,
+      pagesDelivered: () => fetcher.pagesDelivered,
+    });
+    const perItemMs = setup.perItemMs ?? 10 * MINUTE;
+    /** Fetches made when each item was finished, in order. */
+    const fetchesAtFinish: number[] = [];
+    // The real `runList`; the only addition is that finishing an item takes
+    // clock time, so the budget is spent by the work itself.
+    const timedRunList: QueueRunDeps["runList"] = (items, a, f, options) =>
+      runList(items, a, f, {
+        ...options,
+        onResolved: async (resolution) => {
+          clock.tick(perItemMs);
+          fetchesAtFinish.push(fetcher.fetches);
+          await options.onResolved?.(resolution);
+        },
+      });
+    const result = await runDispatchedJob({
+      dispatch: DISPATCH,
+      client,
+      reporter,
+      adapterFor: (slug) => {
+        if (slug !== "fake") throw new Error(`no adapter for "${slug}"`);
+        return ADAPTER;
+      },
+      fetcher,
+      runList: timedRunList,
+      baseOptions: { ...RUN_DEFAULTS, runDir: dir },
+      clock,
+      log: () => undefined,
+    });
+    return { result, events, fetcher, fetchesAtFinish, clock };
+  }
+
+  it("takes no new item once the budget is spent, and answers `yielded`, not `completed`", async () => {
+    // 10 minutes an item, 25 minutes of budget: the third item is taken at
+    // minute 20, the fourth would be taken at minute 30 and is not.
+    const { result, events } = await run({
+      items: 5,
+      budgetSec: 25 * 60,
+    });
+    expect(filed(events)).toEqual(["SKU-0", "SKU-1", "SKU-2"]);
+    expect(types(events)).toEqual(["resolutions", "yielded"]);
+    expect(result.yielded).toBe(true);
+    expect(result.stoppedEarly).toBe(false);
+  });
+
+  it("buys nothing for an item it did not take", async () => {
+    const { fetcher, fetchesAtFinish } = await run({
+      items: 5,
+      budgetSec: 25 * 60,
+    });
+    // Not one fetch after the third item was finished.
+    expect(fetchesAtFinish).toHaveLength(3);
+    expect(fetcher.fetches).toBe(fetchesAtFinish[2]);
+  });
+
+  it("finishes the item in flight when the budget runs out, and files it", async () => {
+    // How many fetches one item makes, so the jump below lands on the first
+    // page of the third item whatever the query plan's shape.
+    const probe = await run({ items: 1, perItemMs: 0, dir: "probe" });
+    const perItem = probe.fetcher.fetches;
+    expect(perItem).toBeGreaterThan(0);
+
+    // The whole hour passes while item 2's first page is being fetched. The
+    // item is already taken, so it is finished and filed; item 3 never starts.
+    const { result, events, fetcher } = await run({
+      items: 5,
+      budgetSec: 3600,
+      perItemMs: 0,
+      onFetch: (n, clock) => {
+        if (n === 2 * perItem + 1) clock.tick(60 * MINUTE);
+      },
+    });
+    expect(filed(events)).toEqual(["SKU-0", "SKU-1", "SKU-2"]);
+    expect(fetcher.fetches).toBe(3 * perItem);
+    expect(types(events)).toEqual(["resolutions", "yielded"]);
+    expect(result.yielded).toBe(true);
+  });
+
+  it("answers `completed` exactly as before when every item finishes inside the budget", async () => {
+    const { result, events } = await run({ items: 3, budgetSec: 3600 });
+    expect(filed(events)).toEqual(["SKU-0", "SKU-1", "SKU-2"]);
+    expect(types(events)).toEqual(["resolutions", "completed"]);
+    expect(result.yielded).toBe(false);
+  });
+
+  it("answers `completed` when the budget ran out during the last item — nothing is left to hand back", async () => {
+    // 3 items × 10 minutes against 25: the last is taken at minute 20 and
+    // finished at 30, after the budget. Nothing is unfinished, so a `yielded`
+    // would start a container with no work.
+    const { result, events } = await run({ items: 3, budgetSec: 25 * 60 });
+    expect(filed(events)).toEqual(["SKU-0", "SKU-1", "SKU-2"]);
+    expect(types(events)).toEqual(["resolutions", "completed"]);
+    expect(result.yielded).toBe(false);
+  });
+
+  it("CONTROL: with no budget a run never yields, however long it takes", async () => {
+    // A stop that fired without a budget would pass the checks above while
+    // cutting every run short.
+    for (const budgetSec of [undefined, null] as const) {
+      const { result, events } = await run({
+        items: 5,
+        budgetSec,
+        perItemMs: 10 * 60 * MINUTE,
+        dir: String(budgetSec),
+      });
+      expect(filed(events)).toHaveLength(5);
+      expect(types(events)).toEqual(["resolutions", "completed"]);
+      expect(result.yielded).toBe(false);
+    }
+  });
+
+  it("files every finding before `yielded`, and `yielded` carries the container's own totals", async () => {
+    const { events, fetcher } = await run({ items: 5, budgetSec: 25 * 60 });
+    const last = events[events.length - 1];
+    expect(last?.["type"]).toBe("yielded");
+    expect(last?.["requests_spent"]).toBe(fetcher.liveRequestCount);
+    expect(last?.["pages_delivered"]).toBe(fetcher.pagesDelivered);
+    // Nothing after it: the gateway works out the next container's items
+    // from the findings it holds when `yielded` arrives.
+    expect(events.filter((e) => e["type"] === "yielded")).toHaveLength(1);
+  });
+
+  it("skips the end-of-run retry pass once the budget is spent, leaving the failed item for the next container", async () => {
+    // Item 0's first page fails, so it is held for the retry pass. Items 1 and
+    // 2 spend the budget. The retry would buy item 0 again in THIS container,
+    // after the budget — so it is not run, and item 0 is not filed.
+    const { events, fetcher, fetchesAtFinish } = await run({
+      items: 3,
+      budgetSec: 15 * 60,
+      failFirst: 1,
+    });
+    expect(filed(events)).toEqual(["SKU-1", "SKU-2"]);
+    expect(types(events)).toEqual(["resolutions", "yielded"]);
+    // Not one fetch after the last finished item: no retry was attempted.
+    expect(fetcher.fetches).toBe(fetchesAtFinish[fetchesAtFinish.length - 1]);
+  });
+
+  it("CONTROL: with budget left, the retry pass runs and the failed item is filed", async () => {
+    const { events } = await run({
+      items: 3,
+      budgetSec: 3600,
+      failFirst: 1,
+    });
+    expect([...filed(events)].sort()).toEqual(["SKU-0", "SKU-1", "SKU-2"]);
+    expect(types(events)).toEqual(["resolutions", "completed"]);
+  });
+});
