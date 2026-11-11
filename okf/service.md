@@ -123,23 +123,38 @@ across a run's containers and gives the items with no finding to a fresh one.
 A run that finished everything says `completed` instead, limit or signal
 notwithstanding. No limit in the job means none, exactly as before.
 
-🔴 **Nothing may outlast Kubernetes' 30-second grace.** Every wait after the
-signal is bounded from the signal itself, and a backstop ends the process with
-code 1 at 28.5 s if the hand-back hangs — so a gateway that never answers
-costs the hand-back, never a SIGKILL mid-write. A second SIGTERM is ignored.
-The limits live in `SHUTDOWN`. The real-process proof is
-`node scripts/sigterm-smoke.mjs`.
+🔴 **Nothing may outlast Kubernetes' 30-second grace.** Once the run is under
+way, every wait after the signal is bounded from the signal itself: items in
+flight at 20 s, the last findings and `yielded` at 27 s. A gateway that never
+answers the hand-back is abandoned at 27 s and the process still **exits 0** —
+so exit 0 says the shutdown ran its steps, never that `yielded` reached the
+gateway. The **backstop** (exit 1 at 28.5 s) catches only waits nothing else
+bounds: the task record and the job fetch before the run starts, and the
+journal loads. A second SIGTERM is ignored. The limits live in `SHUTDOWN`. The
+real-process proof is `node scripts/sigterm-smoke.mjs`.
+
+🔴 **Nothing is sent after the end is decided.** Once the run settles on
+`completed`, `yielded` or `error`, the reporter is sealed: what was buffered is
+sent, a progress tick still on its way is waited for, then the terminal event
+goes, and afterwards no finding, flush or tick is sent. An item abandoned in
+flight that finishes late is dropped — the next container buys it again.
+Found in review, 2026-11-11: without the seal such an item was filed after
+`yielded`, reported twice, and its pages were missing from `yielded`'s spend.
+A read run seals the same way after its in-flight wait.
 
 ⚠️ **A read run has no `yielded`.** Told to stop, it files its readings and
 ends its batch in `error`, saying how many listings it read — the terminal the
 gateway already records from the queue for a killed batch, now at once and
 with the readings filed.
 
-⚠️ **A container that hands back having filed nothing still says `yielded`**,
-on SIGTERM and on a limit shorter than one item. The gateway's rule that a
-killed container continues the run only if it made progress has to cover
-`yielded` too, or a container stopped before its first finding every time
-would loop.
+⚠️ **A container may yield having filed nothing.** On SIGTERM before its
+first finding, and when one item outlasts the time limit — whose clock starts
+before the job fetch — it still says `yielded`, with whatever it spent. The
+gateway's continuation rule handles a hand-back with no progress.
+
+⚠️ **The limit is a whole number of seconds from 1 to 86,400 (a day).**
+Anything else is refused before anything is bought: no container lives a day,
+so a larger figure is two builds disagreeing, most likely about the unit.
 
 ## Five competitors behind one seam — since 2026-11-11
 

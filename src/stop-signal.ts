@@ -43,9 +43,11 @@ export const SHUTDOWN = {
    */
   finishByMs: 27_000,
   /**
-   * The process ends itself here whatever is still running: the bound on any
-   * wait the shutdown did not think to bound. Before SIGKILL, so the
-   * container's last log line says why.
+   * The process ends itself here whatever is still running. Reached only by a
+   * wait the run's closing steps do not bound — the task record and the job
+   * fetch before the run starts, and the journal loads; a hand-back the
+   * gateway does not answer is abandoned at `finishByMs` instead, and the
+   * process exits 0. Before SIGKILL, so the container's last log line says why.
    */
   hardExitMs: 28_500,
 } as const;
@@ -165,9 +167,9 @@ export interface TerminationWatch extends StopRequest {
  * Listen for SIGTERM.
  *
  * - The first one asks for the stop and arms the backstop: the process ends
- *   itself `SHUTDOWN.hardExitMs` later, with code 1, if the shutdown has not
- *   ended it first. Code 1 because reaching it means the hand-back did not
- *   finish.
+ *   itself `SHUTDOWN.hardExitMs` later, with code 1, if nothing has ended it
+ *   first. Code 1 because reaching it means a wait nothing else bounds — the
+ *   job fetch, say — was still going, so no hand-back was even attempted.
  * - 🔴 **A second one is ignored.** Installing a listener replaces Node's
  *   default of dying on the spot; dying on a repeated signal would throw away
  *   the flush the first one started. The backstop already bounds the wait.

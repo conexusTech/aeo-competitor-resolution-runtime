@@ -323,9 +323,12 @@ async function main(): Promise<void> {
   }
   if (stop.askedAt !== null) {
     // 🔴 **Leave now, inside the grace period.** An item abandoned in flight
-    // is still running, and left alone it would go on fetching — and might
-    // report — after `yielded` was sent. The hand-back is done; exit 0 says
-    // so, and the backstop would otherwise end the process with 1.
+    // is still running, and left alone it would go on fetching after the
+    // hand-back (the sealed reporter sends nothing for it). Exit 0 says the
+    // shutdown ran its steps — NOT that `yielded` reached the gateway: a
+    // hand-back the gateway did not answer was abandoned at 27 s and still
+    // ends here. The backstop's exit 1 at 28.5 s is only for a wait nothing
+    // else bounds, such as the job fetch.
     process.exit(0);
   }
 }

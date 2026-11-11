@@ -16,8 +16,10 @@
  * - `yield`: one SIGTERM. Expect exit code 0 and a `yielded` event.
  * - `twice`: two SIGTERMs 200 ms apart. Expect the same, and the second logged
  *   as ignored.
- * - `hang`: the gateway never answers. Expect exit code 1 from the backstop,
- *   before the 30 s grace period.
+ * - `hang`: the gateway never answers the job fetch, a wait nothing but the
+ *   backstop bounds. Expect exit code 1 from the backstop, before the 30 s
+ *   grace period. (A hand-back the gateway does not answer is abandoned at
+ *   27 s and exits 0 instead — that is checked in test/sigterm-yield.spec.ts.)
  */
 import { spawn } from "node:child_process";
 import { mkdtempSync } from "node:fs";

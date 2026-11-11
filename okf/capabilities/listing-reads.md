@@ -381,12 +381,13 @@ and T-9 (filing). The runtime is built against them.
 - WHEN the signal arrives
 - THEN no further listing is read, and a throttled page waiting to be read again is not waited for
 - AND a page already being read gets up to 20 seconds, then is abandoned
-- AND every reading made is filed, then the batch ends in error saying how many of its listings were read
+- AND every reading made is filed, then the batch ends in error saying how many of its listings were read, and nothing is filed after that
 - AND a gateway that does not answer cannot keep the container past the cluster's grace period
 - AND a job told to stop after its last listing was read completes as usual
 
 **Checked by:** listing-read-stop-takes-no-new-listing
 **Checked by:** listing-read-stop-cuts-a-reread-wait-short
 **Checked by:** listing-read-stop-abandons-a-stuck-page
+**Checked by:** listing-read-stop-files-nothing-after-the-end
 **Checked by:** listing-read-stop-never-outlasts-the-grace
 **Checked by:** listing-read-stop-after-the-last-completes

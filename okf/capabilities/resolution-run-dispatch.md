@@ -159,7 +159,7 @@ Module map and the traps: [service.md](/service.md).
 - AND items that could not be looked up the first time are not tried a second time in this container; they are left for the next
 - AND every finding is filed before the run is handed back, and the hand-back carries what this container spent
 - AND a run that finished every item inside its time reports completion, exactly as a run with no limit does
-- AND a job with no time limit is worked to the end however long it takes, while a malformed limit is refused before anything is bought
+- AND a job with no time limit is worked to the end however long it takes, while a limit that is not a whole number of seconds from one to a day is refused before anything is bought
 
 **Checked by:** dispatch-time-limit-read-from-the-job, dispatch-time-limit-takes-no-new-item, dispatch-time-limit-finishes-the-item-in-flight, dispatch-time-limit-skips-the-second-attempt, dispatch-hand-back-files-findings-first, dispatch-hand-back-carries-the-spend, dispatch-time-limit-completes-when-nothing-is-left, dispatch-no-time-limit-never-hands-back
 
@@ -170,11 +170,12 @@ Module map and the traps: [service.md](/service.md).
 - THEN no further item is started
 - AND items already started get up to 20 seconds to finish, and one still going after that is left for the next container
 - AND every finding made is filed, then the run is handed back, all inside the cluster's 30-second grace period
-- AND a gateway that does not answer cannot keep the container alive past that grace period: at worst the hand-back is not sent, and the container ends itself
+- AND a gateway that does not answer cannot keep the container alive past that grace period: at worst the hand-back is abandoned unconfirmed, and the container still ends
+- AND nothing is filed after the hand-back: an item that finishes late is left for the next container, and no progress report arrives after it
 - AND a second signal changes nothing
 - AND a run told to stop after its last item finished reports completion
 
-**Checked by:** dispatch-stop-takes-no-new-item, dispatch-stop-waits-for-items-in-flight, dispatch-stop-abandons-a-stuck-item, dispatch-stop-never-outlasts-the-grace, dispatch-stop-ends-the-process-itself, dispatch-stop-ignores-a-second-signal, dispatch-stop-after-the-last-item-completes, dispatch-stop-in-a-real-process
+**Checked by:** dispatch-stop-takes-no-new-item, dispatch-stop-waits-for-items-in-flight, dispatch-stop-abandons-a-stuck-item, dispatch-stop-never-outlasts-the-grace, dispatch-stop-files-nothing-after-the-hand-back, dispatch-end-is-the-last-event, dispatch-stop-ends-the-process-itself, dispatch-stop-ignores-a-second-signal, dispatch-stop-after-the-last-item-completes, dispatch-stop-in-a-real-process
 
 #### Scenario: A finding never waits more than a minute to reach the gateway
 

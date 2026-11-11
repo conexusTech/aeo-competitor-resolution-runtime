@@ -1296,3 +1296,17 @@ Ask for the stop as the last of three pages is fetched; separately, never ask.
 **Expect**
 
 Both read every listing and report `completed`, with `stopped` false.
+
+### Check: listing-read-stop-files-nothing-after-the-end
+
+**Requirement:** A read the cluster stops files its readings and ends its batch at once
+**Surface:** `runReadJob` (sealed after the in-flight wait)
+**Automated:** test/read-run-sigterm.spec.ts
+
+**Do**
+
+With batches of one, ask for the stop as the third page is fetched and hold that page 22 s; let the wait give up at 20 s, then let the page arrive.
+
+**Expect**
+
+`readings`, `readings`, `error`, and nothing after: the late page is not recorded, so it cannot be sent after the event that ended the batch. 🔴 Mutation: recording after the seal turns this red.

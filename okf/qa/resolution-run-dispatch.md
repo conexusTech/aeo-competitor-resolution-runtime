@@ -495,11 +495,11 @@ The **job** decides, and the mismatch is refused. The gateway's registry is the 
 
 **Do**
 
-Parse a job with no `stopTakingItemsAfterSec`, with `null`, with `3600` and `1`, and with each of `0`, `-1`, `2.5`, `"3600"`, `true`, `{}` and `NaN`.
+Parse a job with no `stopTakingItemsAfterSec`, with `null`, with `3600`, `1` and `86400`, and with each of `0`, `-1`, `2.5`, `"3600"`, `true`, `{}`, `NaN`, `86401`, `3600000` and the largest safe integer.
 
 **Expect**
 
-Absent and `null` are no limit; whole numbers of at least 1 arrive as sent; every other value is refused naming the field, the way a bad `pagesAtOnce` is. ⚠️ Reading a malformed value as "no limit" would hide two builds disagreeing behind a run that never hands back. 🔴 Mutation: dropping the field from the parse turns this red.
+Absent and `null` are no limit; whole numbers from 1 to 86,400 (a day) arrive as sent; every other value is refused naming the field and the range, the way a bad `pagesAtOnce` is. ⚠️ Reading a malformed value as "no limit" would hide two builds disagreeing behind a run that never hands back — and a figure above a day, most likely milliseconds, would be no limit in practice. 🔴 Mutations: dropping the field from the parse, or dropping the upper bound, each turn this red.
 
 ### Check: dispatch-time-limit-takes-no-new-item
 
@@ -653,7 +653,7 @@ After the stop, have the gateway never answer the findings batch; separately, ne
 
 **Expect**
 
-Either way the run ends at 27 s after the signal, inside the 30 s grace. With the batch unanswered, `yielded` is withheld rather than sent ahead of it. Limits are measured from the signal, so a wait begun after it gets only the remainder. 🔴 Mutations: unbounded closing reports, or a bound measured from the call rather than the signal, turn these red.
+Either way the run ends at 27 s after the signal, inside the 30 s grace, and the process then exits 0 — so exit 0 is not proof that `yielded` arrived. With the batch unanswered, `yielded` is withheld rather than sent ahead of it. Limits are measured from the signal, so a wait begun after it gets only the remainder. 🔴 Mutations: unbounded closing reports, or a bound measured from the call rather than the signal, turn these red.
 
 ### Check: dispatch-stop-ends-the-process-itself
 
@@ -667,7 +667,7 @@ Send SIGTERM through the registered handler and move the fake clock.
 
 **Expect**
 
-No exit at 28.499 s; exit code 1 at 28.5 s, before the 30 s grace — the bound on any wait the shutdown did not think to bound. The limits are ordered: in flight 20 s, closing 27 s, backstop 28.5 s, grace 30 s. 🔴 Mutation: no backstop turns this red.
+No exit at 28.499 s; exit code 1 at 28.5 s, before the 30 s grace. ⚠️ Reached only by a wait nothing else bounds — the task record or the job fetch before the run starts; a hand-back the gateway does not answer is abandoned at 27 s and exits 0 (`dispatch-stop-never-outlasts-the-grace`). The limits are ordered: in flight 20 s, closing 27 s, backstop 28.5 s, grace 30 s. 🔴 Mutation: no backstop turns this red.
 
 ### Check: dispatch-stop-ignores-a-second-signal
 
@@ -709,7 +709,7 @@ Run the built entry point in queue mode against a local fake queue and gateway w
 
 **Expect**
 
-`yield` and `twice` print PASS: exit code 0 and one `yielded` event, the second signal logged as ignored. `hang`, where the gateway never answers, prints PASS with exit code 1 at about 28.6 s. Nothing is bought and nothing leaves the machine. ⚠️ Manual because it needs the built image of the code; the unit checks cover every decision, and this covers only `process.on` and `process.exit`.
+`yield` and `twice` print PASS: exit code 0 and one `yielded` event, the second signal logged as ignored. `hang`, where the gateway never answers the job fetch, prints PASS with exit code 1 from the backstop at about 28.6 s. Nothing is bought and nothing leaves the machine. ⚠️ Manual because it needs the built image of the code; the unit checks cover every decision, and this covers only `process.on` and `process.exit`.
 
 ### Check: dispatch-findings-wait-at-most-a-minute
 
@@ -780,3 +780,31 @@ Offer one finding, then report completion; separately, offer a full batch.
 **Expect**
 
 No timer is left pending either way, so a finished run is never kept alive for a minute by a wait with nothing to send. 🔴 Mutation: a flush that leaves the timer armed turns two checks red.
+
+### Check: dispatch-stop-files-nothing-after-the-hand-back
+
+**Requirement:** A run the cluster stops files what it found and hands back the rest before it is killed
+**Surface:** `GatewayReporter` (sealed at the terminal decision), `runDispatchedJob`
+**Automated:** test/sigterm-yield.spec.ts, test/reporter-yield-and-timed-flush.spec.ts
+
+**Do**
+
+Stop a five-item run after two items, holding the third item's page 22 s and the gateway's answer to `yielded` until after that; then move the clock past the minute. Separately, offer a finding, a progress tick and a flush to a reporter that has already handed the run back.
+
+**Expect**
+
+Events are exactly `resolutions` then `yielded`, with items 0 and 1 filed: the third item, finishing at 22 s while `yielded` was unanswered, is never sent. After the hand-back the reporter sends no finding, flush or tick. 🔴 Found in review: without the seal that item was filed after `yielded` — reported twice, its pages missing from `yielded`'s spend. Mutations: a tick accepted after the seal turns this red; `offer` and `flush` both check the seal, so only breaking both does.
+
+### Check: dispatch-end-is-the-last-event
+
+**Requirement:** A run the cluster stops files what it found and hands back the rest before it is killed
+**Surface:** `GatewayReporter.closeOut`
+**Automated:** test/reporter-yield-and-timed-flush.spec.ts
+
+**Do**
+
+Start a progress tick, hold its answer, and report completion.
+
+**Expect**
+
+`completed` is not sent until the tick is answered; the gateway answers `progress` then `completed`. A tick is not awaited by the run, so without this one in flight could land after the terminal event. 🔴 Mutation: a terminal that does not wait for ticks turns this red.
