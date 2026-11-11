@@ -198,8 +198,9 @@ slug the image does not carry is refused before anything is bought. Behaviour:
 🔑 **Every field of the seam is required**, so the next adapter must state an
 answer rather than inherit one: `querySupport` (including
 `barcodeIsSearchable` and `partNumberNeedsBrand`), `pacing`, `hosts`,
-`fetchProfile`, `maxProbes` and `productIndex`, and on the product page
-`sellerName`, `isFirstParty` and `unverifiableReason`.
+`fetchProfile`, `maxProbes`, `productIndex` and `categoryReader`, and on the
+product page `sellerName`, `isFirstParty`, `unverifiableReason` and
+`category`.
 `parseProductPage` may return `null`, meaning the body is not a product page;
 that is a probe nobody answered, never a listing without a barcode.
 
@@ -221,6 +222,35 @@ by every worker and charged to one item. A failed or short read fails every
 item with the reason, never a miss; the failure is dropped before the retry
 after the run, which reads it once more. A lookup is recorded as
 `index:<brand>`, and Costco's `parseSearchResults` is never called.
+
+**The category-read seam** (`insights-reads-category-pages`, since
+2026-11-12). Three seams now sit side by side, each pure: `RetailerAdapter`
+(resolution), `ListingReader` (a page already known) and `CategoryReader` (a
+category page, every product on it). Each adapter states `categoryReader`, or
+`null`: B&H, Newegg and Amazon have one; Best Buy (only a category page's first
+few cards carry a price) and Costco (a client-rendered shell) do not.
+
+```ts
+interface CategoryReader {
+  pageUrl(categoryUrl: string, n: number): string | null; // null: off-host, not a category, n not a whole number >= 1
+  readCategoryPage(html: string, n: number): CategoryPageResult;
+}
+type CategoryPageResult =
+  | { kind: "page"; page: { products: { itemId: string; priceCents: number | null; inStock: boolean | null }[];
+                            total: number | null; lastPage: number | null } }
+  | { kind: "end"; detail: string }                    // the competitor says there is no such page
+  | { kind: "not-a-category-page"; detail: string };   // a failure, never an empty category
+```
+
+A card's `itemId` is the id a search gives the same listing; a card with no
+price is `null`, never 0. B&H answers a page past the last with a search, which
+is `end` past page 1 and a failure on page 1. Product pages (`ParsedProduct`
+and the read run's `ListingPageReading`) carry `category: { id, name, url } |
+null`, the deepest level of their breadcrumb — B&H's primary category path,
+Newegg's last `SubCategory`/`Category` crumb, Amazon's last browse node — and
+`null` at Best Buy and Costco. Neither reaches the gateway yet: the walk, its
+job and its events are `insights-monitor-by-category-where-cheaper`'s.
+Behaviour: [category-reads](/capabilities/category-reads.md).
 
 **Pages at once comes from the job.** The gateway sends the competitor's
 `pagesAtOnce` from its retailer registry, on the resolution job and on the read
