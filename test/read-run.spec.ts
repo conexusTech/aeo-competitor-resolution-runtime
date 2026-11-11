@@ -22,9 +22,11 @@ import {
   readListingPage as readNeweggPage,
 } from "../src/adapters/newegg.js";
 import type {
+  CategoryReading,
   ListingPageResult,
   ListingReader,
 } from "../src/adapters/types.js";
+import type { CategoryReport } from "../src/category-walk.js";
 import { LIVE_DEFAULTS, LiveFetcher } from "../src/fetcher/live.js";
 import { ReplayFetcher } from "../src/fetcher/replay.js";
 import {
@@ -216,7 +218,7 @@ class ScriptedFetcher implements Fetcher {
 // ── A port that records what the run told the gateway ───────────────────
 
 interface Sent {
-  readonly type: "readings" | "completed" | "error";
+  readonly type: "readings" | "categories" | "completed" | "error";
   readonly readings: readonly ListingReading[];
   readonly requestsSpent: number;
   readonly message: string | null;
@@ -246,6 +248,23 @@ class RecordingPort implements ReadRunPort {
       message: null,
     });
     return Promise.resolve(this.answerReadings(this.batches++));
+  }
+
+  /** Every categories event, in order; each is also a `categories` entry in `sent`. */
+  readonly categoryEvents: CategoryReport[][] = [];
+
+  reportCategories(
+    categories: readonly CategoryReport[],
+    requestsSpent: number,
+  ): Promise<ReportOutcome> {
+    this.categoryEvents.push([...categories]);
+    this.sent.push({
+      type: "categories",
+      readings: [],
+      requestsSpent,
+      message: null,
+    });
+    return Promise.resolve({ kind: "applied" });
   }
 
   reportCompleted(requestsSpent: number): Promise<ReportOutcome> {
@@ -301,7 +320,7 @@ const neweggJob = (
   pagesAtOnce: null,
 });
 
-const readers = (slug: string): ListingReader => {
+const readers = (slug: string): ListingReader & CategoryReading => {
   if (slug === neweggAdapter.slug) return neweggAdapter;
   if (slug === amazonAdapter.slug) return amazonAdapter;
   throw new Error(`no adapter for retailer "${slug}"`);
@@ -584,6 +603,14 @@ describe("one listing, read", () => {
       priceCents: 7126,
       inStock: true,
       failure: null,
+      // Every price says which kind of page it came from, and a product
+      // page names the category its breadcrumb places it in.
+      priceSource: "product_page",
+      category: {
+        id: "696",
+        name: "TV Mounts & Install Accessories",
+        url: "https://www.newegg.com/TV-Mounts-Install-Accessories/SubCategory/ID-696",
+      },
     });
   });
 
@@ -1335,6 +1362,8 @@ describe("the read run's gateway client", () => {
       listings: [{ itemId: "A", url: "https://www.newegg.com/p/A" }],
       // This gateway sends no figure, so the reader's own applies.
       pagesAtOnce: null,
+      // Nor any category: the read is exactly what it was before them.
+      categories: [],
     });
   });
 
@@ -1360,6 +1389,8 @@ describe("the read run's gateway client", () => {
       priceCents: 7126,
       inStock: true,
       failure: null,
+      priceSource: "product_page",
+      category: null,
     };
     expect(await client.reportReadings([reading], 7)).toEqual({
       kind: "applied",
@@ -1437,6 +1468,8 @@ describe("the read run's gateway client", () => {
       priceCents: null,
       inStock: null,
       failure: `${READ_FAILURE.fetchFailed}: x`,
+      priceSource: "product_page",
+      category: null,
     };
     await expect(
       client.reportReadings(

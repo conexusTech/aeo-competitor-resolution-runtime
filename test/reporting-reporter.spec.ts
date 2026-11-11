@@ -401,6 +401,7 @@ describe("🔴 an over-limit unverifiable reason never loses a batch (review fin
         brand: "Logitech",
         model: "980-000402",
         priceCents: null,
+        priceSource: null,
         inStock: false,
         isFirstParty: true,
         sellerName: "B&H Photo",

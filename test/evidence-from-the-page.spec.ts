@@ -176,6 +176,66 @@ describe("evidence from the page that proved the pairing", () => {
   });
 });
 
+describe("every price a finding reports says which page it came from", () => {
+  it("🔑 the product page, where the page that proved the pairing states the price", async () => {
+    const r = await resolve(
+      card({ priceCents: 899 }),
+      page({ priceCents: 1299 }),
+    );
+    expect(r.match?.priceCents).toBe(1299);
+    expect(r.match?.priceSource).toBe("product_page");
+  });
+
+  it("🔑 the search results page, where only the card that found it does", async () => {
+    // Newegg's and Amazon's product pages state no price: every price they
+    // report is the search card's.
+    const r = await resolve(card({ priceCents: 899 }), page());
+    expect(r.match?.priceCents).toBe(899);
+    expect(r.match?.priceSource).toBe("search_results_page");
+  });
+
+  it("🔴 none, where there is no price to say it of", async () => {
+    const r = await resolve(card({ priceCents: null }), page());
+    expect(r.match?.priceCents).toBeNull();
+    expect(r.match?.priceSource).toBeNull();
+  });
+
+  it("the search results page for a pairing proven from the run's memory, whose page was not read", async () => {
+    const memory = createProbeMemory();
+    memory.remember("A", [BARCODE]);
+    const r = await resolveItem(
+      { barcode: BARCODE, clientSku: "SKU-1" },
+      retailer(card({ priceCents: 899 }), page({ priceCents: 1299 })),
+      new AnyPage(),
+      DEFAULT_OPTIONS,
+      memory,
+    );
+    expect(r.match?.priceCents).toBe(899);
+    expect(r.match?.priceSource).toBe("search_results_page");
+  });
+
+  it("is sent inside the match, beside the price it describes", async () => {
+    const bodies: string[] = [];
+    const client = new GatewayClient(
+      { baseUrl: "https://gw.test", user: "u", password: "p" },
+      { runId: "r", tenantId: "t", organizationId: "o" },
+      {
+        fetch: (_input, init) => {
+          bodies.push(typeof init?.body === "string" ? init.body : "");
+          return Promise.resolve(new Response("{}", { status: 200 }));
+        },
+        sleep: () => Promise.resolve(),
+        log: () => {},
+      },
+    );
+    const r = await resolve(card(), page({ priceCents: 1299 }));
+    await client.reportResolutions([r], 2, 2);
+    expect(bodies[0]).toContain(
+      `"priceCents":1299,"priceSource":"product_page"`,
+    );
+  });
+});
+
 describe("Newegg and Amazon are unchanged", () => {
   const raw = (name: string): string =>
     gunzipSync(

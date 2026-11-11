@@ -13,6 +13,15 @@
 export const MAX_FAILURE_LENGTH = 512;
 
 /**
+ * A category's `error` in a read run's `categories` event.
+ *
+ * 🔴 **A requirement on the gateway's categories event, not a description of
+ * it:** its DTO must accept at least this many characters. The same figure as
+ * a resolution's failure, so the two callbacks agree.
+ */
+export const MAX_CATEGORY_ERROR_LENGTH = 512;
+
+/**
  * `text` held to `max` characters: as it is when it fits, otherwise cut and
  * ended with "…", so a reader can see it was cut.
  */

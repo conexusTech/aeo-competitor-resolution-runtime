@@ -25,7 +25,11 @@ import { bestbuyAdapter } from "./adapters/bestbuy.js";
 import { bhAdapter } from "./adapters/bh.js";
 import { costcoAdapter } from "./adapters/costco.js";
 import { neweggAdapter } from "./adapters/newegg.js";
-import type { ListingReader, RetailerAdapter } from "./adapters/types.js";
+import type {
+  CategoryReading,
+  ListingReader,
+  RetailerAdapter,
+} from "./adapters/types.js";
 import {
   buildVersion,
   fetcherFromEnv,
@@ -67,7 +71,9 @@ import type { Resolution } from "./resolve.js";
  * job supplies to the adapter that implements it — so adding a retailer is a
  * new adapter file and one entry, never a change to the engine.
  */
-const ADAPTERS: Record<string, RetailerAdapter & ListingReader> = {
+type Competitor = RetailerAdapter & ListingReader & CategoryReading;
+
+const ADAPTERS: Record<string, Competitor> = {
   [neweggAdapter.slug]: neweggAdapter,
   [amazonAdapter.slug]: amazonAdapter,
   [bestbuyAdapter.slug]: bestbuyAdapter,
@@ -79,7 +85,7 @@ const ADAPTERS: Record<string, RetailerAdapter & ListingReader> = {
  * Pick the adapter, refusing up front by name. Discovering this mid-run would
  * waste whatever had already been paid for.
  */
-function requireAdapter(retailerSlug: string): RetailerAdapter & ListingReader {
+function requireAdapter(retailerSlug: string): Competitor {
   const adapter = ADAPTERS[retailerSlug];
   if (adapter === undefined) {
     throw new Error(

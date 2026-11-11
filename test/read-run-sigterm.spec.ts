@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { ListingReader } from "../src/adapters/types.js";
+import type { CategoryReading, ListingReader } from "../src/adapters/types.js";
 import {
   FetchFailed,
   type Fetcher,
@@ -27,7 +27,8 @@ import { FakeClock, settle } from "./fake-clock.js";
  * files the unread ones as missing either way.
  */
 
-const READER: ListingReader = {
+const READER: ListingReader & CategoryReading = {
+  categoryReader: null,
   slug: "fake",
   hosts: ["r.test"],
   pacing: { pagesAtOnce: 1 },
@@ -108,6 +109,13 @@ function port(
         return holdReadings
           ? new Promise<ReportOutcome>(() => undefined)
           : applied();
+      },
+      reportCategories: (categories) => {
+        events.push({
+          type: "categories",
+          ids: categories.map((c) => c.categoryId),
+        });
+        return applied();
       },
       reportCompleted: () => {
         events.push({ type: "completed", ids: [] });

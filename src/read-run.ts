@@ -50,11 +50,20 @@ import { isOwnHostUrl } from "./own-hosts.js";
 import {
   MAX_PAGES_AT_ONCE,
   pagesAtOnce,
+  type CategoryReading,
+  type ListingCategory,
   type ListingReader,
 } from "./adapters/types.js";
+import {
+  settleWalk,
+  walkCategory,
+  type CardPrice,
+  type CategoryReport,
+} from "./category-walk.js";
 import { FetchFailed, isThrottled, type Fetcher } from "./fetcher/types.js";
 import {
   MAX_READINGS_PER_EVENT,
+  type ReadCategory,
   type ReadJob,
   type ReadListing,
   type ReportOutcome,
@@ -88,6 +97,21 @@ export const READ_FAILURE = {
 /** Statuses that mean the page is gone, rather than that we could not ask. */
 const GONE_STATUSES: ReadonlySet<number> = new Set([404, 410]);
 
+/**
+ * Which kind of page a reading read.
+ *
+ * 🔑 **Every price says where it came from.** A card on a category page and
+ * an offer on a product page are both the retailer's price, read differently,
+ * and a person comparing two readings of one listing must be able to tell
+ * which was which.
+ */
+export const PRICE_SOURCE = {
+  /** The listing's own page — every product read, failed ones included. */
+  productPage: "product_page",
+  /** A card on its category's page. */
+  categoryPage: "category_page",
+} as const;
+
 interface ReadingBase {
   /** The retailer's own id for the listing, as the job named it. */
   readonly itemId: string;
@@ -118,6 +142,36 @@ export interface PageReading extends ReadingBase {
   /** `null` where the page states no availability this build recognises. */
   readonly inStock: boolean | null;
   readonly failure: null;
+  readonly priceSource: typeof PRICE_SOURCE.productPage;
+  /**
+   * The category the page's breadcrumb names, as the reader reads it, or
+   * `null` where it names none — how the gateway learns which category a
+   * watched listing could be priced from.
+   */
+  readonly category: ListingCategory | null;
+}
+
+/**
+ * A watched listing priced from its card on its category's page.
+ *
+ * 🔑 **The fields a product page's reading has, where a card knows them**: a
+ * price (always — a card with none sends its listing to its own page), stock
+ * or `null`, and `pageFound: true`. No barcode is read from a card, so the
+ * barcode fields say none, and the category is `null`: a card names no
+ * breadcrumb.
+ */
+export interface CategoryPageReading extends ReadingBase {
+  readonly pageFound: true;
+  /** The card's id, which is how it found this listing: equal to `itemId`. */
+  readonly pageItemId: string;
+  readonly barcode: null;
+  readonly additionalBarcodes: readonly [];
+  /** Above 0. A card with no price is never a category reading. */
+  readonly priceCents: number;
+  readonly inStock: boolean | null;
+  readonly failure: null;
+  readonly priceSource: typeof PRICE_SOURCE.categoryPage;
+  readonly category: null;
 }
 
 /**
@@ -134,6 +188,9 @@ export interface GoneReading extends ReadingBase {
   readonly priceCents: null;
   readonly inStock: null;
   readonly failure: string;
+  /** The page that was asked for, and said it is gone. */
+  readonly priceSource: typeof PRICE_SOURCE.productPage;
+  readonly category: null;
 }
 
 /**
@@ -152,10 +209,17 @@ export interface FailedReading extends ReadingBase {
   readonly inStock: null;
   /** `<reason>: <detail>`, the reason one of `READ_FAILURE`. */
   readonly failure: string;
+  /**
+   * The page that was tried. A walk that failed is never a reading of its
+   * own: its listings are each read from their product pages.
+   */
+  readonly priceSource: typeof PRICE_SOURCE.productPage;
+  readonly category: null;
 }
 
 /** One listing's reading, as the gateway receives it. */
-export type ListingReading = PageReading | GoneReading | FailedReading;
+export type ListingReading =
+  PageReading | CategoryPageReading | GoneReading | FailedReading;
 
 /** What a read run tells the gateway, and what it asks it. */
 export interface ReadRunPort {
@@ -166,6 +230,16 @@ export interface ReadRunPort {
    */
   reportReadings(
     readings: readonly ListingReading[],
+    requestsSpent: number,
+    pagesDelivered: number,
+  ): Promise<ReportOutcome>;
+  /**
+   * What became of each category the job asked for: once, after the last
+   * readings and before the terminal event, and only when the job asked for
+   * a category.
+   */
+  reportCategories(
+    categories: readonly CategoryReport[],
     requestsSpent: number,
     pagesDelivered: number,
   ): Promise<ReportOutcome>;
@@ -201,6 +275,8 @@ function failed(
     priceCents: null,
     inStock: null,
     failure: `${reason}: ${detail}`,
+    priceSource: PRICE_SOURCE.productPage,
+    category: null,
   };
 }
 
@@ -215,6 +291,8 @@ function gone(listing: ReadListing, readAt: Date, detail: string): GoneReading {
     priceCents: null,
     inStock: null,
     failure: `${READ_FAILURE.notFound}: ${detail}`,
+    priceSource: PRICE_SOURCE.productPage,
+    category: null,
   };
 }
 
@@ -310,6 +388,25 @@ function readBody(
     priceCents: page.priceCents,
     inStock: page.inStock,
     failure: null,
+    priceSource: PRICE_SOURCE.productPage,
+    category: page.category,
+  };
+}
+
+/** A listing priced from its card. */
+function fromCard({ listing, card, readAt }: CardPrice): CategoryPageReading {
+  return {
+    itemId: listing.itemId,
+    pageItemId: card.itemId,
+    readAt: readAt.toISOString(),
+    pageFound: true,
+    barcode: null,
+    additionalBarcodes: [],
+    priceCents: card.priceCents,
+    inStock: card.inStock,
+    failure: null,
+    priceSource: PRICE_SOURCE.categoryPage,
+    category: null,
   };
 }
 
@@ -322,15 +419,28 @@ function readBody(
  * on a job about to be refused.
  */
 function requireOwnHosts(job: ReadJob, reader: ListingReader): void {
+  const refuse = (what: string): never => {
+    throw new Error(
+      `${what} of read run ${job.readRunId} is not an https page ` +
+        `on one of ${reader.slug}'s own hosts (${reader.hosts.join(", ")}), ` +
+        `with no userinfo and no port — refused before anything was bought`,
+    );
+  };
   for (const [index, listing] of job.listings.entries()) {
     // 🔴 The gateway's own rule (`isOwnHostUrl`): https, no userinfo, no
     // port, the exact host — not merely a hostname that matches.
-    if (!isOwnHostUrl(listing.url, reader.hosts)) {
-      throw new Error(
-        `listing ${index} of read run ${job.readRunId} is not an https page ` +
-          `on one of ${reader.slug}'s own hosts (${reader.hosts.join(", ")}), ` +
-          `with no userinfo and no port — refused before anything was bought`,
-      );
+    if (!isOwnHostUrl(listing.url, reader.hosts)) refuse(`listing ${index}`);
+  }
+  // 🔴 A category's pages and its listings' pages are bought on the job's
+  // say-so too.
+  for (const [index, category] of (job.categories ?? []).entries()) {
+    if (!isOwnHostUrl(category.url, reader.hosts)) {
+      refuse(`category ${index}`);
+    }
+    for (const [at, listing] of category.listings.entries()) {
+      if (!isOwnHostUrl(listing.url, reader.hosts)) {
+        refuse(`listing ${at} of category ${index}`);
+      }
     }
   }
 }
@@ -398,8 +508,11 @@ const realSleep = (ms: number): Promise<void> =>
 
 export interface ReadRunDeps {
   readonly client: ReadRunPort;
-  /** Resolved from the job's retailer slug. */
-  readonly readerFor: (retailerSlug: string) => ListingReader;
+  /**
+   * Resolved from the job's retailer slug: its product-page reader, and its
+   * category reader or `null` where it has none.
+   */
+  readonly readerFor: (retailerSlug: string) => ListingReader & CategoryReading;
   readonly fetcher: Fetcher;
   readonly now?: () => Date;
   /**
@@ -441,6 +554,11 @@ export interface ReadRunResult {
    * ended the batch with an error saying how far it got.
    */
   readonly stopped: boolean;
+  /**
+   * What became of each category this container finished, in the job's
+   * order. Empty for a job that asked for none.
+   */
+  readonly categories: readonly CategoryReport[];
 }
 
 export const READ_DEFAULTS = { flushAt: 100 } as const;
@@ -490,6 +608,22 @@ export async function runReadJob(deps: ReadRunDeps): Promise<ReadRunResult> {
   };
 
   const job = await deps.client.fetchJob();
+  const categories: readonly ReadCategory[] = job.categories ?? [];
+  /**
+   * 🔑 Every watched listing ends the job with exactly one reading — from
+   * its card or from its own page — unless the container is stopped first.
+   */
+  const expected =
+    job.listings.length +
+    categories.reduce((n, category) => n + category.listings.length, 0);
+  /** Each finished category's outcome, by its id. */
+  const reports = new Map<string, CategoryReport>();
+  /** The finished categories' outcomes, in the job's order. */
+  const finished = (): CategoryReport[] =>
+    categories.flatMap((c) => {
+      const report = reports.get(c.categoryId);
+      return report === undefined ? [] : [report];
+    });
 
   const readings: ListingReading[] = [];
   const buffer: ListingReading[] = [];
@@ -537,7 +671,9 @@ export async function runReadJob(deps: ReadRunDeps): Promise<ReadRunResult> {
       job.pagesAtOnce ?? deps.concurrency ?? null,
       reader.pacing,
     );
-    const budget = rereadBudget(job.listings.length, pacing);
+    // 🔑 Sized by every watched listing: a walk's pages and the product
+    // reads it falls back to draw on the same budget.
+    const budget = rereadBudget(expected, pacing);
     const maxReads = 1 + pacing.rereadDelaysMs.length;
     log(
       `listing read ${job.readRunId}: ${job.listings.length} listing(s) on ` +
@@ -545,6 +681,14 @@ export async function runReadJob(deps: ReadRunDeps): Promise<ReadRunResult> {
         `${budget} re-read(s) in all, ${concurrency} page(s) at once ` +
         `(at most ${MAX_PAGES_AT_ONCE})`,
     );
+    if (categories.length > 0) {
+      log(
+        `and ${categories.length} categor${categories.length === 1 ? "y" : "ies"} ` +
+          `read from their own pages, pricing ${expected - job.listings.length} ` +
+          `watched listing(s); a listing a walk does not price is read from ` +
+          `its own page, within the same ${concurrency} page(s) at once`,
+      );
+    }
 
     /**
      * 🔴 Set once the batch's end is decided. A page abandoned in flight can
@@ -580,12 +724,51 @@ export async function runReadJob(deps: ReadRunDeps): Promise<ReadRunResult> {
     let halted = false;
     let capLogged = false;
 
-    /** The page to read next, or how long until one is due, or nothing. */
-    const take = (): SetAside | number | null => {
+    /** Categories not yet started, by their place in the job. */
+    let nextCategory = 0;
+    /** Walks under way. A worker with nothing to do waits for them. */
+    let walking = 0;
+    /**
+     * Watched listings a finished walk did not price: read from their own
+     * pages, exactly as the job's own listings are.
+     */
+    const fallback: ReadListing[] = [];
+    let nextFallback = 0;
+    /** Settles when a walk ends, waking a worker waiting on one. */
+    let walkEnded: () => void = () => undefined;
+    let walkSignal = new Promise<void>((resolve) => {
+      walkEnded = resolve;
+    });
+    const signalWalkEnded = (): void => {
+      const wake = walkEnded;
+      walkSignal = new Promise<void>((resolve) => {
+        walkEnded = resolve;
+      });
+      wake();
+    };
+
+    /** Nothing to read yet: wait this long (or for a walk), or `null`: a walk only. */
+    interface Wait {
+      readonly waitMs: number | null;
+    }
+    interface Walk {
+      readonly walk: ReadCategory;
+    }
+
+    /** The page to read next, a walk to make, or how long until one is due, or nothing. */
+    const take = (): SetAside | Walk | Wait | null => {
       const at = now().getTime();
       // A due re-read first, so its wait is the wait it was given.
       const due = setAside.findIndex((s) => s.dueAt <= at);
       if (due >= 0) return setAside.splice(due, 1)[0] ?? null;
+      // 🔑 Walks before product reads: a walk is many pages, and the
+      // listings it does not price can only be read once it ends.
+      const category = categories[nextCategory];
+      if (category !== undefined) {
+        nextCategory++;
+        walking++;
+        return { walk: category };
+      }
       // 🔑 One shared cursor: each index is taken by exactly one worker, so
       // each listing's first read happens exactly once however many workers.
       const listing = job.listings[next];
@@ -593,8 +776,63 @@ export async function runReadJob(deps: ReadRunDeps): Promise<ReadRunResult> {
         next++;
         return { listing, reads: 0, dueAt: at };
       }
-      if (setAside.length === 0) return null;
-      return Math.max(1, Math.min(...setAside.map((s) => s.dueAt)) - at);
+      const left = fallback[nextFallback];
+      if (left !== undefined) {
+        nextFallback++;
+        return { listing: left, reads: 0, dueAt: at };
+      }
+      if (setAside.length === 0) return walking > 0 ? { waitMs: null } : null;
+      return {
+        waitMs: Math.max(1, Math.min(...setAside.map((s) => s.dueAt)) - at),
+      };
+    };
+
+    /**
+     * Walk one category, then record what its cards priced and queue the
+     * rest for their own pages.
+     */
+    const walk = async (category: ReadCategory): Promise<void> => {
+      try {
+        const walked = await walkCategory(category, reader.categoryReader, {
+          fetcher: deps.fetcher,
+          profile: reader.fetchProfile,
+          now,
+          rereadDelaysMs: pacing.rereadDelaysMs,
+          takeReread: () => {
+            if (reserved >= budget) return false;
+            reserved++;
+            rereads++;
+            return true;
+          },
+          // ⚠️ A stop ends the wait at once, as for a set-aside page.
+          wait: async (ms) => {
+            await Promise.race([sleep(ms), stop.asked]);
+          },
+          shouldStop: () => gone || halted || stopAsked(),
+        });
+        // 🔴 Stopped part-way: no outcome, no readings. Its listings stay
+        // unread and the gateway plans the category again next time.
+        if (walked === null || sealed) return;
+        reports.set(category.categoryId, walked.report);
+        const settled = settleWalk(category, walked);
+        for (const price of settled.priced) record(fromCard(price));
+        for (const listing of settled.fallback) {
+          fallback.push({ itemId: listing.itemId, url: listing.url });
+        }
+        const { report } = walked;
+        log(
+          `category ${category.categoryId} (${category.kind}): ${report.status}, ` +
+            `${report.pagesRead} page(s), ${report.productsSeen} product(s), ` +
+            `${settled.priced.length} of ${category.listings.length} watched ` +
+            `listing(s) priced from it, ${settled.fallback.length} to read ` +
+            `from their own pages` +
+            (report.error === null ? "" : ` — ${report.error}`),
+        );
+        if (buffer.length >= flushAt) await flush(false);
+      } finally {
+        walking--;
+        signalWalkEnded();
+      }
     };
 
     let next = 0;
@@ -603,15 +841,27 @@ export async function runReadJob(deps: ReadRunDeps): Promise<ReadRunResult> {
       while (!gone && !halted && !stopAsked()) {
         const task = take();
         if (task === null) return;
-        if (typeof task === "number") {
+        if ("waitMs" in task) {
           // 🔑 Send what is finished before waiting: a container killed in a
           // long re-read tail then loses only what is in flight, and a run the
           // gateway has ended is learnt of now rather than at the end.
           await flush(true);
           if (gone || halted || stopAsked()) return;
           // ⚠️ A stop ends the wait at once: a re-read delay is up to 80 s,
-          // far past the grace period.
-          await Promise.race([sleep(task), stop.asked]);
+          // far past the grace period. A walk ending ends it too: the walk
+          // may have left listings to read.
+          // 🔴 The walk it was waiting for may have ended while the batch
+          // was sent: then there is nothing to wait for, and the listings it
+          // left are taken at once rather than never.
+          if (task.waitMs === null && walking === 0) continue;
+          const waits: Promise<unknown>[] = [stop.asked];
+          if (task.waitMs !== null) waits.push(sleep(task.waitMs));
+          if (walking > 0) waits.push(walkSignal);
+          await Promise.race(waits);
+          continue;
+        }
+        if ("walk" in task) {
+          await walk(task.walk);
           continue;
         }
         const { listing } = task;
@@ -661,9 +911,11 @@ export async function runReadJob(deps: ReadRunDeps): Promise<ReadRunResult> {
         throw error;
       }
     };
+    // 🔑 Never more workers than pages at once: each worker — a walk or a
+    // product read — has at most one page in flight.
     const working = Promise.all(
       Array.from(
-        { length: Math.min(concurrency, job.listings.length) },
+        { length: Math.min(concurrency, expected + categories.length) },
         worker,
       ),
     );
@@ -677,23 +929,24 @@ export async function runReadJob(deps: ReadRunDeps): Promise<ReadRunResult> {
 
     const failures = readings.filter((r) => r.failure !== null).length;
     log(
-      `read ${readings.length} of ${job.listings.length} listing(s): ` +
+      `read ${readings.length} of ${expected} listing(s): ` +
         `${readings.length - failures} page(s), ${failures} failed reading(s), ` +
         `${rereads} re-read(s) of a throttled page, ${spent()} request(s) ` +
         `sent, ${delivered()} page(s) delivered`,
     );
 
-    if (gone) {
-      return {
-        readings,
-        liveRequests: spent(),
-        pagesDelivered: delivered(),
-        stoppedEarly: true,
-        undelivered,
-        rereads,
-        stopped: false,
-      };
-    }
+    const ended = (stoppedEarly: boolean, stopped: boolean): ReadRunResult => ({
+      readings,
+      liveRequests: spent(),
+      pagesDelivered: delivered(),
+      stoppedEarly,
+      undelivered,
+      rereads,
+      stopped,
+      categories: finished(),
+    });
+
+    if (gone) return ended(true, false);
 
     // 🔴 **Told to stop with listings unread: `error`, never `completed`.**
     // `completed` would say the batch read its listings. The error is what the
@@ -701,8 +954,16 @@ export async function runReadJob(deps: ReadRunDeps): Promise<ReadRunResult> {
     // at once, after the readings that were made, and says how far it got.
     if (
       stopAsked() &&
-      (ran.kind === "timed-out" || readings.length < job.listings.length)
+      (ran.kind === "timed-out" || readings.length < expected)
     ) {
+      // The categories that finished still say what they were; one stopped
+      // part-way says nothing, and is planned again next time.
+      if (reports.size > 0) {
+        await closing(
+          deps.client.reportCategories(finished(), spent(), delivered()),
+          "report the categories",
+        );
+      }
       const lost =
         undelivered > 0
           ? `; ${undelivered} reading(s) were not accepted by the gateway`
@@ -710,43 +971,55 @@ export async function runReadJob(deps: ReadRunDeps): Promise<ReadRunResult> {
       await closing(
         deps.client.reportError(
           `the container was told to stop (SIGTERM) after reading ` +
-            `${readings.length} of ${job.listings.length} listing(s); the ` +
+            `${readings.length} of ${expected} listing(s); the ` +
             `rest were not read${lost}`,
           spent(),
           delivered(),
         ),
         "end the batch",
       );
-      return {
-        readings,
-        liveRequests: spent(),
-        pagesDelivered: delivered(),
-        stoppedEarly: false,
-        undelivered,
-        rereads,
-        stopped: true,
-      };
+      return ended(false, true);
     }
 
-    if (undelivered > 0) {
-      await deps.client.reportError(
-        `${undelivered} of ${readings.length} reading(s) were not accepted ` +
-          `by the gateway`,
+    // 🔑 After every reading and before the terminal event, so `completed`
+    // never claims a category the gateway has not been told about.
+    let categoriesLost: string | null = null;
+    if (reports.size > 0) {
+      const outcome = await deps.client.reportCategories(
+        finished(),
         spent(),
         delivered(),
       );
+      if (outcome.kind === "run-gone") {
+        log(`stopping: ${outcome.detail}`);
+        return ended(true, false);
+      }
+      if (outcome.kind !== "applied") {
+        categoriesLost = `${outcome.kind}: ${outcome.detail}`;
+        log(`the categories were not filed (${categoriesLost})`);
+      }
+    }
+
+    if (undelivered > 0 || categoriesLost !== null) {
+      const problems = [
+        ...(undelivered > 0
+          ? [
+              `${undelivered} of ${readings.length} reading(s) were not ` +
+                `accepted by the gateway`,
+            ]
+          : []),
+        ...(categoriesLost === null
+          ? []
+          : [
+              `the categories were not accepted by the gateway ` +
+                `(${categoriesLost})`,
+            ]),
+      ];
+      await deps.client.reportError(problems.join("; "), spent(), delivered());
     } else {
       await deps.client.reportCompleted(spent(), delivered());
     }
-    return {
-      readings,
-      liveRequests: spent(),
-      pagesDelivered: delivered(),
-      stoppedEarly: false,
-      undelivered,
-      rereads,
-      stopped: false,
-    };
+    return ended(false, false);
   } catch (error) {
     // Whatever was read is still worth filing before the run is marked failed
     // — and a failure to file it must not mask the error being reported.

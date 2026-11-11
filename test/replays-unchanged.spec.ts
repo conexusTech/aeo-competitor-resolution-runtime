@@ -22,6 +22,15 @@ import {
  * that made it: an outcome comparison against an investigation, which is what
  * the exit-criterion specs do, passes a reordered plan or a probe spent
  * differently, and this is the check that does not.
+ *
+ * Changed records, and why:
+ * - `insights-monitor-by-category-where-cheaper` added `match.priceSource`
+ *   to every match: 47 lines, each that one field and nothing else. The
+ *   records were regenerated only after the new replays, with the field
+ *   removed, were shown equal to the old records: 24 Newegg prices from the
+ *   search card (its product pages state none); 11 Best Buy, 8 B&H and 1
+ *   Costco price from the product page; and 3 B&H matches with no price and
+ *   no source.
  */
 
 const recorded = (name: (typeof REPLAYS)[number]): ReplayedRow[] =>

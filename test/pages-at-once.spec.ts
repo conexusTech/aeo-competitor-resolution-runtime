@@ -9,6 +9,7 @@ import { neweggAdapter } from "../src/adapters/newegg.js";
 import {
   MAX_PAGES_AT_ONCE,
   pagesAtOnce,
+  type CategoryReading,
   type ListingReader,
   type RetailerAdapter,
 } from "../src/adapters/types.js";
@@ -100,8 +101,9 @@ function retailer(limit: number): RetailerAdapter {
   };
 }
 
-function reader(limit: number): ListingReader {
+function reader(limit: number): ListingReader & CategoryReading {
   return {
+    categoryReader: null,
     slug: "fake",
     hosts: ["r.test"],
     pacing: { pagesAtOnce: limit },
@@ -286,6 +288,9 @@ describe("a read run is never read more pages at once than its limit", () => {
       return Promise.resolve({ kind: "applied" });
     }
     reportCompleted(): Promise<ReportOutcome> {
+      return Promise.resolve({ kind: "applied" });
+    }
+    reportCategories(): Promise<ReportOutcome> {
       return Promise.resolve({ kind: "applied" });
     }
     reportError(): Promise<ReportOutcome> {

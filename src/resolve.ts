@@ -76,6 +76,9 @@ export type Outcome =
   /** Nothing with part-number-level evidence. */
   | "not-found";
 
+/** Where a resolution's price was read. */
+export type ResolutionPriceSource = "product_page" | "search_results_page";
+
 export interface ResolutionEvidence {
   readonly itemId: string;
   readonly url: string;
@@ -87,6 +90,17 @@ export interface ResolutionEvidence {
    * result's. `null` where neither shows one.
    */
   readonly priceCents: number | null;
+  /**
+   * Which page `priceCents` came from: the listing's own product page, or
+   * the card on the search results page that found it. `null` exactly when
+   * there is no price.
+   *
+   * 🔑 **Every price says which kind of page it came from.** Newegg's and
+   * Amazon's product pages state no price, so every price they report is the
+   * search card's; a person comparing it with a later reading of the product
+   * page must be able to see the two were read differently.
+   */
+  readonly priceSource: ResolutionPriceSource | null;
   /**
    * Stock as that page states it, else as the search result does. `null`
    * where neither says — unknown, which the gateway stores as `unknown`.
@@ -1396,6 +1410,7 @@ function evidence(
   /** Whether this is an `unverifiable` pairing, the only one with a reason. */
   unverifiable = false,
 ): ResolutionEvidence {
+  const pagePrice = page?.priceCents ?? null;
   // 🔴 Held to the gateway's limits: every string here is a competitor's.
   return withinEvidenceLimits({
     itemId: candidate.itemId,
@@ -1403,7 +1418,13 @@ function evidence(
     title: candidate.title,
     brand: candidate.brand,
     model: candidate.model,
-    priceCents: page?.priceCents ?? candidate.priceCents,
+    priceCents: pagePrice ?? candidate.priceCents,
+    priceSource:
+      pagePrice !== null
+        ? "product_page"
+        : candidate.priceCents !== null
+          ? "search_results_page"
+          : null,
     inStock: page?.inStock ?? candidate.inStock,
     // 🔑 The page's seller class first: a Best Buy card past the first few
     // states none, and its page does.

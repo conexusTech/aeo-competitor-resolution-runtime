@@ -490,6 +490,7 @@ describe("the batch cap is a cross-repo contract", () => {
       brand: "Logitech",
       model: "980-000402",
       priceCents: null,
+      priceSource: null,
       inStock: false,
       isFirstParty: true,
       sellerName: "B&H Photo",

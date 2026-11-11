@@ -37,6 +37,7 @@ import {
 import { MAX_UNVERIFIABLE_REASON_LENGTH } from "../adapters/types.js";
 import { boundText, MAX_FAILURE_LENGTH } from "../wire-limits.js";
 import { buildVersion } from "../fetcher/select.js";
+import type { CategoryReport } from "../category-walk.js";
 import type { ListingReading } from "../read-run.js";
 import type { Resolution } from "../resolve.js";
 
@@ -976,6 +977,58 @@ export interface ReadListing {
   readonly url: string;
 }
 
+/**
+ * A watched listing the gateway chose to price from its category's page.
+ *
+ * 🔑 **It carries its own page** (contract point 8, 2026-11-12): a listing
+ * whose card is missing or unpriced, or whose walk is invalid, is read from
+ * its product page in the same container, and that read needs the address.
+ */
+export interface ReadCategoryListing {
+  /** The gateway's id for the listing, a uuid. */
+  readonly listingId: string;
+  /** The retailer's own id, the one a card on the category page names. */
+  readonly itemId: string;
+  /** Its product page, for a fallback read. */
+  readonly url: string;
+}
+
+/**
+ * How much of a category a read job asks for.
+ * - `walk`: every page, to price the watched listings from their cards;
+ * - `size`: page 1 only, to learn the category's count and last page.
+ */
+export type CategoryReadKind = "walk" | "size";
+
+/** One category a read job asks to read. */
+export interface ReadCategory {
+  /** The gateway's id for the category, a uuid. */
+  readonly categoryId: string;
+  /** The category's page 1, on the competitor's own host. */
+  readonly url: string;
+  readonly kind: CategoryReadKind;
+  /**
+   * The last page the gateway last knew the category to have, or `null`
+   * where it knows none. The retailer's own figure, once a page states it,
+   * wins over this one.
+   */
+  readonly lastPage: number | null;
+  /**
+   * The watched listings in this category to price from it. Never also in
+   * the job's own `listings`: one listing is read at most once per job.
+   */
+  readonly listings: readonly ReadCategoryListing[];
+}
+
+/**
+ * The most categories one read job may ask for.
+ *
+ * ⚠️ **Refused above it, not trimmed.** A job asking for more is two builds
+ * disagreeing about the plan, and reading the first 200 of them would leave
+ * the rest's listings neither priced nor read.
+ */
+export const MAX_CATEGORIES_PER_JOB = 200;
+
 /** The job for a read run: one retailer, the listings to read on it. */
 export interface ReadJob {
   readonly readRunId: string;
@@ -983,6 +1036,12 @@ export interface ReadJob {
   readonly listings: readonly ReadListing[];
   /** As on `ResolutionJob`: the registry's figure, `null` from an older gateway. */
   readonly pagesAtOnce: number | null;
+  /**
+   * Categories to read from their own pages, each pricing the watched
+   * listings it lists. Absent or empty: none, and the read is exactly what it
+   * was before category reads.
+   */
+  readonly categories?: readonly ReadCategory[];
 }
 
 /** The read run is not there to report to. */
@@ -1081,6 +1140,25 @@ export class ReadRunClient {
     return this.postEvent({
       type: "readings",
       readings,
+      requests_spent: requestsSpent,
+      ...delivered(pagesDelivered),
+    });
+  }
+
+  /**
+   * What became of each category the job asked for, once, before the
+   * terminal event. The pages a walk bought are already in `requestsSpent`:
+   * a category carries no spend of its own.
+   */
+  async reportCategories(
+    categories: readonly CategoryReport[],
+    requestsSpent: number,
+    pagesDelivered?: number,
+  ): Promise<ReportOutcome> {
+    if (categories.length === 0) return { kind: "applied" };
+    return this.postEvent({
+      type: "categories",
+      categories,
       requests_spent: requestsSpent,
       ...delivered(pagesDelivered),
     });
@@ -1218,7 +1296,14 @@ export function parseReadJob(body: unknown, readRunId: string): ReadJob {
     parsed.push({ itemId, url });
   }
 
-  if (parsed.length === 0) {
+  const categories = parseCategories(
+    Reflect.get(body, "categories"),
+    readRunId,
+    { ids, urls },
+  );
+  // 🔑 A job may price every watched listing from its categories, so a job
+  // with categories may carry no product reads of its own.
+  if (parsed.length === 0 && categories.length === 0) {
     throw new Error(
       `the job for read run ${readRunId} carries no listings — a read run ` +
         `is created over listings, so this build and the gateway disagree`,
@@ -1232,5 +1317,125 @@ export function parseReadJob(body: unknown, readRunId: string): ReadJob {
       Reflect.get(body, "pagesAtOnce"),
       `the job for read run ${readRunId}`,
     ),
+    categories,
   };
+}
+
+const CATEGORY_READ_KINDS: ReadonlySet<string> = new Set(["walk", "size"]);
+
+/**
+ * Read the job's categories, refusing a shape the container cannot work.
+ *
+ * ⚠️ **Tolerant of absence, strict about everything present** — the rule every
+ * optional field on a job follows. Absent or `null` is none; anything else
+ * malformed refuses the whole job before anything is bought, because a
+ * category is read through a paid proxy on the job's say-so.
+ *
+ * 🔴 **A listing is read at most once per job.** A watched listing named by
+ * two categories, or by a category and the job's own listings, is refused
+ * rather than deduplicated — the same rule as a listing named twice — and so
+ * is a category asked for twice, whose walk would buy every page twice.
+ *
+ * @param seen The ids and urls of the job's own listings, extended in place.
+ */
+function parseCategories(
+  value: unknown,
+  readRunId: string,
+  seen: { ids: Set<string>; urls: Set<string> },
+): ReadCategory[] {
+  if (value === undefined || value === null) return [];
+  const where = `the job for read run ${readRunId}`;
+  if (!Array.isArray(value)) {
+    throw new Error(`${where} has 'categories' that is not an array`);
+  }
+  const entries: readonly unknown[] = value;
+  if (entries.length > MAX_CATEGORIES_PER_JOB) {
+    throw new Error(
+      `${where} asks for ${entries.length} categories, more than the ` +
+        `${MAX_CATEGORIES_PER_JOB} one job may read`,
+    );
+  }
+  const categoryIds = new Set<string>();
+  const categoryUrls = new Set<string>();
+  const listingIds = new Set<string>();
+  return entries.map((entry, index) => {
+    const what = `category ${index} of read run ${readRunId}`;
+    if (entry === null || typeof entry !== "object") {
+      throw new Error(`${what} is not an object`);
+    }
+    const categoryId: unknown = Reflect.get(entry, "categoryId");
+    if (typeof categoryId !== "string" || !UUID.test(categoryId)) {
+      throw new Error(`${what} has a 'categoryId' that is not a uuid`);
+    }
+    const url = textField(entry, "url");
+    const urlProblem = url === null ? "has no url" : urlRefusal(url);
+    if (urlProblem !== null || url === null) {
+      throw new Error(`${what} ${urlProblem ?? ""}`);
+    }
+    const kind: unknown = Reflect.get(entry, "kind");
+    if (typeof kind !== "string" || !CATEGORY_READ_KINDS.has(kind)) {
+      throw new Error(`${what} has a 'kind' that is neither walk nor size`);
+    }
+    if (categoryIds.has(categoryId) || categoryUrls.has(url)) {
+      throw new Error(
+        `${what} names a category twice (${categoryId}) — reading it again ` +
+          `would buy the same pages twice`,
+      );
+    }
+    categoryIds.add(categoryId);
+    categoryUrls.add(url);
+    const lastPage = parseWholeNumber(
+      Reflect.get(entry, "lastPage"),
+      "lastPage",
+      what,
+    );
+    const field: unknown = Reflect.get(entry, "listings");
+    if (!Array.isArray(field)) {
+      throw new Error(`${what} carries no listings array`);
+    }
+    const rows: readonly unknown[] = field;
+    const listings = rows.map((row, at): ReadCategoryListing => {
+      const which = `listing ${at} of ${what}`;
+      if (row === null || typeof row !== "object") {
+        throw new Error(`${which} is not an object`);
+      }
+      const listingId: unknown = Reflect.get(row, "listingId");
+      if (typeof listingId !== "string" || !UUID.test(listingId)) {
+        throw new Error(`${which} has a 'listingId' that is not a uuid`);
+      }
+      const itemId = textField(row, "itemId");
+      const listingUrl = textField(row, "url");
+      const refusal =
+        itemId === null
+          ? "has no itemId"
+          : listingUrl === null
+            ? "has no url — a listing priced from its category is read " +
+              "from its own page when its card is not enough"
+            : urlRefusal(listingUrl);
+      if (refusal !== null || itemId === null || listingUrl === null) {
+        throw new Error(`${which} ${refusal ?? ""}`);
+      }
+      if (
+        listingIds.has(listingId) ||
+        seen.ids.has(itemId) ||
+        seen.urls.has(listingUrl)
+      ) {
+        throw new Error(
+          `${which} names a listing the job already names (${itemId}) — one ` +
+            `listing is read at most once per job`,
+        );
+      }
+      listingIds.add(listingId);
+      seen.ids.add(itemId);
+      seen.urls.add(listingUrl);
+      return { listingId, itemId, url: listingUrl };
+    });
+    return {
+      categoryId,
+      url,
+      kind: kind === "walk" ? "walk" : "size",
+      lastPage,
+      listings,
+    };
+  });
 }

@@ -660,6 +660,7 @@
     "brand": null,
     "model": null,
     "priceCents": 9997,
+    "priceSource": "product_page",
     "inStock": null,
     "isFirstParty": true,
     "sellerName": "Costco",

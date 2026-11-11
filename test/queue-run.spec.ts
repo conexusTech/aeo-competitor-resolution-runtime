@@ -858,6 +858,7 @@ describe("a dispatched run's selection", () => {
       brand: null,
       model: null,
       priceCents: 1999,
+      priceSource: "search_results_page",
       inStock: true,
       isFirstParty: true,
       sellerName: "Newegg",

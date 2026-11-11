@@ -6,7 +6,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { amazonAdapter } from "../src/adapters/amazon.js";
 import { neweggAdapter } from "../src/adapters/newegg.js";
-import type { ListingReader, RetailerAdapter } from "../src/adapters/types.js";
+import type {
+  CategoryReading,
+  ListingReader,
+  RetailerAdapter,
+} from "../src/adapters/types.js";
 import {
   LiveFetcher,
   LIVE_DEFAULTS,
@@ -300,7 +304,8 @@ describe("resolve sends the competitor's profile on competitor pages only", () =
 
 describe("the read run sends the reader's profile", () => {
   it("on every listing it reads", async () => {
-    const reader: ListingReader = {
+    const reader: ListingReader & CategoryReading = {
+      categoryReader: null,
       slug: "fake",
       hosts: ["r.test"],
       pacing: { pagesAtOnce: 3 },
@@ -321,6 +326,7 @@ describe("the read run sends the reader's profile", () => {
     const port: ReadRunPort = {
       fetchJob: () => Promise.resolve(job),
       reportReadings: applied,
+      reportCategories: applied,
       reportCompleted: applied,
       reportError: applied,
     };
