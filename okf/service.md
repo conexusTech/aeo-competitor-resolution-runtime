@@ -248,8 +248,8 @@ is `end` past page 1 and a failure on page 1. Product pages (`ParsedProduct`
 and the read run's `ListingPageReading`) carry `category: { id, name, url } |
 null`, the deepest level of their breadcrumb — B&H's primary category path,
 Newegg's last `SubCategory`/`Category` crumb, Amazon's last browse node — and
-`null` at Best Buy and Costco. Neither reaches the gateway yet: the walk, its
-job and its events are `insights-monitor-by-category-where-cheaper`'s.
+`null` at Best Buy and Costco. A read run's reading carries it to the
+gateway; the walk that uses the reader is the section below.
 Behaviour: [category-reads](/capabilities/category-reads.md).
 
 **Pages at once comes from the job.** The gateway sends the competitor's
@@ -300,12 +300,76 @@ drift:
 | the evidence's `title`, `sellerName`, `brand`, `model`, `itemId` | 512, 255, 160, 128, 128 | `withinEvidenceLimits`, on the chosen listing and every alternative |
 | one query in a finding's trail | 500 | cut |
 | `unverifiableReason` | 200 | every adapter's reasons are held to it in a test; a longer one is sent as `null` and logged |
+| a category's `error` in a read run's `categories` event | 512 | cut, ending "…" — a requirement on the gateway's DTO |
 
 A job item's `partNumber` and `brand` are checked on the way in against the
 gateway's own 128 and 160. Two ceilings guard the way in from the vendor: a
 response larger than 12 MB is refused while it streams (Costco's product pages,
 the largest, are 2.8–3.8 MB), and a product index naming more files than its
 `maxFiles` is refused before any is fetched.
+
+## A category is read whole where the gateway planned it — since 2026-11-12
+
+`insights-monitor-by-category-where-cheaper`, the runtime half. A read job may
+carry `categories` beside its `listings`: which categories to read, and which
+of the competitor's watched listings each should price, is the gateway's plan;
+reading them is this container's. Behaviour:
+[category-reads](/capabilities/category-reads.md).
+
+```ts
+categories?: { categoryId: uuid; url: string; kind: "walk" | "size";
+               lastPage: number | null;
+               listings: { listingId: uuid; itemId: string; url: string }[] }[]
+```
+
+- **`walk`** reads pages 1 to the last page the category itself states (the
+  job's `lastPage` where it states none, or until the reader says the end),
+  never more than `MAX_WALK_PAGES`, 60. **`size`** reads page 1 only. A card
+  whose `itemId` equals a watched listing's prices it — on a walk that is
+  whole.
+- 🔴 **Everything else is read from its own page, in this container, today**:
+  a card missing or unpriced; every listing of a walk with a page that is not
+  a category page or could not be had after its re-reads, that saw fewer than
+  90% of the products the category states, or that is longer than 60 pages;
+  every listing at a competitor whose `categoryReader` is `null`. Hence each
+  category listing carries its own `url` — required, checked like a read
+  listing's (contract point 8, 2026-11-12) — and a job missing one is refused.
+- 🔑 **One listing, one read, per job.** A category's listings are never also
+  in the job's `listings`; a listing named twice anywhere, or a category named
+  twice, refuses the job, as does more than 200 categories
+  (`MAX_CATEGORIES_PER_JOB`) or any malformed field. Absent or empty
+  `categories` is the read exactly as before.
+- **Pages at once is shared.** A walk is one worker, its pages read one after
+  another, so walks and product reads together never hold more pages open
+  than the job's `pagesAtOnce` (at most 4). Walks are taken first, since the
+  listings a walk leaves can only be read after it. A walk page uses the same
+  fetcher, profile and request count as a product read; a throttled one is
+  read again after the same 20/40/80 s, from the same job-wide budget, which
+  is now sized by every watched listing in the job.
+
+**What the gateway hears.** Every reading carries `priceSource` —
+`product_page` (failed and gone readings included) or `category_page` — and
+`category`, the breadcrumb a product page names (`null` for a card or a
+failure). A card's reading is `pageFound: true` with its price and stock, no
+barcode and `pageItemId` the card's id. After the last readings, one
+`categories` event carries each finished category in job order — `status`
+(`valid` | `invalid` | `failed`), `pagesRead`, `productsSeen`,
+`watchedFound`, `total`, `lastPage`, `error` — with the run's
+`requests_spent`, and only then the terminal event. A categories event the
+gateway refuses ends the batch in `error`; one answered as a run gone sends
+nothing more. A job with no categories sends no such event.
+
+🔴 **A walk told to stop just stops.** It buys no further page, reports no
+outcome and prices nothing; the gateway plans the category again next cycle.
+Categories that finished are still reported before the batch's `error`, within
+the shutdown's 27 s.
+
+**Resolution findings say where their price came from too**:
+`match.priceSource` is `product_page` where the probed page stated the price,
+`search_results_page` where only the search card did, `null` with no price
+(contract point 9: inside the match, none on alternatives). Newegg and Amazon
+report `search_results_page` throughout, since their product pages state no
+price.
 
 ## The strategy, and why it is not the obvious one
 
@@ -327,7 +391,10 @@ retailer routes long numeric queries to an error page (measured: the constraint 
 **10 or more digits**, not "numeric") and embeds the barcode only on the product
 page. Hence three steps: derive an identity, search on it, then verify by barcode.
 
-The category walk keeps a job, and it is a different one — assortment intelligence.
+The category walk keeps a job, and it is a different one: pricing listings
+already paired, in monitoring, where reading a category whole is cheaper than
+reading its watched products one by one — never finding an item, since a walk
+that misses a listing proves nothing about it.
 
 ## Three outcomes, and the third is not a match
 
@@ -404,6 +471,7 @@ src/queue-run.ts     the sequence a dispatched run follows — testable
 src/stop-signal.ts   SIGTERM, the shutdown's limits, and waits bounded by them
 src/clock.ts         the clock every limit and wait is measured on — injectable
 src/read-run.ts      a listing read: one fetch per listing, readings out
+src/category-walk.ts a category walk or size read, and which listings it prices
 src/job-file.ts      a job from a file, for a run with no services
 src/main.ts          reads the environment, picks a mode. No logic.
 ```

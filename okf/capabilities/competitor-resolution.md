@@ -501,6 +501,15 @@ answer as data, and nothing above the seam names it.
 
 **Checked by:** resolution-price-from-probed-page, resolution-price-falls-back-to-the-card, resolution-unknown-stock-is-unknown
 
+#### Scenario: Every price a finding reports says which page it came from
+- GIVEN a pairing whose price was read from its product page, or only from the search result that found it
+- WHEN the finding is reported
+- THEN its price is labelled as the product page's or as the search results page's, beside the price itself
+- AND a pairing with no price carries no source
+- AND a pairing proven from the run's memory, whose page was not read, is labelled the search results page's
+
+**Checked by:** resolution-price-source-says-the-page, resolution-price-source-on-the-wire
+
 #### Scenario: The client's own part number and brand are searched before anything derived
 - GIVEN a row of the client's list that states the product's part number and brand
 - WHEN the item is resolved

@@ -1,18 +1,19 @@
 ---
 type: Capability
 title: One read of a competitor's category page prices every product it lists
-description: A competitor's category page is read whole — every product it lists, named as its listing is named, with the price its card shows or none — and a body that is not a category page is a failure, never an empty category. Past the last page is the end. Product pages name the category their product sits in. B&H, Newegg and Amazon have category reads; Best Buy and Costco do not.
+description: A competitor's category page is read whole — every product it lists, named as its listing is named, with the price its card shows or none — and a body that is not a category page is a failure, never an empty category. Past the last page is the end. Product pages name the category their product sits in. B&H, Newegg and Amazon have category reads; Best Buy and Costco do not. A read job can ask for a category's walk or its size; a whole walk prices each watched listing from its card, and every listing a walk cannot price is read from its own page the same day. Every reading says which kind of page its price came from.
 ---
 
 # One read of a category page prices every product it lists
 
-Part of Phase CI-2 (`insights-reads-category-pages`), the parsing half. A
-monitoring day can read a whole category page — 28 products at B&H, 36 at
-Newegg — for the price of one request, where reading each watched product
-costs one request apiece. The walk across a category's pages, the job that
-asks for it and the events that report it are the next change's
-(`insights-monitor-by-category-where-cheaper`); what is here is pure: an
-address for each page, and what one body says.
+Part of Phase CI-2. A monitoring day can read a whole category page — 28
+products at B&H, 36 at Newegg — for the price of one request, where reading
+each watched product costs one request apiece. `insights-reads-category-pages`
+built the parsing half: an address for each page, and what one body says.
+`insights-monitor-by-category-where-cheaper` built the rest in this runtime:
+the walk across a category's pages, the read job that asks for it, and the
+events that report it. Which categories to walk, and when, is the gateway's
+plan (`aeo-backend`).
 
 ## What a reading says
 
@@ -35,8 +36,32 @@ category, or for no whole page number) and reads one body as exactly one of:
 
 A product page's reading — resolution's and the read run's — also names the
 category its product sits in, the deepest level of its breadcrumb, as an id, a
-name and an address, or `null`. Nothing here sends a category to the gateway
-yet.
+name and an address, or `null`. A read run's reading carries it to the
+gateway, which is how a watched listing is placed in a category a walk can
+price.
+
+## A monitoring day reads a category whole where it was planned
+
+A read job may carry categories beside its listings. Each is a **walk** —
+every page, to price its watched listings from their cards — or a **size** —
+page 1 only, to learn its count and last page. A category's watched listings
+are not also among the job's listings: each is read exactly once, from its
+card or from its own page.
+
+| A watched listing whose… | is |
+|---|---|
+| card shows a price, on a whole walk | priced from the card: `priceSource: "category_page"`, no barcode, no category |
+| card is missing, or shows no price | read from its own page, in the same container |
+| walk is not whole — a page that is not one of the category, a page that could not be had after its re-reads, fewer than 90% of the stated products seen, more than 60 pages — or whose competitor has no category reads | read from its own page, its card ignored if seen |
+
+A walk reads to the last page the category states (the job's figure where it
+states none, or until the category says it ends), never more than 60 pages.
+Walks and product reads share the job's pages at once (never more than 4); a
+walk's pages are read one after another. After the readings, one `categories`
+event says what became of each category — status `valid`, `invalid` or
+`failed`, pages read, products seen, watched listings found, the stated count
+and last page, and why — then the terminal event. A walk the container is told
+to stop part-way says nothing and prices nothing; the gateway plans it again.
 
 ## Scenarios
 
@@ -126,6 +151,110 @@ yet.
 - AND their product pages name no category
 
 **Checked by:** category-read-none-for-bestbuy-and-costco
+
+#### Scenario: A walk prices each watched listing from its card
+- GIVEN a read job asking for a category's walk, and the watched listings in it
+- WHEN every page of the category is read and the walk is whole
+- THEN each watched listing whose card shows a price is priced from that card, as a category-page reading with no barcode and no category
+- AND no product page is bought for it
+- AND its reading's time is when the page carrying its card arrived
+- AND a card seen on two pages prices its listing once
+
+**Checked by:** category-walk-prices-from-cards, category-walk-card-twice-once
+
+#### Scenario: A listing its card cannot price is read from its own page, the same day
+- GIVEN a whole walk in which a watched listing's card is missing or shows no price
+- WHEN the walk ends
+- THEN that listing is read from its own product page in the same container
+- AND it has exactly one reading, never also one from the category
+
+**Checked by:** category-walk-missing-or-unpriced-falls-back
+
+#### Scenario: A walk that cannot be trusted prices nothing
+- GIVEN a walk in which a page is not a page of the category, a page could not be had after its re-reads, or the walk saw fewer than 90% of the products the category states
+- WHEN it ends
+- THEN every watched listing in it is read from its own page, one whose card was seen included
+- AND no page after the bad one is bought
+- AND the category is reported failed or invalid, saying why
+
+**Checked by:** category-walk-bad-page-falls-back-whole, category-walk-failed-page-falls-back, category-walk-thin-walk-falls-back, category-walk-throttled-page-then-fails
+
+#### Scenario: A size read buys page 1 only
+- GIVEN a read job asking for a category's size
+- WHEN it runs
+- THEN page 1 alone is bought
+- AND the category's stated count and last page are reported
+- AND a watched listing priced on page 1 is priced from it, and any other read from its own page
+
+**Checked by:** category-size-reads-page-one
+
+#### Scenario: A walk reads to the category's own last page, and never past 60
+- GIVEN a walk
+- WHEN its pages are read
+- THEN it stops at the last page the category states, at the job's figure where the category states none, or where the category says it ends
+- AND it never reads more than 60 pages
+- AND a walk the job says has more than 60 pages is not started, and one whose category states more stops after its first page, each reading its listings from their own pages
+
+**Checked by:** category-walk-reads-to-the-stated-last-page, category-walk-reads-to-the-end, category-walk-never-past-sixty, category-walk-too-long-is-not-a-walk
+
+#### Scenario: A competitor without category reads reads its watched listings from their own pages
+- GIVEN a read job asking for categories at a competitor with no category reads
+- WHEN it runs
+- THEN no category page is bought
+- AND every category is reported failed, saying so
+- AND every watched listing is read from its own page
+
+**Checked by:** category-walk-none-for-a-competitor-without
+
+#### Scenario: Walks and product reads share the job's pages at once
+- GIVEN a job with walks, product reads and the listings walks leave, and a pages-at-once figure
+- WHEN it runs
+- THEN never more pages are open at once than that figure, and never more than 4
+- AND every page is bought once
+
+**Checked by:** category-walk-pages-at-once
+
+#### Scenario: A job with no categories reads exactly as before
+- GIVEN a read job with no categories, absent or empty
+- WHEN it runs
+- THEN it buys the same pages in the same order and sends the same events as before category reads, with no categories event
+- AND its readings differ only by saying they are product-page readings and naming their category
+
+**Checked by:** category-walk-none-is-todays-read
+
+#### Scenario: Every category's outcome reaches the gateway before the end
+- GIVEN a read job asking for categories
+- WHEN its readings are filed
+- THEN one categories event follows, one entry per category: its status, pages read, products seen, watched listings found, stated count and last page, and why it is not valid
+- AND then the terminal event, and nothing after it
+- AND a categories event the gateway refuses ends the batch in error, and one for a run that has ended sends nothing more
+
+**Checked by:** category-report-before-the-end, category-report-refused-is-an-error, category-report-on-the-wire
+
+#### Scenario: A category the job asks for in a shape this build cannot work is refused before anything is bought
+- GIVEN a read job whose categories are malformed, more than 200, off the competitor's own host, name one category twice, or name one listing twice in the job
+- WHEN the job is read
+- THEN it is refused, and nothing is bought
+- AND a watched listing with no page of its own is refused, since its fallback needs one
+
+**Checked by:** category-job-malformed-refused, category-job-listing-once, category-job-off-host-refused
+
+#### Scenario: A walk told to stop just stops
+- GIVEN a walk under way when the container is told to stop
+- WHEN the stop arrives
+- THEN the walk buys no further page
+- AND it reports no outcome and prices nothing, so the gateway plans it again
+- AND categories that finished are still reported before the batch ends in error
+
+**Checked by:** category-walk-told-to-stop
+
+#### Scenario: Every reading says which kind of page its price came from
+- GIVEN a read job
+- WHEN a listing is read, from its card or from its own page
+- THEN its reading says category page or product page
+- AND a product page's reading names the category its breadcrumb places it in, and a card's names none
+
+**Checked by:** category-reading-says-its-page
 
 #### Scenario: The committed category pages read as the captured pages did, and carry no session value
 - GIVEN a real category or product page committed as a test page

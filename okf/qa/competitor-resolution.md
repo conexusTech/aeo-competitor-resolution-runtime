@@ -1981,6 +1981,51 @@ omitted. The gateway stores it as `unknown`; that half is
 
 ---
 
+### Check: resolution-price-source-says-the-page
+
+**Requirement:** Every price a finding reports says which page it came from
+**Surface:** `resolveItem`'s evidence
+**Automated:** `test/evidence-from-the-page.spec.ts` — "the product page, where the page that proved the pairing states the price", "the search results page, where only the card that found it does", "none, where there is no price to say it of", "the search results page for a pairing proven from the run's memory, whose page was not read"; `test/replays-unchanged.spec.ts`
+
+**Do**
+
+```bash
+npx vitest run test/evidence-from-the-page.spec.ts -t "says which page it came from"
+npx vitest run test/replays-unchanged.spec.ts
+```
+
+**Expect**
+
+Four pass. `match.priceSource` is `product_page` where the page stated the
+price, `search_results_page` where only the card did (and where the pairing was
+proven from memory, with no page read), and `null` exactly where `priceCents`
+is `null`. The four committed replays still reproduce every row: their records
+differ from before only by this one field — 24 Newegg prices from the search
+card, 11 Best Buy, 8 B&H and 1 Costco from the product page, 3 B&H matches with
+none. Mutating either label turns a check red.
+
+---
+
+### Check: resolution-price-source-on-the-wire
+
+**Requirement:** Every price a finding reports says which page it came from
+**Surface:** `GatewayClient.reportResolutions`
+**Automated:** `test/evidence-from-the-page.spec.ts` — "is sent inside the match, beside the price it describes"
+
+**Do**
+
+```bash
+npx vitest run test/evidence-from-the-page.spec.ts -t "is sent inside the match"
+```
+
+**Expect**
+
+One pass. The posted body carries `"priceCents":1299,"priceSource":"product_page"`
+inside the finding's `match` (contract point 9: in the match evidence, none on
+alternatives, none without a match).
+
+---
+
 ### Check: resolution-client-part-number-asked-first
 
 **Requirement:** The client's own part number and brand are searched before anything derived

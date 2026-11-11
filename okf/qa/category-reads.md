@@ -463,3 +463,353 @@ Scan every committed Newegg and Amazon category page, and every B&H page, for se
 **Expect**
 
 No marker in any committed page; each synthetic sample is found.
+
+---
+
+## The walk, its job and its events
+
+Checks for the walk (`insights-monitor-by-category-where-cheaper`, the
+runtime half), written with its tests.
+
+🔑 **Every check is automated and offline.** The category pages are
+SYNTHETIC — a JSON body a test reader parses — because no real walk of more
+than four pages has been captured; the fetcher double, the job parser, the
+gateway port and the read run are the real ones. One check reads B&H's real
+Mice & Touchpads page 1 through the B&H reader.
+
+```bash
+npx vitest run test/category-monitoring.spec.ts
+```
+
+🔴 **Twenty-two mutations, each shown red, then reverted**: an invalid walk
+still pricing; an unpriced card pricing; the 90% share lowered, and its
+boundary moved by one; a size read buying two pages; either 60-page ceiling
+unchecked; the job's last page preferred over the category's; the walk
+ignoring the stop; a throttled page not re-read; workers not capped by pages
+at once; a categories event sent for a job with none; a refused categories
+event completing; the lost wake-up (a worker waiting on a walk that ended
+while it sent a batch); fallbacks dropped; a category's host unchecked; a
+category listing's url not required; a listing allowed twice; the 200 cap
+lifted; a reading naming no category; and both of a finding's price sources.
+
+### Check: category-walk-prices-from-cards
+
+**Requirement:** A walk prices each watched listing from its card
+**Surface:** `runReadJob`, `walkCategory`, `settleWalk`
+**Automated:** test/category-monitoring.spec.ts — "prices each watched listing from its card and buys no product page"
+
+**Do**
+
+Walk a two-page category stating 6 products and last page 2, watching A (page 1, 1299 cents) and D (page 2, 899 cents).
+
+**Expect**
+
+Exactly the two category pages are bought. A and D each have one reading, equal field for field to `pageFound: true`, `pageItemId` their own id, `barcode: null`, `additionalBarcodes: []`, the card's price and stock, `failure: null`, `priceSource: "category_page"`, `category: null`, with `readAt` the arrival of the page their card was on (06:00:01 and 06:00:02). The categories event is `valid`, 2 pages, 6 products, 2 watched found, total 6, last page 2, no error; the events are readings, categories, completed.
+
+### Check: category-walk-card-twice-once
+
+**Requirement:** A walk prices each watched listing from its card
+**Surface:** `walkCategory`
+**Automated:** test/category-monitoring.spec.ts — "CONTROL: the same card twice prices its listing once"
+
+**Do**
+
+Walk two pages that both list A, at 1299 then 1399.
+
+**Expect**
+
+One reading for A, at 1299 (the first card), and A's product page is never bought.
+
+### Check: category-walk-missing-or-unpriced-falls-back
+
+**Requirement:** A listing its card cannot price is read from its own page, the same day
+**Surface:** `runReadJob`, `settleWalk`
+**Automated:** test/category-monitoring.spec.ts — "reads an unpriced or missing card's listing from its own page, the same day"
+
+**Do**
+
+Walk a whole one-page category watching A (priced card), B (card with no price) and Z (no card).
+
+**Expect**
+
+The category page and B's and Z's product pages are bought, nothing else. Three readings: A from its card; B and Z `product_page` readings at their page's price with the barcode and the breadcrumb category. Never a price of 0 for B. The category is `valid` with 2 watched found.
+
+### Check: category-walk-bad-page-falls-back-whole
+
+**Requirement:** A walk that cannot be trusted prices nothing
+**Surface:** `walkCategory`, `settleWalk`
+**Automated:** test/category-monitoring.spec.ts — "a page that is not a category page mid-walk sends every watched listing to its own page"
+
+**Do**
+
+Walk a three-page category whose page 2 is a robot check, watching A (priced on page 1) and D (on page 3).
+
+**Expect**
+
+Page 3 is never bought; A's and D's product pages are. Both readings are `product_page` — A's card is not used. The category is `failed`, 1 page read, 1 watched found, total 6, last page 3, its error starting "page 2" and naming it not a page of the category.
+
+### Check: category-walk-failed-page-falls-back
+
+**Requirement:** A walk that cannot be trusted prices nothing
+**Surface:** `walkCategory`
+**Automated:** test/category-monitoring.spec.ts — "a page that could not be had fails the walk, and its listings are read from their own pages"
+
+**Do**
+
+Walk a category whose page 2 answers 503.
+
+**Expect**
+
+A's reading is `product_page`; the category is `failed` with "page 2 could not be read: … status=503".
+
+### Check: category-walk-thin-walk-falls-back
+
+**Requirement:** A walk that cannot be trusted prices nothing
+**Surface:** `walkCategory`
+**Automated:** test/category-monitoring.spec.ts — "a walk that saw fewer than 90% of the category's stated products falls back whole", "CONTROL: a walk that saw exactly 90% is whole"
+
+**Do**
+
+Walk a category stating 10 products whose two pages show 8; then one whose pages show 9.
+
+**Expect**
+
+At 8: both watched listings are read from their own pages and the category is `invalid`, 8 products, total 10, error "the walk saw 8 of the 10 products the category states, fewer than 90%". At 9: no product page is bought, both are priced from their cards, and the category is `valid`.
+
+### Check: category-walk-throttled-page-then-fails
+
+**Requirement:** A walk that cannot be trusted prices nothing
+**Surface:** `walkCategory`
+**Automated:** test/category-monitoring.spec.ts — "a throttled category page is read again at the measured pace, then fails the walk"
+
+**Do**
+
+Walk a category whose page 2 the vendor answers with an empty 200 every time.
+
+**Expect**
+
+Page 2 is asked for 4 times, after waits of 20, 40 and 80 s (`READ_PACING`), the run counts 3 re-reads from the job's budget, the category is `failed` "throttled on all 4 reads", and the watched listing is read from its own page.
+
+### Check: category-size-reads-page-one
+
+**Requirement:** A size read buys page 1 only
+**Surface:** `walkCategory`
+**Automated:** test/category-monitoring.spec.ts — "a size read buys page 1 only and reports the category's count and last page", "reads B&H's real category page 1 for its size, pricing the watched card it shows"
+
+**Do**
+
+Size a category whose page 1 states 140 products and 5 pages, watching A (on page 1) and Q (not). Then size B&H's real Mice & Touchpads page 1 watching `1910635` and `1431406` (whose card withholds its price).
+
+**Expect**
+
+Only page 1 is bought. The report is exactly `size`, `valid`, 1 page, 2 products, 1 watched found, total 140, last page 5, no error; A is a `category_page` reading, Q a `product_page` one. At B&H: `valid`, 28 products, 2 found, total 412, last page 15; `1910635` at 11999 cents from its card, `1431406` read from its own page.
+
+### Check: category-walk-reads-to-the-stated-last-page
+
+**Requirement:** A walk reads to the category's own last page, and never past 60
+**Surface:** `walkCategory`
+**Automated:** test/category-monitoring.spec.ts — "reads to the last page the retailer states, and never buys the page past it"
+
+**Do**
+
+Walk a category the job knew as 2 pages, whose pages now state 3.
+
+**Expect**
+
+Exactly pages 1, 2 and 3 are bought; the listing on page 3 is priced from its card.
+
+### Check: category-walk-reads-to-the-end
+
+**Requirement:** A walk reads to the category's own last page, and never past 60
+**Surface:** `walkCategory`
+**Automated:** test/category-monitoring.spec.ts — "reads until the retailer says the end where no page states a last page"
+
+**Do**
+
+Walk a category that states no count and no last page, whose page 3 is the end.
+
+**Expect**
+
+3 requests; the report is `valid`, 2 pages read (the end is not one), 2 products, total and last page `null`.
+
+### Check: category-walk-never-past-sixty
+
+**Requirement:** A walk reads to the category's own last page, and never past 60
+**Surface:** `walkCategory`, `MAX_WALK_PAGES`
+**Automated:** test/category-monitoring.spec.ts — "never reads past 60 pages"
+
+**Do**
+
+Walk a category that never ends and states no last page.
+
+**Expect**
+
+Exactly 60 pages are bought.
+
+### Check: category-walk-too-long-is-not-a-walk
+
+**Requirement:** A walk reads to the category's own last page, and never past 60
+**Surface:** `walkCategory`
+**Automated:** test/category-monitoring.spec.ts — "a walk the job says is longer than a walk reads is not started", "a category that states more pages than a walk reads stops after its first page"
+
+**Do**
+
+Ask for a walk the job says has 61 pages; then a walk whose page 1 states 72.
+
+**Expect**
+
+The first buys no category page: `failed`, 0 pages, "a walk of 61 pages is past the 60 one walk reads; not started", and its listing is read from its own page. The second buys page 1 only, is `invalid` with last page 72, and its listing is read from its own page.
+
+### Check: category-walk-none-for-a-competitor-without
+
+**Requirement:** A competitor without category reads reads its watched listings from their own pages
+**Surface:** `walkCategory`
+**Automated:** test/category-monitoring.spec.ts — "a competitor with no category reads reports every category failed and reads its listings from their pages"
+
+**Do**
+
+Run a job with a walk and a size read against a reader whose `categoryReader` is `null`.
+
+**Expect**
+
+Only the two product pages are bought; both categories are `failed` with 0 pages, the error naming no category reads; the events are readings, categories, completed.
+
+### Check: category-walk-pages-at-once
+
+**Requirement:** Walks and product reads share the job's pages at once
+**Surface:** `runReadJob`
+**Automated:** test/category-monitoring.spec.ts — "never holds more pages open than the job's figure, however the work divides", "a job asking for 12 at once reads at 4"
+
+**Do**
+
+Run three 4-page walks whose every card is unpriced (12 fallbacks) beside 8 product reads, each fetch held open, at pages at once 1, 2 and 3; then at 12.
+
+**Expect**
+
+32 distinct pages, each bought once, 20 readings; the most open at once is exactly 1, 2 and 3, and 4 for a job asking 12.
+
+### Check: category-walk-none-is-todays-read
+
+**Requirement:** A job with no categories reads exactly as before
+**Surface:** `runReadJob`, `parseReadJob`
+**Automated:** test/category-monitoring.spec.ts — "buys the same pages in the same order and sends the same events, absent or empty", "parses a job with no categories as none"; test/read-run.spec.ts, test/read-run-sigterm.spec.ts, test/pages-at-once.spec.ts
+
+**Do**
+
+Run five product reads with `categories` absent and again with `[]`; parse a job without the field and with `null`. Run the existing read-run suites, whose only edits are the two new reading fields and the parsed job's empty `categories`.
+
+**Expect**
+
+Both runs buy the five pages in job order and send readings then completed — no categories event — and their events are equal. Every reading is `product_page`. The parsed jobs carry `categories: []`. The existing suites pass.
+
+### Check: category-report-before-the-end
+
+**Requirement:** Every category's outcome reaches the gateway before the end
+**Surface:** `runReadJob`
+**Automated:** test/category-monitoring.spec.ts — "prices each watched listing from its card and buys no product page", "sends nothing more once the gateway says the run has ended"
+
+**Do**
+
+Run a walk to completion; then one whose categories event the gateway answers as a run that has ended.
+
+**Expect**
+
+Readings, then one categories event, then completed. Against a run that has ended: readings, categories, and nothing more.
+
+### Check: category-report-refused-is-an-error
+
+**Requirement:** Every category's outcome reaches the gateway before the end
+**Surface:** `runReadJob`
+**Automated:** test/category-monitoring.spec.ts — "ends the batch in error, not completed, when the gateway refuses it"
+
+**Do**
+
+Run a walk whose categories event the gateway refuses with a 400.
+
+**Expect**
+
+Readings, categories, error — never completed — the error saying the categories were not accepted (refused: 400).
+
+### Check: category-report-on-the-wire
+
+**Requirement:** Every category's outcome reaches the gateway before the end
+**Surface:** `ReadRunClient.reportCategories`
+**Automated:** test/category-monitoring.spec.ts — "is posted with the counter, after the readings, by the read run's client"
+
+**Do**
+
+Post one category report with 4 requests spent and 3 pages delivered, then an empty one.
+
+**Expect**
+
+One body: `runtime_version`, `type: "categories"`, the report verbatim, `requests_spent: 4`, `pages_delivered: 3`. The empty report sends nothing.
+
+### Check: category-job-malformed-refused
+
+**Requirement:** A category the job asks for in a shape this build cannot work is refused before anything is bought
+**Surface:** `parseReadJob`
+**Automated:** test/category-monitoring.spec.ts — "CONTROL: reads a well-formed category, and a job of categories alone", "refuses every malformed field before anything is bought", "refuses more than 200 categories", "CONTROL: still refuses a job with no listings and no categories"
+
+**Do**
+
+Parse a well-formed category in a job with no listings of its own; then sixteen malformed ones; then 200 and 201 categories; then a job with neither.
+
+**Expect**
+
+The well-formed one is read verbatim. Each malformed one throws: categories not an array, a category not an object, a categoryId not a uuid, no url, an http url, a url with a port, a kind other than walk or size, a last page of 0, 1.5 or "4", no listings array, a listing not an object, a listingId not a uuid, no itemId, **no url** (contract point 8) or an http url. 200 parse; 201 throw "more than the 200". A job with neither listings nor categories throws "carries no listings".
+
+### Check: category-job-listing-once
+
+**Requirement:** A category the job asks for in a shape this build cannot work is refused before anything is bought
+**Surface:** `parseReadJob`
+**Automated:** test/category-monitoring.spec.ts — "refuses a listing read twice in one job, and a category asked for twice"
+
+**Do**
+
+Parse one listing in two categories; a category listing that is also a product read, by id and by url; one category twice, by id and by address.
+
+**Expect**
+
+The first three throw "at most once per job"; the last two throw "names a category twice".
+
+### Check: category-job-off-host-refused
+
+**Requirement:** A category the job asks for in a shape this build cannot work is refused before anything is bought
+**Surface:** `runReadJob`
+**Automated:** test/category-monitoring.spec.ts — "refuses a category or a category listing off the competitor's host before buying anything"
+
+**Do**
+
+Run a job whose category, then whose category listing, is on another host.
+
+**Expect**
+
+Each rejects "refused before anything was bought", with no request made and an error as the only event.
+
+### Check: category-walk-told-to-stop
+
+**Requirement:** A walk told to stop just stops
+**Surface:** `runReadJob`, `walkCategory`
+**Automated:** test/category-monitoring.spec.ts — "stops taking pages, reports no outcome for it, and files nothing after the end"
+
+**Do**
+
+At one page at once, size a category (finishes), then walk a 10-page one; SIGTERM arrives as the walk asks for its fourth page.
+
+**Expect**
+
+5 requests in all — the page in flight finishes, none after. The categories event names only the size read; the only reading is its listing's. Events are readings, categories, error ("told to stop … 1 of 2 listing(s)"), and nothing after; the run reports `stopped`, inside the 27 s the shutdown allows.
+
+### Check: category-reading-says-its-page
+
+**Requirement:** Every reading says which kind of page its price came from
+**Surface:** `readListing`, `runReadJob`
+**Automated:** test/category-monitoring.spec.ts — "prices each watched listing from its card and buys no product page", "reads an unpriced or missing card's listing from its own page, the same day", "reads B&H's real category page 1 for its size, pricing the watched card it shows"; test/read-run.spec.ts — "carries every field of the contract for a page that was read"
+
+**Do**
+
+Read a listing from its card and others from their own pages; read one real Newegg product page.
+
+**Expect**
+
+A card's reading is `category_page` with `category: null`; a product page's is `product_page` with its breadcrumb category (Newegg's TV Mounts & Install Accessories, id 696, on the real page). A failed reading is `product_page` with `category: null`.

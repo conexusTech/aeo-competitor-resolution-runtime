@@ -683,7 +683,7 @@ Read one Newegg listing.
 
 **Expect**
 
-The reading equals, field for field, `itemId`, `pageItemId`, `readAt`, `pageFound: true`, barcode, `additionalBarcodes`, price, stock and `failure: null` — the whole contract, nothing extra.
+The reading equals, field for field, `itemId`, `pageItemId`, `readAt`, `pageFound: true`, barcode, `additionalBarcodes`, price, stock, `failure: null`, `priceSource: "product_page"` and the `category` its breadcrumb names (Newegg's TV Mounts & Install Accessories, id 696) — the whole contract, nothing extra.
 
 ### Check: listing-read-cost-on-every-event
 
