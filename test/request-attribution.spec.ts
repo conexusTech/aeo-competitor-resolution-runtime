@@ -280,6 +280,7 @@ describe("what the reporter tells the gateway it spent", () => {
     outcome: "not-found",
     identity: null,
     queriesTried: [],
+    queryTrail: [],
     candidatesSeen: 0,
     probes: 0,
     requests: 1,

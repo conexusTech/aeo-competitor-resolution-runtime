@@ -122,6 +122,7 @@ describe("🔴 the gateway client never posts a failure past the limit", () => {
     outcome: "not-found",
     identity: null,
     queriesTried: [],
+    queryTrail: [],
     candidatesSeen: 0,
     probes: 0,
     requests: 0,

@@ -32,6 +32,7 @@ const resolution = (clientSku: string): Resolution => ({
   identity: null,
   alternatives: [],
   queriesTried: [],
+  queryTrail: [],
   candidatesSeen: 0,
   probes: 0,
   requests: 1,

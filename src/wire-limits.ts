@@ -69,6 +69,18 @@ export const EVIDENCE_LIMITS = {
 export const MAX_QUERY_LENGTH = 500;
 
 /**
+ * `MAX_QUERY_TRAIL_PER_RESOLUTION`: the most entries a finding's
+ * `queriesTried` and its `queryTrail` may each carry.
+ *
+ * 🔑 **One ceiling for both lists, because they describe the same attempts**,
+ * one as bare strings and one with each attempt's count. A plan asks at most
+ * eight (six, the barcode beside them and the spelled-out fallback), so this
+ * is never reached by a working plan; it is held so a defect that grew the
+ * list cannot cost the batch its finding rides in.
+ */
+export const MAX_QUERY_ATTEMPTS_REPORTED = 50;
+
+/**
  * `ResolutionEvidenceDto.unverifiableReason`. Re-exported by the adapter seam,
  * where every adapter's reasons are held to it.
  */

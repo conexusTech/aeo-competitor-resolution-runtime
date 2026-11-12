@@ -26,6 +26,7 @@ import { isOwnHostUrl } from "./own-hosts.js";
 import { createIndexCache, type IndexCache } from "./product-index.js";
 import {
   boundText,
+  MAX_QUERY_ATTEMPTS_REPORTED,
   MAX_QUERY_LENGTH,
   withinEvidenceLimits,
 } from "./wire-limits.js";
@@ -135,12 +136,43 @@ export interface ResolutionEvidence {
   readonly unverifiableReason: string | null;
 }
 
+/**
+ * One query this item asked, and how many listings the answer to it held.
+ *
+ * 🔴 **`0` and `null` are different answers, and the evidence panel prints
+ * them differently.** `0` is a results page the retailer served that listed
+ * nothing — a fact about the retailer. `null` is a query nothing answered: the
+ * fetch failed, or the page was a block, a robot check or a truncated body
+ * rather than a results page — a fact about the request, never "no results".
+ */
+export interface QueryAttempt {
+  readonly query: string;
+  /**
+   * The listings the results page itself held, as the adapter parsed them —
+   * BEFORE the off-host filter and before de-duplication against earlier
+   * queries, so it is what the retailer returned for this query rather than
+   * what this item went on to trust. For a lookup in a product index
+   * (`index:<brand>`), the entries the index offered. `null` = not answered.
+   */
+  readonly candidateCount: number | null;
+}
+
 export interface Resolution {
   readonly barcode: string;
   readonly clientSku: string;
   readonly outcome: Outcome;
   readonly identity: ProductIdentity | null;
   readonly queriesTried: readonly string[];
+  /**
+   * `queriesTried` with each query's count: the same queries, in the same
+   * order, always the same length — built from it in one place, so no path
+   * can file one out of step with the other.
+   *
+   * 🔴 **Before this field the gateway made a trail up** from `queriesTried`
+   * with a count of 0 on every entry, and Match Review printed "no results"
+   * beside the very query that found the proposed listing.
+   */
+  readonly queryTrail: readonly QueryAttempt[];
   readonly candidatesSeen: number;
   readonly probes: number;
   readonly requests: number;
@@ -460,26 +492,63 @@ export async function resolveItem(
   // 🔑 Counted as the probes happen and stamped on whatever comes back, so
   // no return below can report a figure from before its last probe.
   const tally: ProbeTally = { probes: 0, unanswered: 0 };
+  // 🔑 Filled as the searches are answered, and read once on the way out —
+  // the same record the spelled-out fallback is decided on, so the trail and
+  // that decision cannot disagree about what was answered.
+  const answeredWith = new Map<string, number>();
   const resolution = await resolveCounted(
     request,
     adapter,
     sharedFetcher,
     options,
     tally,
+    answeredWith,
     memory,
     index,
     lastAttempt,
   );
   return {
     ...resolution,
-    // 🔴 A query is recorded at the gateway's limit, never sent cut: a client's
-    // product name of any length is still asked as written.
-    queriesTried: resolution.queriesTried.map((q) =>
-      boundText(q, MAX_QUERY_LENGTH),
-    ),
+    ...reportedQueries(resolution.queriesTried, answeredWith),
     probesUnanswered: tally.unanswered,
   };
 }
+
+/**
+ * The queries an item asked, as a finding reports them: `queriesTried`, and
+ * the same queries with each one's count as `queryTrail`.
+ *
+ * 🔑 **Both lists come from one list, here**, so they always agree in length
+ * and order — on every path that files a resolution, a found one, a miss, a
+ * failure and a proposal alike. A count is read from `answeredWith` by the
+ * query as it was ASKED, before it is held to the gateway's length: the
+ * search loop never asks one query twice, so a query names its attempt.
+ *
+ * - 🔴 A query is recorded at the gateway's limit, never sent cut: a client's
+ *   product name of any length is still asked as written.
+ * - 🔴 At most `MAX_QUERY_ATTEMPTS_REPORTED` of each, the first ones, which
+ *   are the plan's most specific: one past the gateway's cap refuses the batch
+ *   the finding rides in.
+ */
+export function reportedQueries(
+  tried: readonly string[],
+  answeredWith: ReadonlyMap<string, number>,
+): Pick<Resolution, "queriesTried" | "queryTrail"> {
+  const kept = tried.slice(0, MAX_QUERY_ATTEMPTS_REPORTED);
+  return {
+    queriesTried: kept.map((q) => boundText(q, MAX_QUERY_LENGTH)),
+    queryTrail: kept.map((q) => ({
+      query: boundText(q, MAX_QUERY_LENGTH),
+      candidateCount: answeredWith.get(q) ?? null,
+    })),
+  };
+}
+
+/**
+ * A resolution before its queries are reported: `resolveItem` adds the trail,
+ * from `queriesTried`, on the way out.
+ */
+type Counted = Omit<Resolution, "queryTrail">;
 
 /** Probes made for one item, and how many of them answered nothing. */
 interface ProbeTally {
@@ -493,10 +562,16 @@ async function resolveCounted(
   sharedFetcher: Fetcher,
   options: ResolveOptions,
   tally: ProbeTally,
+  /**
+   * How many listings each query was ANSWERED with — a results page the
+   * retailer served, or the product index read for this item. A failed fetch
+   * or another page is never recorded, so its absence is "not answered".
+   */
+  answeredWith: Map<string, number>,
   memory?: ProbeMemory,
   index?: IndexCache,
   lastAttempt = false,
-): Promise<Resolution> {
+): Promise<Counted> {
   // 🔴 **Every `requests` below used to be `liveRequestCount - startedAt` on
   // the fetcher this was handed — and that is not an attribution.** `runList`
   // runs three of these concurrently by default over ONE fetcher, so each
@@ -558,11 +633,6 @@ async function resolveCounted(
     if (!pool.has(candidate.itemId)) pool.set(candidate.itemId, candidate);
   };
 
-  /**
-   * How many listings each search ANSWERED with — only a results page the
-   * retailer served; a failed fetch or another page is never recorded.
-   */
-  const answeredWith = new Map<string, number>();
   /**
    * Ask the retailer one query, adding what it answers to the pool.
    *
@@ -741,7 +811,7 @@ async function resolveCounted(
         entry: { candidate: ParsedCandidate; score: number },
         agreeing: string,
         probedSoFar: ReadonlyMap<string, ProbeOutcome>,
-      ): Resolution => ({
+      ): Counted => ({
         ...counted,
         outcome: "verified",
         identity: null,
@@ -875,12 +945,15 @@ async function resolveCounted(
             `index, so it was never looked up`,
       };
     }
-    tried.push(`index:${itemBrand ?? productName}`);
+    const lookup = `index:${itemBrand ?? productName}`;
+    tried.push(lookup);
     const found = productIndex.candidates(indexEntries, {
       brand: itemBrand,
       partNumbers,
       productName,
     });
+    // The index was read, so the lookup was answered — with these entries.
+    answeredWith.set(lookup, found.length);
     candidatesSeen += found.length;
     for (const candidate of found) admit(candidate);
   } else {
@@ -1208,7 +1281,7 @@ async function resolveCounted(
   const verifiedOn = (
     entry: { candidate: ParsedCandidate; score: number },
     agreeing: string,
-  ): Resolution => ({
+  ): Counted => ({
     ...counted,
     outcome: "verified",
     identity,

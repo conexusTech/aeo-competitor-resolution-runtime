@@ -31,6 +31,12 @@ import {
  *   search card (its product pages state none); 11 Best Buy, 8 B&H and 1
  *   Costco price from the product page; and 3 B&H matches with no price and
  *   no source.
+ * - `insights-query-trail-reports-no-candidates` added `queryTrail` beside
+ *   every `queriesTried`: 914 lines, every one inside that field and nothing
+ *   else. The records were regenerated only after the new replays, with the
+ *   field removed, were shown equal to the old records. Of its 184 entries,
+ *   104 are a results page or index lookup listing nothing (`0`) and 80
+ *   list something; none is `null`, because every corpus page answered.
  */
 
 const recorded = (name: (typeof REPLAYS)[number]): ReplayedRow[] =>

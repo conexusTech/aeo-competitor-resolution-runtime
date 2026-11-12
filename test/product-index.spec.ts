@@ -415,6 +415,28 @@ describe("resolving one item from the index", () => {
     expect(r.probes).toBe(0);
   });
 
+  it("🔴 the lookup's trail entry carries how many entries the index offered", async () => {
+    const s = site();
+    const r = await resolveItem(item(3), indexed, s, OPTIONS);
+    expect(r.queryTrail).toEqual([{ query: "index:Acme", candidateCount: 20 }]);
+  });
+
+  it("🔴 an index read that offered nothing is 0, an answer — not null", async () => {
+    const s = site({
+      [CATALOGUE.replace("{sku}", "SKU0")]: catalogue("SKU0", "Other"),
+    });
+    const r = await resolveItem(item(0), indexed, s, OPTIONS);
+    expect(r.queryTrail).toEqual([{ query: "index:Other", candidateCount: 0 }]);
+  });
+
+  it("an index that could not be read sends an empty trail beside its empty queriesTried", async () => {
+    const s = site({}, new Map([[LIST, 99]]));
+    const r = await resolveItem(item(0), indexed, s, OPTIONS);
+    expect(r.failure).toMatch(/product index could not be read/);
+    expect(r.queriesTried).toEqual([]);
+    expect(r.queryTrail).toEqual([]);
+  });
+
   it("🔴 an item with no brand and no name cannot be looked up, and says so", async () => {
     const s = site({ [CATALOGUE.replace("{sku}", "SKU0")]: "<html></html>" });
     const r = await resolveItem(item(0), indexed, s, {

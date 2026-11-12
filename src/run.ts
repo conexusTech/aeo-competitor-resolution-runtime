@@ -391,7 +391,9 @@ export async function runList(
           identity: null,
           // A pipeline that could not complete has no ranking to offer.
           alternatives: [],
+          // Nothing it asked can be reported, so neither list says anything.
           queriesTried: [],
+          queryTrail: [],
           candidatesSeen: 0,
           probes: 0,
           // What it had already bought when it threw — not zero. See the

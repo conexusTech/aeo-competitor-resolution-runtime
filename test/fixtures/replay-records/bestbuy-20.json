@@ -33,6 +33,12 @@
    "queriesTried": [
     "731304016298"
    ],
+   "queryTrail": [
+    {
+     "query": "731304016298",
+     "candidateCount": 1
+    }
+   ],
    "requests": 0
   },
   "asked": [
@@ -92,6 +98,12 @@
    "queriesTried": [
     "035286295383"
    ],
+   "queryTrail": [
+    {
+     "query": "035286295383",
+     "candidateCount": 1
+    }
+   ],
    "requests": 0
   },
   "asked": [
@@ -142,6 +154,12 @@
    "queriesTried": [
     "097855046871"
    ],
+   "queryTrail": [
+    {
+     "query": "097855046871",
+     "candidateCount": 1
+    }
+   ],
    "requests": 0
   },
   "asked": [
@@ -191,6 +209,12 @@
    "identity": null,
    "queriesTried": [
     "710931610147"
+   ],
+   "queryTrail": [
+    {
+     "query": "710931610147",
+     "candidateCount": 1
+    }
    ],
    "requests": 0
   },
@@ -251,6 +275,12 @@
    "queriesTried": [
     "085896723370"
    ],
+   "queryTrail": [
+    {
+     "query": "085896723370",
+     "candidateCount": 1
+    }
+   ],
    "requests": 0
   },
   "asked": [
@@ -310,6 +340,12 @@
    "queriesTried": [
     "097855066237"
    ],
+   "queryTrail": [
+    {
+     "query": "097855066237",
+     "candidateCount": 1
+    }
+   ],
    "requests": 0
   },
   "asked": [
@@ -350,6 +386,12 @@
    "identity": null,
    "queriesTried": [
     "097855067876"
+   ],
+   "queryTrail": [
+    {
+     "query": "097855067876",
+     "candidateCount": 1
+    }
    ],
    "requests": 0
   },
@@ -401,6 +443,12 @@
    "queriesTried": [
     "097855065537"
    ],
+   "queryTrail": [
+    {
+     "query": "097855065537",
+     "candidateCount": 1
+    }
+   ],
    "requests": 0
   },
   "asked": [
@@ -441,6 +489,12 @@
    "identity": null,
    "queriesTried": [
     "097855066466"
+   ],
+   "queryTrail": [
+    {
+     "query": "097855066466",
+     "candidateCount": 1
+    }
    ],
    "requests": 0
   },
@@ -483,6 +537,12 @@
    "queriesTried": [
     "035286302067"
    ],
+   "queryTrail": [
+    {
+     "query": "035286302067",
+     "candidateCount": 1
+    }
+   ],
    "requests": 0
   },
   "asked": [
@@ -523,6 +583,12 @@
    "identity": null,
    "queriesTried": [
     "035286301848"
+   ],
+   "queryTrail": [
+    {
+     "query": "035286301848",
+     "candidateCount": 1
+    }
    ],
    "requests": 0
   },

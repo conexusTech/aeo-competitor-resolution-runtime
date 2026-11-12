@@ -39,6 +39,12 @@
    "queriesTried": [
     "CyberPower CP1350PFCLCD"
    ],
+   "queryTrail": [
+    {
+     "query": "CyberPower CP1350PFCLCD",
+     "candidateCount": 1
+    }
+   ],
    "requests": 0
   },
   "asked": [
@@ -88,6 +94,16 @@
     "Control 41369",
     "Thrustmaster T-Flight HOTAS"
    ],
+   "queryTrail": [
+    {
+     "query": "Control 41369",
+     "candidateCount": 0
+    },
+    {
+     "query": "Thrustmaster T-Flight HOTAS",
+     "candidateCount": 16
+    }
+   ],
    "requests": 0
   },
   "asked": [
@@ -126,6 +142,32 @@
     "Allsop ALLSOP-30200-",
     "ALLSOP-30200-",
     "Allsop Accutrack Slimline XL"
+   ],
+   "queryTrail": [
+    {
+     "query": "Allsop ASP30200",
+     "candidateCount": 0
+    },
+    {
+     "query": "ASP30200",
+     "candidateCount": 0
+    },
+    {
+     "query": "Allsop 30200",
+     "candidateCount": 0
+    },
+    {
+     "query": "Allsop ALLSOP-30200-",
+     "candidateCount": 0
+    },
+    {
+     "query": "ALLSOP-30200-",
+     "candidateCount": 0
+    },
+    {
+     "query": "Allsop Accutrack Slimline XL",
+     "candidateCount": 0
+    }
    ],
    "requests": 0
   },
@@ -168,6 +210,32 @@
     "Allsop ALLSOP-30201",
     "ALLSOP-30201",
     "Allsop Accutrack Slimline Graphite"
+   ],
+   "queryTrail": [
+    {
+     "query": "Allsop 120269786-AC",
+     "candidateCount": 0
+    },
+    {
+     "query": "120269786-AC",
+     "candidateCount": 0
+    },
+    {
+     "query": "Allsop 30201",
+     "candidateCount": 0
+    },
+    {
+     "query": "Allsop ALLSOP-30201",
+     "candidateCount": 0
+    },
+    {
+     "query": "ALLSOP-30201",
+     "candidateCount": 0
+    },
+    {
+     "query": "Allsop Accutrack Slimline Graphite",
+     "candidateCount": 0
+    }
    ],
    "requests": 0
   },
@@ -230,6 +298,16 @@
     "Case DCB-306",
     "DCB-306"
    ],
+   "queryTrail": [
+    {
+     "query": "Case DCB-306",
+     "candidateCount": 0
+    },
+    {
+     "query": "DCB-306",
+     "candidateCount": 1
+    }
+   ],
    "requests": 0
   },
   "asked": [
@@ -280,6 +358,20 @@
     "Allsop 120240127-M",
     "120240127-M",
     "Allsop 30205"
+   ],
+   "queryTrail": [
+    {
+     "query": "Allsop 120240127-M",
+     "candidateCount": 0
+    },
+    {
+     "query": "120240127-M",
+     "candidateCount": 0
+    },
+    {
+     "query": "Allsop 30205",
+     "candidateCount": 2
+    }
    ],
    "requests": 0
   },
@@ -338,6 +430,24 @@
     "PRIMOCHILL-60",
     "PrimoChill 03029",
     "PrimoChill 60 cc Cooling System Fill Syringe"
+   ],
+   "queryTrail": [
+    {
+     "query": "PrimoChill PRIMOCHILL-60",
+     "candidateCount": 6
+    },
+    {
+     "query": "PRIMOCHILL-60",
+     "candidateCount": 6
+    },
+    {
+     "query": "PrimoChill 03029",
+     "candidateCount": 0
+    },
+    {
+     "query": "PrimoChill 60 cc Cooling System Fill Syringe",
+     "candidateCount": 0
+    }
    ],
    "requests": 0
   },
@@ -471,6 +581,12 @@
    "queriesTried": [
     "TPE-TG44G"
    ],
+   "queryTrail": [
+    {
+     "query": "TPE-TG44G",
+     "candidateCount": 9
+    }
+   ],
    "requests": 0
   },
   "asked": [
@@ -519,6 +635,12 @@
    "queriesTried": [
     "Cooler N200"
    ],
+   "queryTrail": [
+    {
+     "query": "Cooler N200",
+     "candidateCount": 16
+    }
+   ],
    "requests": 0
   },
   "asked": [
@@ -559,6 +681,16 @@
    "queriesTried": [
     "Dot 04472",
     "Dot Line SmartPhone Tripod Mount"
+   ],
+   "queryTrail": [
+    {
+     "query": "Dot 04472",
+     "candidateCount": 0
+    },
+    {
+     "query": "Dot Line SmartPhone Tripod Mount",
+     "candidateCount": 1
+    }
    ],
    "requests": 0
   },
@@ -675,6 +807,32 @@
     "1012233-REG",
     "Logitech LOGITECH-Z150-2"
    ],
+   "queryTrail": [
+    {
+     "query": "Logitech Z150",
+     "candidateCount": 5
+    },
+    {
+     "query": "Z150",
+     "candidateCount": 0
+    },
+    {
+     "query": "Logitech 10066",
+     "candidateCount": 0
+    },
+    {
+     "query": "Logitech 1012233-REG",
+     "candidateCount": 0
+    },
+    {
+     "query": "1012233-REG",
+     "candidateCount": 0
+    },
+    {
+     "query": "Logitech LOGITECH-Z150-2",
+     "candidateCount": 4
+    }
+   ],
    "requests": 0
   },
   "asked": [
@@ -713,6 +871,16 @@
    "queriesTried": [
     "PrimoChill 02591",
     "PrimoChill Intensifier UV Coolant Concentrate 15"
+   ],
+   "queryTrail": [
+    {
+     "query": "PrimoChill 02591",
+     "candidateCount": 0
+    },
+    {
+     "query": "PrimoChill Intensifier UV Coolant Concentrate 15",
+     "candidateCount": 0
+    }
    ],
    "requests": 0
   },
@@ -839,6 +1007,16 @@
     "SanDisk 64GB",
     "64GB"
    ],
+   "queryTrail": [
+    {
+     "query": "SanDisk 64GB",
+     "candidateCount": 36
+    },
+    {
+     "query": "64GB",
+     "candidateCount": 36
+    }
+   ],
    "requests": 0
   },
   "asked": [
@@ -891,6 +1069,24 @@
     "PrimoChill 02595",
     "PrimoChill Intensifier Transparent Fluid Dye UV"
    ],
+   "queryTrail": [
+    {
+     "query": "PrimoChill B00AG243IM",
+     "candidateCount": 0
+    },
+    {
+     "query": "B00AG243IM",
+     "candidateCount": 0
+    },
+    {
+     "query": "PrimoChill 02595",
+     "candidateCount": 0
+    },
+    {
+     "query": "PrimoChill Intensifier Transparent Fluid Dye UV",
+     "candidateCount": 3
+    }
+   ],
    "requests": 0
   },
   "asked": [
@@ -931,6 +1127,24 @@
     "B00AG245JE",
     "PrimoChill 02592",
     "PrimoChill UV"
+   ],
+   "queryTrail": [
+    {
+     "query": "PrimoChill B00AG245JE",
+     "candidateCount": 0
+    },
+    {
+     "query": "B00AG245JE",
+     "candidateCount": 0
+    },
+    {
+     "query": "PrimoChill 02592",
+     "candidateCount": 0
+    },
+    {
+     "query": "PrimoChill UV",
+     "candidateCount": 36
+    }
    ],
    "requests": 0
   },
@@ -1066,6 +1280,12 @@
    "queriesTried": [
     "Buffalo 1-BAY"
    ],
+   "queryTrail": [
+    {
+     "query": "Buffalo 1-BAY",
+     "candidateCount": 36
+    }
+   ],
    "requests": 0
   },
   "asked": [
@@ -1130,6 +1350,12 @@
    "queriesTried": [
     "Buffalo LS210D0401"
    ],
+   "queryTrail": [
+    {
+     "query": "Buffalo LS210D0401",
+     "candidateCount": 2
+    }
+   ],
    "requests": 0
   },
   "asked": [
@@ -1193,6 +1419,12 @@
    },
    "queriesTried": [
     "Buffalo LS220D0402"
+   ],
+   "queryTrail": [
+    {
+     "query": "Buffalo LS220D0402",
+     "candidateCount": 2
+    }
    ],
    "requests": 0
   },
@@ -1266,6 +1498,12 @@
    "queriesTried": [
     "Buffalo LS220D0802"
    ],
+   "queryTrail": [
+    {
+     "query": "Buffalo LS220D0802",
+     "candidateCount": 2
+    }
+   ],
    "requests": 0
   },
   "asked": [
@@ -1314,6 +1552,16 @@
    "queriesTried": [
     "On-ear KEB6IK",
     "KEB6IK"
+   ],
+   "queryTrail": [
+    {
+     "query": "On-ear KEB6IK",
+     "candidateCount": 0
+    },
+    {
+     "query": "KEB6IK",
+     "candidateCount": 1
+    }
    ],
    "requests": 0
   },
@@ -1440,6 +1688,12 @@
    "queriesTried": [
     "NETGEAR 8-PORT"
    ],
+   "queryTrail": [
+    {
+     "query": "NETGEAR 8-PORT",
+     "candidateCount": 36
+    }
+   ],
    "requests": 0
   },
   "asked": [
@@ -1477,6 +1731,32 @@
     "IMAK IMA20215",
     "IMA20215",
     "IMAK Ergo Glider Black"
+   ],
+   "queryTrail": [
+    {
+     "query": "IMAK A20215",
+     "candidateCount": 0
+    },
+    {
+     "query": "A20215",
+     "candidateCount": 0
+    },
+    {
+     "query": "IMAK 20215",
+     "candidateCount": 0
+    },
+    {
+     "query": "IMAK IMA20215",
+     "candidateCount": 0
+    },
+    {
+     "query": "IMA20215",
+     "candidateCount": 0
+    },
+    {
+     "query": "IMAK Ergo Glider Black",
+     "candidateCount": 0
+    }
    ],
    "requests": 0
   },
@@ -1517,6 +1797,24 @@
     "ACN-BMTO081",
     "Avue 00605",
     "Avue BNC Male Twist On Connector (8 Pack)"
+   ],
+   "queryTrail": [
+    {
+     "query": "Avue ACN-BMTO081",
+     "candidateCount": 0
+    },
+    {
+     "query": "ACN-BMTO081",
+     "candidateCount": 0
+    },
+    {
+     "query": "Avue 00605",
+     "candidateCount": 0
+    },
+    {
+     "query": "Avue BNC Male Twist On Connector (8 Pack)",
+     "candidateCount": 0
+    }
    ],
    "requests": 0
   },
@@ -1587,6 +1885,16 @@
     "Avue 00619",
     "Avue BNC Female to RNC Male Adapter (8 Pack)"
    ],
+   "queryTrail": [
+    {
+     "query": "Avue 00619",
+     "candidateCount": 0
+    },
+    {
+     "query": "Avue BNC Female to RNC Male Adapter (8 Pack)",
+     "candidateCount": 0
+    }
+   ],
    "requests": 0
   },
   "asked": [
@@ -1620,6 +1928,16 @@
    "queriesTried": [
     "Avue 00625",
     "Avue BNC Female to Female Adapter (8 Pack)"
+   ],
+   "queryTrail": [
+    {
+     "query": "Avue 00625",
+     "candidateCount": 0
+    },
+    {
+     "query": "Avue BNC Female to Female Adapter (8 Pack)",
+     "candidateCount": 0
+    }
    ],
    "requests": 0
   },
@@ -1663,6 +1981,16 @@
     "Avue 00399",
     "Avue Passive Video Transceiver with Pigtail"
    ],
+   "queryTrail": [
+    {
+     "query": "Avue 00399",
+     "candidateCount": 0
+    },
+    {
+     "query": "Avue Passive Video Transceiver with Pigtail",
+     "candidateCount": 0
+    }
+   ],
    "requests": 0
   },
   "asked": [
@@ -1698,6 +2026,24 @@
     "APW-D1210A",
     "Avue 00316",
     "Avue DC12V 1A Power Adapter"
+   ],
+   "queryTrail": [
+    {
+     "query": "Avue APW-D1210A",
+     "candidateCount": 0
+    },
+    {
+     "query": "APW-D1210A",
+     "candidateCount": 0
+    },
+    {
+     "query": "Avue 00316",
+     "candidateCount": 0
+    },
+    {
+     "query": "Avue DC12V 1A Power Adapter",
+     "candidateCount": 0
+    }
    ],
    "requests": 0
   },
@@ -1825,6 +2171,12 @@
    "queriesTried": [
     "NETGEAR AC1900"
    ],
+   "queryTrail": [
+    {
+     "query": "NETGEAR AC1900",
+     "candidateCount": 26
+    }
+   ],
    "requests": 0
   },
   "asked": [
@@ -1860,6 +2212,24 @@
     "AVB300P",
     "Transceptor 00398",
     "AVUE Video"
+   ],
+   "queryTrail": [
+    {
+     "query": "Transceptor AVB300P",
+     "candidateCount": 0
+    },
+    {
+     "query": "AVB300P",
+     "candidateCount": 0
+    },
+    {
+     "query": "Transceptor 00398",
+     "candidateCount": 0
+    },
+    {
+     "query": "AVUE Video",
+     "candidateCount": 4
+    }
    ],
    "requests": 0
   },
@@ -2000,6 +2370,16 @@
     "Sandisk 128GB",
     "128GB"
    ],
+   "queryTrail": [
+    {
+     "query": "Sandisk 128GB",
+     "candidateCount": 36
+    },
+    {
+     "query": "128GB",
+     "candidateCount": 36
+    }
+   ],
    "requests": 0
   },
   "asked": [
@@ -2135,6 +2515,32 @@
     "Kingwin 7-PORT",
     "7-PORT",
     "Kingwin KW525"
+   ],
+   "queryTrail": [
+    {
+     "query": "Kingwin KW525-7U3C",
+     "candidateCount": 0
+    },
+    {
+     "query": "KW525-7U3C",
+     "candidateCount": 0
+    },
+    {
+     "query": "Kingwin 01267",
+     "candidateCount": 0
+    },
+    {
+     "query": "Kingwin 7-PORT",
+     "candidateCount": 2
+    },
+    {
+     "query": "7-PORT",
+     "candidateCount": 36
+    },
+    {
+     "query": "Kingwin KW525",
+     "candidateCount": 2
+    }
    ],
    "requests": 0
   },
@@ -2277,6 +2683,32 @@
     "1374570-REG",
     "Logitech G920-DRI"
    ],
+   "queryTrail": [
+    {
+     "query": "Logitech G920",
+     "candidateCount": 36
+    },
+    {
+     "query": "G920",
+     "candidateCount": 36
+    },
+    {
+     "query": "Logitech 11469",
+     "candidateCount": 0
+    },
+    {
+     "query": "Logitech 1374570-REG",
+     "candidateCount": 0
+    },
+    {
+     "query": "1374570-REG",
+     "candidateCount": 0
+    },
+    {
+     "query": "Logitech G920-DRI",
+     "candidateCount": 0
+    }
+   ],
    "requests": 0
   },
   "asked": [
@@ -2411,6 +2843,32 @@
     "G923",
     "Logitech LOG-941-000119-B"
    ],
+   "queryTrail": [
+    {
+     "query": "Logitech G920",
+     "candidateCount": 36
+    },
+    {
+     "query": "G920",
+     "candidateCount": 36
+    },
+    {
+     "query": "Logitech 11285",
+     "candidateCount": 0
+    },
+    {
+     "query": "Logitech G923",
+     "candidateCount": 36
+    },
+    {
+     "query": "G923",
+     "candidateCount": 36
+    },
+    {
+     "query": "Logitech LOG-941-000119-B",
+     "candidateCount": 0
+    }
+   ],
    "requests": 0
   },
   "asked": [
@@ -2540,6 +2998,12 @@
    "queriesTried": [
     "Sandisk 64GB"
    ],
+   "queryTrail": [
+    {
+     "query": "Sandisk 64GB",
+     "candidateCount": 36
+    }
+   ],
    "requests": 0
   },
   "asked": [
@@ -2664,6 +3128,12 @@
    "queriesTried": [
     "32GB"
    ],
+   "queryTrail": [
+    {
+     "query": "32GB",
+     "candidateCount": 41
+    }
+   ],
    "requests": 0
   },
   "asked": [
@@ -2719,6 +3189,32 @@
     "Thrustmaster 1250384-REG",
     "1250384-REG",
     "Thrustmaster QCHGV1Z00-6632"
+   ],
+   "queryTrail": [
+    {
+     "query": "Thrustmaster RJ12",
+     "candidateCount": 0
+    },
+    {
+     "query": "RJ12",
+     "candidateCount": 36
+    },
+    {
+     "query": "Thrustmaster 42036",
+     "candidateCount": 0
+    },
+    {
+     "query": "Thrustmaster 1250384-REG",
+     "candidateCount": 0
+    },
+    {
+     "query": "1250384-REG",
+     "candidateCount": 0
+    },
+    {
+     "query": "Thrustmaster QCHGV1Z00-6632",
+     "candidateCount": 0
+    }
    ],
    "requests": 0
   },
@@ -2869,6 +3365,20 @@
     "KW525-3U3CR",
     "Powered 01299"
    ],
+   "queryTrail": [
+    {
+     "query": "Powered KW525-3U3CR",
+     "candidateCount": 4
+    },
+    {
+     "query": "KW525-3U3CR",
+     "candidateCount": 4
+    },
+    {
+     "query": "Powered 01299",
+     "candidateCount": 1
+    }
+   ],
    "requests": 0
   },
   "asked": [
@@ -3004,6 +3514,32 @@
     "34772439-LOGITE",
     "Logitech PRODUCT115571"
    ],
+   "queryTrail": [
+    {
+     "query": "Logitech K780",
+     "candidateCount": 9
+    },
+    {
+     "query": "K780",
+     "candidateCount": 1
+    },
+    {
+     "query": "Logitech 12283",
+     "candidateCount": 0
+    },
+    {
+     "query": "Logitech 34772439-LOGITE",
+     "candidateCount": 0
+    },
+    {
+     "query": "34772439-LOGITE",
+     "candidateCount": 0
+    },
+    {
+     "query": "Logitech PRODUCT115571",
+     "candidateCount": 0
+    }
+   ],
    "requests": 0
   },
   "asked": [
@@ -3073,6 +3609,12 @@
    "queriesTried": [
     "APC BN450M"
    ],
+   "queryTrail": [
+    {
+     "query": "APC BN450M",
+     "candidateCount": 2
+    }
+   ],
    "requests": 0
   },
   "asked": [
@@ -3108,6 +3650,24 @@
     "FUJ16437401",
     "Fujifilm 94466",
     "Fujifilm instax mini Rainbow Instant Film"
+   ],
+   "queryTrail": [
+    {
+     "query": "Fujifilm FUJ16437401",
+     "candidateCount": 0
+    },
+    {
+     "query": "FUJ16437401",
+     "candidateCount": 0
+    },
+    {
+     "query": "Fujifilm 94466",
+     "candidateCount": 0
+    },
+    {
+     "query": "Fujifilm instax mini Rainbow Instant Film",
+     "candidateCount": 13
+    }
    ],
    "requests": 0
   },

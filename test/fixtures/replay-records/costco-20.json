@@ -24,6 +24,12 @@
    "queriesTried": [
     "index:APC"
    ],
+   "queryTrail": [
+    {
+     "query": "index:APC",
+     "candidateCount": 0
+    }
+   ],
    "requests": 0
   },
   "asked": [
@@ -56,6 +62,12 @@
    },
    "queriesTried": [
     "index:CyberPower Systems"
+   ],
+   "queryTrail": [
+    {
+     "query": "index:CyberPower Systems",
+     "candidateCount": 2
+    }
    ],
    "requests": 0
   },
@@ -92,6 +104,12 @@
    "queriesTried": [
     "index:IMAK Products"
    ],
+   "queryTrail": [
+    {
+     "query": "index:IMAK Products",
+     "candidateCount": 0
+    }
+   ],
    "requests": 0
   },
   "asked": [
@@ -125,6 +143,12 @@
    "queriesTried": [
     "index:Allsop"
    ],
+   "queryTrail": [
+    {
+     "query": "index:Allsop",
+     "candidateCount": 0
+    }
+   ],
    "requests": 0
   },
   "asked": [
@@ -156,6 +180,12 @@
    "queriesTried": [
     "index:SteelSeries"
    ],
+   "queryTrail": [
+    {
+     "query": "index:SteelSeries",
+     "candidateCount": 0
+    }
+   ],
    "requests": 0
   },
   "asked": [
@@ -186,6 +216,12 @@
    },
    "queriesTried": [
     "index:Logitech"
+   ],
+   "queryTrail": [
+    {
+     "query": "index:Logitech",
+     "candidateCount": 1
+    }
    ],
    "requests": 0
   },
@@ -221,6 +257,12 @@
    "queriesTried": [
     "index:Allsop"
    ],
+   "queryTrail": [
+    {
+     "query": "index:Allsop",
+     "candidateCount": 0
+    }
+   ],
    "requests": 0
   },
   "asked": [
@@ -251,6 +293,12 @@
    },
    "queriesTried": [
     "index:Trendnet"
+   ],
+   "queryTrail": [
+    {
+     "query": "index:Trendnet",
+     "candidateCount": 0
+    }
    ],
    "requests": 0
   },
@@ -285,6 +333,12 @@
    "queriesTried": [
     "index:IMAK Products"
    ],
+   "queryTrail": [
+    {
+     "query": "index:IMAK Products",
+     "candidateCount": 0
+    }
+   ],
    "requests": 0
   },
   "asked": [
@@ -315,6 +369,12 @@
    },
    "queriesTried": [
     "index:Sabrent"
+   ],
+   "queryTrail": [
+    {
+     "query": "index:Sabrent",
+     "candidateCount": 0
+    }
    ],
    "requests": 0
   },
@@ -347,6 +407,12 @@
    "queriesTried": [
     "index:Kensington"
    ],
+   "queryTrail": [
+    {
+     "query": "index:Kensington",
+     "candidateCount": 0
+    }
+   ],
    "requests": 0
   },
   "asked": [
@@ -377,6 +443,12 @@
    },
    "queriesTried": [
     "index:Kingwin"
+   ],
+   "queryTrail": [
+    {
+     "query": "index:Kingwin",
+     "candidateCount": 0
+    }
    ],
    "requests": 0
   },
@@ -409,6 +481,12 @@
    "queriesTried": [
     "index:Kingwin"
    ],
+   "queryTrail": [
+    {
+     "query": "index:Kingwin",
+     "candidateCount": 0
+    }
+   ],
    "requests": 0
   },
   "asked": [
@@ -439,6 +517,12 @@
    },
    "queriesTried": [
     "index:Logitech"
+   ],
+   "queryTrail": [
+    {
+     "query": "index:Logitech",
+     "candidateCount": 4
+    }
    ],
    "requests": 0
   },
@@ -474,6 +558,12 @@
    "queriesTried": [
     "index:Logitech"
    ],
+   "queryTrail": [
+    {
+     "query": "index:Logitech",
+     "candidateCount": 4
+    }
+   ],
    "requests": 0
   },
   "asked": [
@@ -508,6 +598,12 @@
    "queriesTried": [
     "index:Trendnet"
    ],
+   "queryTrail": [
+    {
+     "query": "index:Trendnet",
+     "candidateCount": 0
+    }
+   ],
    "requests": 0
   },
   "asked": [
@@ -538,6 +634,12 @@
    },
    "queriesTried": [
     "index:Logitech"
+   ],
+   "queryTrail": [
+    {
+     "query": "index:Logitech",
+     "candidateCount": 3
+    }
    ],
    "requests": 0
   },
@@ -573,6 +675,12 @@
    "queriesTried": [
     "index:Logitech"
    ],
+   "queryTrail": [
+    {
+     "query": "index:Logitech",
+     "candidateCount": 0
+    }
+   ],
    "requests": 0
   },
   "asked": [
@@ -606,6 +714,12 @@
    "queriesTried": [
     "index:Allsop"
    ],
+   "queryTrail": [
+    {
+     "query": "index:Allsop",
+     "candidateCount": 0
+    }
+   ],
    "requests": 0
   },
   "asked": [
@@ -638,6 +752,12 @@
    },
    "queriesTried": [
     "index:Allsop"
+   ],
+   "queryTrail": [
+    {
+     "query": "index:Allsop",
+     "candidateCount": 0
+    }
    ],
    "requests": 0
   },
@@ -684,6 +804,12 @@
    },
    "queriesTried": [
     "index:Apple"
+   ],
+   "queryTrail": [
+    {
+     "query": "index:Apple",
+     "candidateCount": 6
+    }
    ],
    "requests": 0
   },
