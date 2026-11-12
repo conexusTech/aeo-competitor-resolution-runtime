@@ -673,9 +673,9 @@
         "source": "meriwether-data-scraper packages/scraper/test/fixtures",
         "capturedOn": "2026-11-10",
         "capturedThrough": "the vendor, country us, by the B&H investigation (row investigate-bh-competitor)",
-        "distilled": "Distilled by scripts/distil-bh.mjs: only the fields the adapter reads are kept (the preloaded state listing response — its type, page number, count, items per page and each card — trimmed to the fields parsed), and the adapter parsers, the category reader at pages 1, 2, 15 and 16 among them, were proven to give identical output on the raw capture and on this file. Every session value the raw page carried — bhTraceId, ssrReqId and qasAuthToken in its state, Cloudflare __CF$cv$params and challenge ray=, the watchdog beacon reqId= — is gone by construction, and test/bh-fixtures.spec.ts checks that none remains."
+        "distilled": "Distilled by scripts/distil-bh.mjs: only the fields the adapter reads are kept (the preloaded state listing response — its type, page number, count, items per page and each card — trimmed to the fields parsed, and the page's canonical link, the address a walk pages from), and the adapter parsers, the category reader at pages 1, 2, 15 and 16 among them, were proven to give identical output on the raw capture and on this file. Every session value the raw page carried — bhTraceId, ssrReqId and qasAuthToken in its state, Cloudflare __CF$cv$params and challenge ray=, the watchdog beacon reqId= — is gone by construction, and test/bh-fixtures.spec.ts checks that none remains."
       },
-      "gzBytes": 2984
+      "gzBytes": 3048
     },
     {
       "name": "bh-category-mice-p2",
@@ -688,9 +688,9 @@
         "source": "meriwether-data-scraper packages/scraper/test/fixtures",
         "capturedOn": "2026-11-10",
         "capturedThrough": "the vendor, country us, by the B&H investigation (row investigate-bh-competitor)",
-        "distilled": "Distilled by scripts/distil-bh.mjs: only the fields the adapter reads are kept (the preloaded state listing response — its type, page number, count, items per page and each card — trimmed to the fields parsed), and the adapter parsers, the category reader at pages 1, 2, 15 and 16 among them, were proven to give identical output on the raw capture and on this file. Every session value the raw page carried — bhTraceId, ssrReqId and qasAuthToken in its state, Cloudflare __CF$cv$params and challenge ray=, the watchdog beacon reqId= — is gone by construction, and test/bh-fixtures.spec.ts checks that none remains."
+        "distilled": "Distilled by scripts/distil-bh.mjs: only the fields the adapter reads are kept (the preloaded state listing response — its type, page number, count, items per page and each card — trimmed to the fields parsed, and the page's canonical link, the address a walk pages from), and the adapter parsers, the category reader at pages 1, 2, 15 and 16 among them, were proven to give identical output on the raw capture and on this file. Every session value the raw page carried — bhTraceId, ssrReqId and qasAuthToken in its state, Cloudflare __CF$cv$params and challenge ray=, the watchdog beacon reqId= — is gone by construction, and test/bh-fixtures.spec.ts checks that none remains."
       },
-      "gzBytes": 3409
+      "gzBytes": 3473
     },
     {
       "name": "bh-category-mice-p15-last",
@@ -702,9 +702,9 @@
         "source": "meriwether-data-scraper packages/scraper/test/fixtures",
         "capturedOn": "2026-11-10",
         "capturedThrough": "the vendor, country us, by the B&H investigation (row investigate-bh-competitor)",
-        "distilled": "Distilled by scripts/distil-bh.mjs: only the fields the adapter reads are kept (the preloaded state listing response — its type, page number, count, items per page and each card — trimmed to the fields parsed), and the adapter parsers, the category reader at pages 1, 2, 15 and 16 among them, were proven to give identical output on the raw capture and on this file. Every session value the raw page carried — bhTraceId, ssrReqId and qasAuthToken in its state, Cloudflare __CF$cv$params and challenge ray=, the watchdog beacon reqId= — is gone by construction, and test/bh-fixtures.spec.ts checks that none remains."
+        "distilled": "Distilled by scripts/distil-bh.mjs: only the fields the adapter reads are kept (the preloaded state listing response — its type, page number, count, items per page and each card — trimmed to the fields parsed, and the page's canonical link, the address a walk pages from), and the adapter parsers, the category reader at pages 1, 2, 15 and 16 among them, were proven to give identical output on the raw capture and on this file. Every session value the raw page carried — bhTraceId, ssrReqId and qasAuthToken in its state, Cloudflare __CF$cv$params and challenge ray=, the watchdog beacon reqId= — is gone by construction, and test/bh-fixtures.spec.ts checks that none remains."
       },
-      "gzBytes": 2444
+      "gzBytes": 2512
     },
     {
       "name": "bh-category-mice-p16-past-end",

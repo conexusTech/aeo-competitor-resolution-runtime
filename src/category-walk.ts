@@ -266,6 +266,10 @@ export async function walkCategory(
   let pagesRead = 0;
   let total: number | null = null;
   let statedLast: number | null = null;
+  // 🔴 Pages 2 and on are asked of the address page 1 states as the
+  // category's own, where it states one: B&H sends `/pn/N` of an address that
+  // is not canonical back to page 1, which reads as the end of the category.
+  let pagesFrom = category.url;
 
   const outcome = (
     status: CategoryStatus,
@@ -318,11 +322,11 @@ export async function walkCategory(
 
   for (let n = 1; n <= pagesToRead(); n++) {
     if (deps.shouldStop()) return null;
-    const url = reader.pageUrl(category.url, n);
+    const url = reader.pageUrl(pagesFrom, n);
     if (url === null) {
       return outcome(
         "failed",
-        `${category.url} is not a category address this build can read ` +
+        `${pagesFrom} is not a category address this build can read ` +
           `(page ${n})`,
       );
     }
@@ -341,7 +345,7 @@ export async function walkCategory(
         `page ${n} could not be read: ${fetched.detail}`,
       );
     }
-    const result = reader.readCategoryPage(fetched.body, n);
+    const result = reader.readCategoryPage(fetched.body, n, category.url);
     if (result.kind === "not-a-category-page") {
       return outcome(
         "failed",
@@ -362,6 +366,7 @@ export async function walkCategory(
     }
     pagesRead++;
     const page = result.page;
+    if (n === 1 && page.canonicalUrl) pagesFrom = page.canonicalUrl;
     total ??= page.total;
     statedLast ??= page.lastPage;
     for (const card of page.products) {

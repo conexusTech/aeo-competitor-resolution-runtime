@@ -759,6 +759,119 @@ async function runBh(
   return { port, fetcher };
 }
 
+/**
+ * 🔴 A job's address for a category is often not the canonical one (it is
+ * recorded from a product page). B&H redirects page 1 of it, and sends
+ * `/pn/N` of it back to page 1.
+ */
+describe("a B&H walk pages from the canonical address its first page states", () => {
+  const RECORDED = "https://www.bhphotovideo.com/c/buy/Mice-Touchpads/ci/18369";
+
+  /** SYNTHETIC pages 3 to 14: page 2's cards under their own ids. */
+  const synthetic = (p: number): string =>
+    rewriteBhCategoryPage(BH_P2, (data) => {
+      data["pageNumber"] = p;
+      const items = data["items"] as { itemKey: { skuNo: string } }[];
+      items.forEach((item, i) => {
+        item.itemKey.skuNo = `${p}00${i}`;
+      });
+    });
+
+  const CANONICAL_PAGES = new Map<string, Answer>([
+    [BH, BH_P1],
+    [`${BH}/pn/2`, BH_P2],
+    ...Array.from({ length: 12 }, (_, i): [string, Answer] => [
+      `${BH}/pn/${i + 3}`,
+      synthetic(i + 3),
+    ]),
+    [`${BH}/pn/15`, bhRaw("bh-category-mice-p15-last")],
+  ]);
+
+  async function walk(url: string, pages: ReadonlyMap<string, Answer>) {
+    const port = new Port({
+      readRunId: READ_RUN_ID,
+      retailerSlug: "bh",
+      listings: [],
+      pagesAtOnce: 1,
+      categories: [
+        {
+          categoryId: uuid(7),
+          url,
+          kind: "walk",
+          lastPage: null,
+          listings: [
+            { listingId: uuid(71), itemId: "1910635", url: BH_1910635 },
+          ],
+        },
+      ],
+    });
+    const fetcher = new MapFetcher(pages);
+    await runReadJob({
+      client: port,
+      readerFor: () => bhAdapter,
+      fetcher,
+      log: () => undefined,
+    });
+    return { port, fetcher };
+  }
+
+  it("🔴 asks the canonical pages, not the recorded address's, and ends valid", async () => {
+    // B&H answers any /pn/N of the recorded address with page 1.
+    const pages = new Map<string, Answer>(CANONICAL_PAGES);
+    pages.set(RECORDED, BH_P1);
+    for (let n = 2; n <= 15; n++) pages.set(`${RECORDED}/pn/${n}`, BH_P1);
+    const { port, fetcher } = await walk(RECORDED, pages);
+    expect(port.categories[0]).toMatchObject({
+      status: "valid",
+      pagesRead: 15,
+      productsSeen: 412,
+      total: 412,
+      lastPage: 15,
+    });
+    expect(fetcher.calls).toEqual([
+      RECORDED,
+      ...Array.from({ length: 14 }, (_, i) => `${BH}/pn/${i + 2}`),
+    ]);
+    expect(port.readings.map((r) => [r.itemId, r.priceSource])).toEqual([
+      ["1910635", "category_page"],
+    ]);
+  });
+
+  it("a page 1 that states no canonical address keeps paging from the job's", async () => {
+    // SYNTHETIC: page 1 as captured but for the canonical link.
+    const bare = rewriteBhCategoryPage(BH_P1, () => undefined);
+    const pages = new Map<string, Answer>(CANONICAL_PAGES);
+    pages.set(BH, bare);
+    const { port, fetcher } = await walk(BH, pages);
+    expect(port.categories[0]).toMatchObject({
+      status: "valid",
+      pagesRead: 15,
+    });
+    expect(fetcher.calls).toEqual(
+      Array.from({ length: 15 }, (_, i) =>
+        i === 0 ? BH : `${BH}/pn/${i + 1}`,
+      ),
+    );
+  });
+
+  it("🔴 a job address with a query keeps paging from it, whatever page 1 states", async () => {
+    const filtered = `${RECORDED}?filters=x`;
+    const pages = new Map<string, Answer>([[filtered, BH_P1]]);
+    const { fetcher } = await walk(filtered, pages);
+    expect(fetcher.calls[1]).toBe(`${RECORDED}/pn/2?filters=x`);
+  });
+
+  it("🔴 a canonical address of another category is not followed", async () => {
+    const other = BH_P1.replace(
+      BH,
+      "https://www.bhphotovideo.com/c/buy/x/ci/99999",
+    );
+    const pages = new Map<string, Answer>([[RECORDED, other]]);
+    const { fetcher } = await walk(RECORDED, pages);
+    expect(fetcher.calls[1]).toBe(`${RECORDED}/pn/2`);
+  });
+});
+
 describe("how far a walk reads", () => {
   it("🔑 a size read buys page 1 only and reports the category's count and last page", async () => {
     const answers = new Map<string, Answer>([

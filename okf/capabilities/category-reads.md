@@ -146,6 +146,14 @@ to stop part-way says nothing and prices nothing; the gateway plans it again.
 **Checked by:** category-read-newegg-page-addresses
 **Checked by:** category-read-amazon-page-addresses
 
+#### Scenario: A B&H walk pages from the canonical address its first page states
+- GIVEN a B&H category whose job address is not the canonical one, so B&H answers `/pn/N` of it with page 1
+- WHEN the walk reads page 1, which states `<link rel="canonical">` as exactly `/c/buy/<slug>/ci/<id>` on B&H's host, with no query and the same `ci` id as the category asked for
+- THEN pages 2 and on are asked of that canonical address and the walk ends valid
+- AND a canonical that is anything else (another id, host or path shape, a query), or any canonical where the job's own address carries a query, is not followed: the walk pages from the job's address
+
+**Checked by:** category-read-bh-canonical-paging
+
 #### Scenario: A product page names the category its product sits in
 - GIVEN a real product page of B&H, Newegg or Amazon
 - WHEN it is read, by resolution or by a read run

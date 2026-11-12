@@ -338,6 +338,20 @@ Ask for pages 1 and 16 of `…/ci/18369`, page 3 and page 1 of its `/pn/2` addre
 
 The category's address, `…/pn/16`, `…/pn/3` and the category's address again; then no address for each of the six.
 
+### Check: category-read-bh-canonical-paging
+
+**Requirement:** A B&H walk pages from the canonical address its first page states
+**Surface:** `bhAdapter.categoryReader.readCategoryPage`, `walkCategory`
+**Automated:** test/category-reads.spec.ts — "the canonical address page 1 states"; test/category-monitoring.spec.ts — "a B&H walk pages from the canonical address its first page states"
+
+**Do**
+
+Read the real page 1 asked for as `…/Mice-Touchpads/ci/18369`; then with its canonical link replaced by another `ci` id, another host, `http:`, a product path, a `?filters=` query, a `/N/…` suffix, an `/api/x/ci/18369` path, a doubled `/ci/…`, a `/find/ci/…` path; then asked for a `?filters=x` address. Walk the recorded address with a fetcher that answers every `/pn/N` of it with page 1 and the canonical `/pn/N` with the real pages.
+
+**Expect**
+
+The canonical address for the first read; none for each of the others. The walk asks the 14 canonical `/pn/N` pages, ends `valid` with 15 pages and 412 of 412 products, and prices the watched listing from its card; with no accepted canonical, or a job address carrying a query, it pages from the job's address.
+
 ### Check: category-read-newegg-page-addresses
 
 **Requirement:** A page address is built only for a category on the competitor's own host

@@ -216,6 +216,22 @@ function distilUpcLines(html) {
     .join("");
 }
 
+const CANONICAL = /<link\b(?=[^>]*\brel=["']canonical["'])[^>]*>/i;
+const HREF = /\bhref=["']([^"']*)["']/i;
+
+/**
+ * A category page's canonical link, kept: a walk pages from the address it
+ * states. Kept only on a category page, only for a plain http(s) address, and
+ * with any query string dropped. Other pages keep none.
+ */
+function distilCanonical(html, isCategory) {
+  if (!isCategory) return "";
+  const href = HREF.exec(CANONICAL.exec(html)?.[0] ?? "")?.[1];
+  if (href === undefined || !/^https?:\/\/[^\s"'<>]+$/.test(href)) return "";
+  const bare = href.split(/[?#]/)[0];
+  return `<link rel="canonical" href="${bare}"/>`;
+}
+
 export function distil(html) {
   const pre = extractPreloadedData(html);
   const state =
@@ -228,11 +244,19 @@ export function distil(html) {
     "<!doctype html><!-- distilled B&H page: only the fields the adapter " +
     "reads; see scripts/distil-bh.mjs --><html><body>" +
     state +
+    distilCanonical(
+      html,
+      pre?.ListingStore?.state?.response?.data?.responseType ===
+        "/api/navigation/category",
+    ) +
     distilLd(html) +
     distilUpcLines(html) +
     "</body></html>"
   );
 }
+
+const CATEGORY_ASKED =
+  "https://www.bhphotovideo.com/c/buy/Mice-Touchpads/ci/18369";
 
 /** Every parse the adapter makes of a body, as one comparable string. */
 const parses = (body) =>
@@ -242,8 +266,10 @@ const parses = (body) =>
     reading: bhAdapter.readListingPage(body),
     noBarcode: noBarcodeReason(body),
     // A category page as each page number a walk could ask it for.
+    // Asked for the category as a job records it, which is not the canonical
+    // address, so the canonical link is part of what must survive.
     category: [1, 2, 15, 16].map((n) =>
-      bhAdapter.categoryReader.readCategoryPage(body, n),
+      bhAdapter.categoryReader.readCategoryPage(body, n, CATEGORY_ASKED),
     ),
   });
 

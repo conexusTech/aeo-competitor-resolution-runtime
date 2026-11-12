@@ -596,6 +596,53 @@ export function bhCategoryPageUrl(
   return `${BH_ORIGIN}${path}${n === 1 ? "" : `/pn/${n}`}${url.search}`;
 }
 
+/** The exact path of a category's own address: `/c/buy/<slug>/ci/<id>`. */
+const CATEGORY_PATH = /^\/c\/buy\/[^/]+\/ci\/(\d+)$/;
+
+/** The `ci` id of an address whose path is exactly a category's, or `null`. */
+function exactCategoryId(url: URL): string | null {
+  const path = url.pathname.replace(/\/pn\/\d+\/?$/, "").replace(/\/$/, "");
+  return CATEGORY_PATH.exec(path)?.[1] ?? null;
+}
+
+const CANONICAL_LINK =
+  /<link\b(?=[^>]*\brel=["']canonical["'])[^>]*\bhref=["']([^"']*)["'][^>]*>/i;
+
+/**
+ * 🔑 The address a B&H category page says is its own: its `<link
+ * rel="canonical">`.
+ *
+ * 🔴 **Accepted only when exact**: https on B&H's own host, a path of exactly
+ * `/c/buy/<slug>/ci/<id>`, no query, and the same `ci` id as the category
+ * asked for. And **never followed from a category asked for with a query** —
+ * a filtered view is paged as itself. Anything else, or no category asked
+ * for, is `null`.
+ */
+function canonicalCategoryUrl(
+  html: string,
+  categoryUrl: string | undefined,
+): string | null {
+  if (categoryUrl === undefined) return null;
+  const href = CANONICAL_LINK.exec(html)?.[1];
+  if (href === undefined) return null;
+  let stated: URL;
+  let asked: URL;
+  try {
+    stated = new URL(href.replace(/&amp;/g, "&").replace(/&quot;/g, '"'));
+    asked = new URL(categoryUrl);
+  } catch {
+    return null;
+  }
+  if (asked.search !== "" || stated.search !== "") return null;
+  if (stated.protocol !== "https:" || stated.host !== "www.bhphotovideo.com") {
+    return null;
+  }
+  const id = exactCategoryId(stated);
+  const askedId = /\/ci\/(\d+)(?:\/|$)/.exec(asked.pathname)?.[1];
+  if (id === null || askedId !== id) return null;
+  return bhCategoryPageUrl(stated.href, 1);
+}
+
 /** A category card: the listing's id, the price B&H shows, its stock. */
 function toCategoryCard(item: Json): CategoryCard | null {
   const itemId = idAt(obj(item, "itemKey"), "skuNo");
@@ -624,7 +671,11 @@ function toCategoryCard(item: Json): CategoryCard | null {
  * Everything else that is not a category payload — an empty body, a refusal,
  * a product page — is `not-a-category-page`.
  */
-export function readCategoryPage(html: string, n: number): CategoryPageResult {
+export function readCategoryPage(
+  html: string,
+  n: number,
+  categoryUrl?: string,
+): CategoryPageResult {
   const pre = extractPreloadedData(html);
   if (pre === null) {
     return { kind: "not-a-category-page", detail: "no preloaded state" };
@@ -701,7 +752,15 @@ export function readCategoryPage(html: string, n: number): CategoryPageResult {
     perPage > 0
       ? Math.max(1, Math.ceil(total / perPage))
       : null;
-  return { kind: "page", page: { products, total, lastPage } };
+  return {
+    kind: "page",
+    page: {
+      products,
+      total,
+      lastPage,
+      canonicalUrl: canonicalCategoryUrl(html, categoryUrl),
+    },
+  };
 }
 
 export const bhCategoryReader: CategoryReader = {

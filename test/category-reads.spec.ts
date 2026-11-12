@@ -217,6 +217,78 @@ describe("B&H: one category page prices every product it lists", () => {
     expect(BH.pageUrl(`${BH_CATEGORY}/pn/2`, 1)).toBe(BH_CATEGORY);
   });
 
+  describe("the canonical address page 1 states", () => {
+    // The address a job recorded from a product page: B&H redirects page 1
+    // of it, but sends `/pn/N` of it back to page 1.
+    const ASKED = "https://www.bhphotovideo.com/c/buy/Mice-Touchpads/ci/18369";
+    const canonicalOf = (body: string, asked: string | undefined) => {
+      const result = BH.readCategoryPage(body, 1, asked);
+      return pageOf(result).canonicalUrl ?? null;
+    };
+
+    it("🔑 reads it from the real page 1, as the address of its first page", () => {
+      expect(canonicalOf(BH_P1, ASKED)).toBe(BH_CATEGORY);
+      // Every page of the category states the same address.
+      expect(pageOf(BH.readCategoryPage(BH_P2, 2, ASKED)).canonicalUrl).toBe(
+        BH_CATEGORY,
+      );
+    });
+
+    it("🔴 refuses one that names another category, another host, or no category", () => {
+      const swap = (to: string) => BH_P1.replace(BH_CATEGORY, to);
+      expect(BH_P1).toContain(`href="${BH_CATEGORY}"`);
+      for (const to of [
+        "https://www.bhphotovideo.com/c/buy/mice/ci/99999",
+        "https://evil.example/c/buy/mice-wireless-bluetooth-usb/ci/18369",
+        "http://www.bhphotovideo.com/c/buy/mice-wireless-bluetooth-usb/ci/18369",
+        "https://www.bhphotovideo.com/c/product/1910635-REG/x.html",
+        // 🔴 Not exactly /c/buy/<slug>/ci/<id>, or carrying a query.
+        `${BH_CATEGORY}?filters=fct_brand_name%3Alogitech`,
+        `${BH_CATEGORY}/N/4232860382`,
+        "https://www.bhphotovideo.com/api/x/ci/18369",
+        `${BH_CATEGORY}/ci/99999`,
+        "https://www.bhphotovideo.com/c/product/1910635-REG/ci/18369/x.html",
+        "https://www.bhphotovideo.com/find/ci/18369",
+      ]) {
+        expect([to, canonicalOf(swap(to), ASKED)]).toEqual([to, null]);
+      }
+      // Right body, but the category asked for is another one.
+      expect(
+        canonicalOf(
+          BH_P1,
+          "https://www.bhphotovideo.com/c/buy/Network-Switches/ci/10014",
+        ),
+      ).toBeNull();
+    });
+
+    it("🔴 follows none where the category asked for carries a query", () => {
+      // A clean canonical, but the job's own address is a filtered view.
+      expect(canonicalOf(BH_P1, `${ASKED}?filters=x`)).toBeNull();
+    });
+
+    it("a page that states none, or a read told no category, reads as before", () => {
+      expect(
+        canonicalOf(
+          rewriteBhCategoryPage(BH_P1, () => undefined),
+          ASKED,
+        ),
+      ).toBeNull();
+      expect(canonicalOf(BH_P1, undefined)).toBeNull();
+      // The products are read the same either way.
+      expect(ids(pageOf(BH.readCategoryPage(BH_P1, 1, ASKED)))).toEqual(
+        ids(pageOf(BH.readCategoryPage(BH_P1, 1))),
+      );
+    });
+
+    it("other competitors' readers state no canonical address", () => {
+      expect(
+        pageOf(
+          NEWEGG.readCategoryPage(raw("newegg-category-desktop-memory-p1"), 1),
+        ).canonicalUrl ?? null,
+      ).toBeNull();
+    });
+  });
+
   it("🔴 builds no address off B&H's host, off a category, or for no page", () => {
     for (const [url, n] of [
       ["https://evil.example/c/buy/mice/ci/18369", 1],

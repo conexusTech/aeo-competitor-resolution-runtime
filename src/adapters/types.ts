@@ -608,6 +608,16 @@ export interface CategoryPage {
    * where the page does not say. A walk need never buy the page past it.
    */
   readonly lastPage: number | null;
+  /**
+   * The address the retailer says is this category's own, where the page
+   * states one this reader accepts for the category it was asked for.
+   *
+   * 🔴 **A walk pages from it, not from the address the job recorded.** A
+   * recorded address can be one the retailer redirects page 1 of, yet sends
+   * `/pn/N` of back to page 1. Absent or `null` for a reader that states
+   * none: the walk then pages from the job's address, as ever.
+   */
+  readonly canonicalUrl?: string | null;
 }
 
 /**
@@ -643,8 +653,17 @@ export interface CategoryReader {
    * own hosts, or `n` is not a whole page number.
    */
   pageUrl(categoryUrl: string, n: number): string | null;
-  /** The body served for page `n` -> what it says. Pure. */
-  readCategoryPage(html: string, n: number): CategoryPageResult;
+  /**
+   * The body served for page `n` -> what it says. Pure.
+   *
+   * @param categoryUrl The category the walk asked for, so a reader that
+   * states a canonical address can refuse one for another category.
+   */
+  readCategoryPage(
+    html: string,
+    n: number,
+    categoryUrl?: string,
+  ): CategoryPageResult;
 }
 
 /**
