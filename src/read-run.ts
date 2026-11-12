@@ -395,11 +395,15 @@ function readBody(
     );
   }
   const page = result.page;
-  const barcodePrices = page.barcodePrices?.map((b) => ({
-    barcode: b.barcode,
-    // 🔴 One price past the gateway's limits would refuse the whole reading.
-    priceCents: priceWithinLimits(b.priceCents),
-  }));
+  // 🔴 Absent, never empty: an empty list says nothing per barcode.
+  const barcodePrices =
+    page.barcodePrices === undefined || page.barcodePrices.length === 0
+      ? undefined
+      : page.barcodePrices.map((b) => ({
+          barcode: b.barcode,
+          // 🔴 One price past the gateway's limits would refuse the reading.
+          priceCents: priceWithinLimits(b.priceCents),
+        }));
   return {
     itemId: listing.itemId,
     pageItemId: page.pageItemId,

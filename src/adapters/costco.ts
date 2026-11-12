@@ -420,6 +420,15 @@ export function readListingPage(html: string): ListingPageResult {
             : "not a Costco product page",
     };
   }
+  // 🔴 Several items with no barcode to carry each one's price: the shown
+  // price cannot be tied to an item, so the offer is unreadable — never a
+  // page read with no price.
+  if (page.severalPrices && page.upcs.length === 0) {
+    return {
+      kind: "unreadable-offer",
+      detail: "several items, not all at one price this build can read",
+    };
+  }
   // 🔴 A price Costco WITHHOLDS from a signed-out visitor is the page's
   // answer, not a failed reading: no price, and a page.
   if (page.visibility === "none") {

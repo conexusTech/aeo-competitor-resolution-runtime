@@ -210,6 +210,16 @@ describe("🔴 a Costco page listing several items is read, not failed", () => {
     });
     expect(readCostcoPage(noPrice).kind).toBe("unreadable-offer");
   });
+
+  it("🔴 SYNTHETIC: several items with no barcode to price stay an unreadable offer, never a page with no price", () => {
+    // The shown price belongs to item 111, and no barcode can carry it: a
+    // page read with no price would hide that this build could not tie it.
+    const body = costcoPage(twoColours({ upc: null }));
+    expect(readCostcoPage(body)).toStrictEqual({
+      kind: "unreadable-offer",
+      detail: "several items, not all at one price this build can read",
+    });
+  });
 });
 
 describe("🔴 the reading event carries the per-barcode prices", () => {
@@ -360,6 +370,21 @@ describe("🔴 the reading event carries the per-barcode prices", () => {
       { barcode: "036000291452", priceCents: null },
       { barcode: "036000291469", priceCents: null },
     ]);
+  });
+
+  it("🔴 an empty list of per-barcode prices is never sent: the key is absent", async () => {
+    const reading = await readListing(
+      LISTING,
+      answering({
+        kind: "page",
+        page: { ...page, priceCents: 1000, barcodePrices: [] },
+      }),
+      new PagesFetcher(new Map([[LISTING.url, "<html></html>"]])),
+      now,
+    );
+    expect(reading).not.toHaveProperty("barcodePrices");
+    // With nothing per barcode, the page's own price speaks as before.
+    expect(reading.priceCents).toBe(1000);
   });
 
   it("CONTROL: the largest price the gateway takes is sent as it is", async () => {
