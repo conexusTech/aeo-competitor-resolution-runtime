@@ -951,6 +951,12 @@ describe("🔴 the product-line change loses nothing master found, and reads siz
     // Costco sells it at 64GB and 256GB, not the 128GB asked for: the right
     // display size at another capacity is a conflict, so it follows the
     // entries that conflict with nothing, yet is found (master: absent).
+    // 🔑 Found is the requirement, not a place: neither entry is the client's
+    // product, so neither can verify by barcode. The `< 10` bound this test
+    // first carried was met only because the MacBook Airs' 8GB of MEMORY read
+    // as a conflict with the 128GB asked for; a memory Costco labels is no
+    // conflict for a client that named only its storage, so those entries
+    // come ahead and the minis sit at 9 and 10. Both are still listed.
     for (const id of ["100806381", "100806296"]) {
       const rank = at(
         "Apple",
@@ -958,7 +964,6 @@ describe("🔴 the product-line change loses nothing master found, and reads siz
         id,
       );
       expect(rank).toBeGreaterThanOrEqual(0);
-      expect(rank).toBeLessThan(10);
     }
   });
 
@@ -982,5 +987,138 @@ describe("🔴 the product-line change loses nothing master found, and reads siz
       productName: 'Samsung 65" Class U8000H',
     });
     expect(c[0]?.itemId).toBe("4201040398");
+  });
+});
+
+describe("🔴 a memory Costco labels is no conflict for a client that named only its storage", () => {
+  const entries: readonly ProductIndexEntry[] = parseSitemap(FULL) ?? [];
+  const rankOf = (brand: string, productName: string, id: string): number =>
+    indexCandidates(entries, {
+      brand,
+      partNumbers: [],
+      productName,
+    }).findIndex((c) => c.url.endsWith(`/${id}`));
+  const order = (
+    productName: string,
+    names: readonly string[],
+    brand = "Acme",
+  ): string[] =>
+    indexCandidates(
+      names.map((name, i) => ({ itemId: `${i}`, url: `u${i}`, name })),
+      { brand, partNumbers: [], productName },
+    ).map((c) => c.url);
+
+  it("a MacBook Pro asked for by its SSD alone ranks its entry first, though the entry states its memory", () => {
+    // 7847335: 4th, behind entries that state no memory, because "24gb" in
+    // `…-24gb-memory-1tb-ssd-…` read as a capacity the client did not ask for.
+    expect(
+      rankOf(
+        "Apple",
+        'Apple MacBook Pro 14" M5 Pro 1TB SSD Space Black',
+        "4000444264",
+      ),
+    ).toBe(0);
+  });
+
+  it.each([
+    [
+      "Acer",
+      'Acer Nitro V 15.6" Gaming Laptop Intel Core i7-13620H RTX 5050 16GB RAM 1TB SSD',
+      "4000372340",
+    ],
+    [
+      "MSI",
+      "MSI Crosshair 16 Max Gaming Laptop Intel Core Ultra 7 251HX RTX 5060 32GB RAM 1TB SSD",
+      "4201008045",
+    ],
+    [
+      "CyberPowerPC",
+      "CyberPowerPC Gamer Supreme Ryzen 7 9850X3D GeForce RTX 5070 12GB 32GB DDR5 1TB SSD",
+      "4000447645",
+    ],
+    [
+      "iBUYPOWER",
+      "iBUYPOWER Y40 Liquid Cooled Gaming PC Ryzen 7 9700X RTX 5070 32GB RAM 2TB SSD",
+      "4000366690",
+    ],
+    [
+      "Microsoft",
+      'Microsoft Surface Laptop 13" Snapdragon X Plus 16GB of RAM 512GB UFS',
+      "4000362157",
+    ],
+  ])(
+    "a client that labels its memory keeps its entry first (as on 7847335): %s %s",
+    (brand, name, id) => {
+      expect(rankOf(brand, name, id)).toBe(0);
+    },
+  );
+
+  it("a labelled memory still matches: the entry with the client's size outranks one with another", () => {
+    expect(
+      order("Acme Laptop 15-inch 24GB 1TB SSD", [
+        "acme laptop 15 inch 16gb memory 1tb ssd",
+        "acme laptop 15 inch 24gb memory 1tb ssd",
+      ])[0],
+    ).toBe("u1");
+  });
+
+  it.each([
+    "Acme Laptop 15-inch 24GB RAM 1TB SSD",
+    "Acme Laptop 15-inch 24GB Unified Memory 1TB SSD",
+    "Acme Laptop 15-inch 24GB DDR5 1TB SSD",
+    "Acme Laptop 15-inch 24GB LPDDR5X 1TB SSD",
+    "Acme Laptop 15-inch 24GB of RAM 1TB SSD",
+  ])(
+    "a client that labels its memory still demotes an entry with another: %s",
+    (name) => {
+      // The other memory is a conflict, so the entry that states no memory at
+      // all comes ahead of it.
+      expect(
+        order(name, [
+          "acme laptop 15 inch 16gb memory 1tb ssd",
+          "acme laptop 15 inch 1tb ssd",
+        ]),
+      ).toEqual(["u1", "u0"]);
+    },
+  );
+
+  it("a client that names a capacity the entry lacks still has a labelled memory against it", () => {
+    // "16GB 512GB SSD" names a 16GB the entry does not state: its "8gb
+    // memory" is the conflict, so the entry stating no capacity comes first.
+    expect(
+      order("Acme Laptop 15-inch 16GB 512GB SSD", [
+        "acme laptop 15 inch 8gb memory 512gb ssd",
+        "acme laptop 15 inch",
+      ]),
+    ).toEqual(["u1", "u0"]);
+  });
+
+  it("a capacity Costco does not label as memory is still a conflict", () => {
+    expect(
+      order("Acme Laptop 15-inch 1TB SSD", [
+        "acme laptop 15 inch 12gb gddr7 1tb ssd",
+        "acme laptop 15 inch 1tb ssd",
+      ]),
+    ).toEqual(["u1", "u0"]);
+  });
+
+  it("1TB and 1000GB are one size", () => {
+    expect(
+      order("Acme Laptop 15-inch 1TB SSD", [
+        "acme laptop 15 inch 512gb ssd",
+        "acme laptop 15 inch 1000gb ssd",
+      ])[0],
+    ).toBe("u1");
+  });
+
+  it.each([
+    ["Acme Yoga 2-in-1 Laptop", "2"],
+    ["Acme Yoga 4 in 1 Laptop", "4"],
+  ])("%s states no display size", (name, n) => {
+    // Read as a size, it would put the n-inch entry first; it is a form
+    // factor, so neither entry is demoted and Costco's own order stands.
+    expect(
+      order(name, ["acme yoga laptop 14 inch", `acme yoga laptop ${n} inch`]),
+    ).toEqual(["u0", "u1"]);
   });
 });

@@ -607,8 +607,8 @@ const sameWord = (a: string, b: string): boolean =>
 
 /**
  * The sizes a name states, in two kinds: a DISPLAY size ("11-inch", `11"`,
- * "11in", "34 class") and a storage CAPACITY ("128gb", "1tb"), each once.
- * Other numbers ("10-core", "m5") are not sizes: Costco's long names carry
+ * "11in", "34 class") and a CAPACITY ("128gb", "1tb"), each once. Other
+ * numbers ("10-core", "m5") are not sizes: Costco's long names carry
  * several, and counting them rewards the longest name rather than the right
  * one.
  *
@@ -616,41 +616,65 @@ const sameWord = (a: string, b: string): boolean =>
  * which `words` strips to a bare number. Costco's slugs drop the decimal point
  * (`8.3` → `83`, `13.6` → `136`), so a display size is kept that way; a
  * decimal also stands as its whole part (`13.6` is sold as "13-inch").
+ * "2-in-1" and "4 in 1" are a form factor, never a size in inches.
+ *
+ * A capacity is kept in gigabytes, so "1tb" and "1000gb" are one size.
+ * `memory` holds the capacities the name itself LABELS as memory, by the word
+ * right after it ("24gb memory", "16gb ram", "32gb ddr5", "16gb lpddr5x",
+ * "24gb unified memory", and on the client's side "16gb of ram"); they are
+ * also in `capacity`, which stays the one comparison (see `sizeScore`).
  */
 interface Sizes {
   readonly display: ReadonlySet<string>;
   readonly capacity: ReadonlySet<string>;
+  readonly memory: ReadonlySet<string>;
 }
+
+/** The words that, right after a capacity, label it memory. */
+const MEMORY_WORD = /^(?:memory|ram|unified|(?:lp)?ddr\d*x?)$/;
+
+const gigabytes = (n: string, unit: string): string =>
+  `${unit.toLowerCase() === "tb" ? Number(n) * 1000 : Number(n)}gb`;
 
 function clientSizes(text: string): Sizes {
   const display = new Set<string>();
   const capacity = new Set<string>();
+  const memory = new Set<string>();
   const d =
-    /(\d+)(?:\.(\d+))?\s*-?\s*(?:["\u2033\u201d]|inch(?:es)?\b|in\b|class\b)/gi;
+    /(\d+)(?:\.(\d+))?\s*-?\s*(?:["\u2033\u201d]|inch(?:es)?\b|in\b(?!\s*-?\s*1\b)|class\b)/gi;
   for (const m of text.matchAll(d)) {
     display.add(`${m[1]}${m[2] ?? ""}`);
     if (m[2] !== undefined) display.add(m[1] ?? "");
   }
   for (const m of text.matchAll(/(\d+)\s*-?\s*(gb|tb)\b/gi)) {
-    capacity.add(`${m[1]}${(m[2] ?? "").toLowerCase()}`);
+    const size = gigabytes(m[1] ?? "", m[2] ?? "");
+    capacity.add(size);
+    const after = text.slice((m.index ?? 0) + m[0].length).toLowerCase();
+    const next = /^[\s-]*(?:of\s+)?([a-z0-9]+)/.exec(after)?.[1];
+    if (next !== undefined && MEMORY_WORD.test(next)) memory.add(size);
   }
-  return { display, capacity };
+  return { display, capacity, memory };
 }
 
-/** The same two kinds, from a sitemap name's words ("11 inch", "128gb"). */
+/** The same kinds, from a sitemap name's words ("11 inch", "24gb memory"). */
 function entrySizes(ws: readonly string[]): Sizes {
   const display = new Set<string>();
   const capacity = new Set<string>();
+  const memory = new Set<string>();
   ws.forEach((w, i) => {
-    if (/^\d+(gb|tb)$/.test(w)) capacity.add(w);
-    else if (
+    const cap = /^(\d+)(gb|tb)$/.exec(w);
+    if (cap) {
+      const size = gigabytes(cap[1] ?? "", cap[2] ?? "");
+      capacity.add(size);
+      if (MEMORY_WORD.test(ws[i + 1] ?? "")) memory.add(size);
+    } else if (
       /^\d+$/.test(w) &&
       (ws[i + 1] === "inch" || ws[i + 1] === "class")
     ) {
       display.add(w);
     }
   });
-  return { display, capacity };
+  return { display, capacity, memory };
 }
 
 /**
@@ -661,12 +685,34 @@ function entrySizes(ws: readonly string[]): Sizes {
  * MacBook Air at 8GB shares "512gb" and is still the wrong product, and an
  * entry that states no size at all (`ipad-128gb-wi-fi-a16-chip`, for a client
  * asking for an 11-inch iPad at 128GB) is not in conflict with anything.
+ *
+ * 🔴 **A capacity the entry labels as memory conflicts only with a client
+ * that labelled its own.** "Apple MacBook Pro 14\" M5 Pro 1TB SSD" says
+ * nothing about memory, and Costco's `…-24gb-memory-1tb-ssd-…` is its
+ * product: counting "24gb" against it put that entry 4th, behind entries
+ * that state no memory, and Costco reads only the first three. Such a
+ * capacity still matches (+1) when the client stated that size. A client that
+ * did label its memory ("24GB RAM", "32GB DDR5", "16GB of RAM") is compared
+ * as before, every capacity against every capacity — and so is one that
+ * named a capacity the entry does not state: "MacBook Air 13.6\" 16GB 512GB
+ * SSD" named a size the `…-8gb-memory-512gb-…` entries lack, and their "8gb"
+ * stays the conflict that keeps them behind the 16GB model.
  */
 function sizeScore(client: Sizes, entry: Sizes): number {
+  // The client said nothing about memory: it labelled none, and the entry
+  // states every capacity it did name.
+  const silentOnMemory =
+    client.memory.size === 0 &&
+    [...client.capacity].every((w) => entry.capacity.has(w));
   let score = 0;
   for (const kind of ["display", "capacity"] as const) {
     if (client[kind].size === 0) continue;
-    for (const w of entry[kind]) score += client[kind].has(w) ? 1 : -8;
+    for (const w of entry[kind]) {
+      if (client[kind].has(w)) score += 1;
+      else if (kind === "capacity" && silentOnMemory && entry.memory.has(w)) {
+        continue;
+      } else score -= 8;
+    }
   }
   return score;
 }
