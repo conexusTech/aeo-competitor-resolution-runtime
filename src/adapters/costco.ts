@@ -501,16 +501,22 @@ const words = (s: string): string[] =>
 interface IndexStats {
   readonly size: number;
   readonly uses: ReadonlyMap<string, number>;
+  /** How many of the names BEGIN with each word. */
+  readonly leads: ReadonlyMap<string, number>;
 }
 const STATS = new WeakMap<readonly ProductIndexEntry[], IndexStats>();
 function statsOf(entries: readonly ProductIndexEntry[]): IndexStats {
   const known = STATS.get(entries);
   if (known !== undefined) return known;
   const uses = new Map<string, number>();
+  const leads = new Map<string, number>();
   for (const e of entries) {
-    for (const w of new Set(words(e.name))) uses.set(w, (uses.get(w) ?? 0) + 1);
+    const own = words(e.name);
+    for (const w of new Set(own)) uses.set(w, (uses.get(w) ?? 0) + 1);
+    const lead = own[0];
+    if (lead !== undefined) leads.set(lead, (leads.get(lead) ?? 0) + 1);
   }
-  const stats = { size: entries.length, uses };
+  const stats = { size: entries.length, uses, leads };
   STATS.set(entries, stats);
   return stats;
 }
@@ -526,16 +532,46 @@ function statsOf(entries: readonly ProductIndexEntry[]): IndexStats {
  */
 const DISTINCTIVE_SHARE = 1 / 100;
 /**
- * A product line: a word in no more than one name in a thousand. "airpods"
- * leads 6 of 18,180; "true" and "memory", which lead other products' names,
- * are in 39 and 171.
+ * 🔴 **A product line is a word Costco LEADS names with, not one it merely
+ * uses.** It is a word that passes `DISTINCTIVE_SHARE` (in at most 182 of
+ * 18,180 names) AND that begins at least a quarter of the names it is in
+ * (`LINE_LEAD_SHARE`) AND that the client's own name opens with (see
+ * `indexCandidates`).
+ *
+ * The rule this replaced took only a word in at most one name in a thousand
+ * (18), which kept "airpods" (leads 2 of its 6 names) and "imac" (7 of 9) and
+ * dropped every popular line: "ipad" leads 43 of its 77 names, "macbook" 29
+ * of 35 and "mac" 25 of 36 (measured 2026-11-12 on the 18,180-entry sitemap
+ * fixture), so an iPad or MacBook row never reached its page and ended "not
+ * carried". Measured, the lead share cleanly separates a line from a feature:
+ * "memory" is in 171 names and leads 1 (0.01), "black" 10 of 286, "smart"
+ * 6 of 456. "true" is the case no count settles — it leads 20 of 39 (0.51), as
+ * a line does — so what keeps it out is where it stands in the CLIENT'S name:
+ * "Apple AirPods 4 … True Wireless" opens with "airpods", never "true".
  */
-const LINE_SHARE = 1 / 1000;
+const LINE_LEAD_SHARE = 1 / 4;
+/** A product line is the first word of the client's name after its brand. */
+const LINE_NAME_POSITIONS = 2;
 
 /** Equal, or the same word in two forms ("cancelling", "cancellation"). */
 const sameWord = (a: string, b: string): boolean =>
   a === b ||
   (a.length >= 6 && b.length >= 6 && a.slice(0, 6) === b.slice(0, 6));
+
+/**
+ * The sizes and capacities a name states: "11" from "11-inch", "128gb",
+ * "1tb" — a display size or a storage capacity, each once. Other numbers
+ * ("10-core", "m5") are not sizes: Costco's long names carry several, and
+ * counting them rewards the longest name rather than the right one.
+ */
+function sizesOf(ws: readonly string[]): string[] {
+  const out = new Set<string>();
+  ws.forEach((w, i) => {
+    if (/^\d+(gb|tb)$/.test(w)) out.add(w);
+    else if (/^\d+$/.test(w) && ws[i + 1] === "inch") out.add(w);
+  });
+  return [...out];
+}
 
 const compact = (s: string): string =>
   s.toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -564,11 +600,14 @@ const compact = (s: string): string =>
  *
  * ── Order ────────────────────────────────────────────────────────────
  *
- * A name that spells a part number first, then by how much of the entry's
+ * A name that spells a part number first, then the one sharing the most of the
+ * sizes and capacities the client states ("11" from "11-inch", "128gb" — the
+ * numbers `distinctive` ignores, which are exactly what tells an iPad Air
+ * 11-inch from the 13-inch), then by how much of the entry's
  * name is the client's: shared distinctive words over all of its distinctive
  * words. `airpods-4-with-active-noise-cancellation` is all AirPods 4 ANC;
  * `apple-airpods-pro-3-…-hearing-aid-feature-…` shares more words and is
- * mostly something else.
+ * mostly something else. A url is listed once.
  */
 export function indexCandidates(
   entries: readonly ProductIndexEntry[],
@@ -581,12 +620,18 @@ export function indexCandidates(
     !/^\d+$/.test(w) &&
     uses(w) <= Math.max(stats.size * DISTINCTIVE_SHARE, 2);
   const isLine = (w: string): boolean =>
-    distinctive(w) && uses(w) <= Math.max(stats.size * LINE_SHARE, 1);
+    distinctive(w) && (stats.leads.get(w) ?? 0) >= uses(w) * LINE_LEAD_SHARE;
 
   const brandWord = words(query.brand ?? "")[0] ?? null;
   const nameWords = [
     ...new Set(words(query.productName ?? "").filter(distinctive)),
   ].filter((w) => w !== brandWord);
+  // The words the client's name opens with once the brand is set aside: a
+  // product line stands there, a feature ("true wireless") does not.
+  const opening = words(query.productName ?? "")
+    .filter((w) => w !== brandWord && !/^\d+$/.test(w))
+    .slice(0, LINE_NAME_POSITIONS);
+  const sizes = new Set(sizesOf(words(query.productName ?? "")));
   const partNumbers = query.partNumbers
     .map(compact)
     .filter((p) => p.length >= 4);
@@ -597,15 +642,20 @@ export function indexCandidates(
     namesPart: boolean;
     share: number;
     shared: number;
+    sizeShared: number;
     order: number;
   }[] = [];
+  const seen = new Set<string>();
   entries.forEach((entry, order) => {
     const own = words(entry.name);
     const lead = own[0];
-    if (lead === undefined) return;
+    if (lead === undefined || seen.has(entry.url)) return;
     const byBrand = brandWord !== null && lead === brandWord;
     const byLine =
-      !byBrand && isLine(lead) && nameWords.some((w) => sameWord(w, lead));
+      !byBrand &&
+      isLine(lead) &&
+      opening.some((w) => sameWord(w, lead)) &&
+      nameWords.some((w) => sameWord(w, lead));
     if (!byBrand && !byLine) return;
 
     const rest = [...new Set(own.slice(1).filter(distinctive))].filter(
@@ -614,6 +664,7 @@ export function indexCandidates(
     const shared = rest.filter((w) => nameWords.some((n) => sameWord(n, w)));
     const namesPart = partNumbers.some((p) => compact(entry.name).includes(p));
     if (shared.length === 0 && !namesPart) return;
+    seen.add(entry.url);
     scored.push({
       entry,
       byBrand,
@@ -621,6 +672,12 @@ export function indexCandidates(
       // The lead counts on both sides: it is the word that matched.
       share: (shared.length + 1) / (rest.length + 1),
       shared: shared.length,
+      // Sizes the entry shares, less the sizes it states that the client did
+      // not: "16gb" is not "8gb", and the 15-inch is not the 13-inch.
+      sizeShared: sizesOf(own).reduce(
+        (n, w) => n + (sizes.has(w) ? 1 : -1),
+        0,
+      ),
       order,
     });
   });
@@ -629,6 +686,7 @@ export function indexCandidates(
     .sort(
       (a, b) =>
         Number(b.namesPart) - Number(a.namesPart) ||
+        b.sizeShared - a.sizeShared ||
         b.share - a.share ||
         b.shared - a.shared ||
         a.order - b.order,

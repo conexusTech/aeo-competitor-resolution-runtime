@@ -469,3 +469,120 @@ describe("candidates from the index", () => {
     expect(find(null, "")).toEqual([]);
   });
 });
+
+/**
+ * The proven pairs of the Global Organization demo (the investigation's
+ * `demo-matches.json`): the Micro Center row's brand, name and part number,
+ * and the Costco url its barcode proved. Ten of the fifteen are in the full
+ * sitemap fixture; the other five Costco has since dropped from its sitemap.
+ */
+const COSTCO = "https://www.costco.com/p/-/";
+const PROVEN: readonly {
+  sku: string;
+  brand: string;
+  name: string;
+  part: string;
+  url: string;
+  /** Whether the proven url ranks FIRST, not merely within three. */
+  first: boolean;
+}[] = [
+  { sku: "001339", brand: "Apple", name: "iPad Air 11-inch, 128GB Wi-Fi (M4 chip) Built For Apple Intelligence, Space Gray", part: "MH304LL/A", url: `${COSTCO}ipad-air-11-inch-128gb-wi-fi-m4-chip-built-for-apple-intelligence/4000444349`, first: true },
+  { sku: "001420", brand: "Apple", name: "iPad Air 13-inch, 128GB Wi-Fi (M4 chip) Built For Apple Intelligence, Space Gray", part: "MH5N4LL/A", url: `${COSTCO}ipad-air-13-inch-128gb-wi-fi-m4-chip-built-for-apple-intelligence/4000444330`, first: true },
+  { sku: "001479", brand: "Apple", name: "iPad Air 13-inch, 256GB Wi-Fi (M4 chip) Built For Apple Intelligence, Space Gray", part: "MH5U4LL/A", url: `${COSTCO}ipad-air-13-inch-256gb-wi-fi-m4-chip-built-for-apple-intelligence/4000444398`, first: true },
+  { sku: "001370", brand: "Apple", name: "iPad Air 11-inch, 256GB Wi-Fi (M4 chip) Built For Apple Intelligence, Space Gray", part: "MH354LL/A", url: `${COSTCO}ipad-air-11-inch-256gb-wi-fi-m4-chip-built-for-apple-intelligence/4000444378`, first: true },
+  { sku: "941617", brand: "Apple", name: "iPad Pro 11-inch, 256GB Wi-Fi (M5 chip) Built For Apple Intelligence, Space Black", part: "MDWK4LL/A", url: `${COSTCO}ipad-pro-11-inch-256gb-wi-fi-m5-chip-built-for-apple-intelligence/4000285636`, first: true },
+  { sku: "941641", brand: "Apple", name: "iPad Pro 13-inch, 256GB Wi-Fi (M5 chip) Built For Apple Intelligence, Space Black", part: "MDYJ4LL/A", url: `${COSTCO}ipad-pro-13-inch-256gb-wi-fi-m5-chip-built-for-apple-intelligence/4000366725`, first: true },
+  { sku: "002030", brand: "Apple", name: "MacBook Air Laptop (13-inch) - Apple M5 Chip, Built for Apple Intelligence, 10-core CPU, 8-core GPU, 16GB Memory, 512GB SSD Storage, Midnight.", part: "MDHE4LL/A", url: `${COSTCO}macbook-air-laptop-13-inch-with-apple-m5-chip-built-for-apple-intelligence/4000444336`, first: true },
+  { sku: "002303", brand: "Apple", name: "MacBook Air Laptop (15-inch) - Apple M5 chip, Built for Apple Intelligence, 10-core CPU, 10-core GPU, 16GB Memory, 512GB SSD Storage, Midnight.", part: "MDVH4LL/A", url: `${COSTCO}macbook-air-laptop-15-inch-with-apple-m5-chip-built-for-apple-intelligence/4000444232`, first: true },
+  { sku: "013466", brand: "Apple", name: "Apple Airpods Max 2, Midnight", part: "MHWK4AM/A", url: `${COSTCO}apple-airpods-max-2/4000444301`, first: true },
+  { sku: "009746", brand: "Samsung", name: "Samsung Galaxy Buds4 Pro True Wireless Earbuds, Black", part: "SM-R640NZKAXAR", url: `${COSTCO}samsung-galaxy-buds4-pro-true-wireless-earbuds/4201049488`, first: true },
+];
+
+describe("🔴 a product Costco names by its line, not its brand, is found", () => {
+  const entries: readonly ProductIndexEntry[] = parseSitemap(FULL) ?? [];
+  const rank = (r: (typeof PROVEN)[number]): number =>
+    indexCandidates(entries, {
+      brand: r.brand,
+      partNumbers: [r.part],
+      productName: r.name,
+    }).findIndex((c) => c.url === r.url);
+
+  it.each(PROVEN)(
+    "demo row $sku: its proven page is within the first three candidates",
+    (r) => {
+      const at = rank(r);
+      expect(at).toBeGreaterThanOrEqual(0);
+      expect(at).toBeLessThan(3);
+    },
+  );
+
+  it("every proven row ranks FIRST: the size the client states puts the exact product ahead", () => {
+    for (const r of PROVEN.filter((p) => p.first)) {
+      expect({ sku: r.sku, at: rank(r) }).toEqual({ sku: r.sku, at: 0 });
+    }
+  });
+
+  it("lists each url once", () => {
+    for (const r of PROVEN) {
+      const urls = indexCandidates(entries, {
+        brand: r.brand,
+        partNumbers: [r.part],
+        productName: r.name,
+      }).map((c) => c.url);
+      expect(new Set(urls).size).toBe(urls.length);
+    }
+    const twice: ProductIndexEntry[] = [
+      { itemId: "1", url: "u1", name: "ipad air 11 inch 128gb" },
+      { itemId: "1", url: "u1", name: "ipad air 11 inch 128gb" },
+    ];
+    expect(
+      indexCandidates(twice, {
+        brand: "Apple",
+        partNumbers: [],
+        productName: "iPad Air 11-inch 128GB",
+      }),
+    ).toHaveLength(1);
+  });
+
+  it("🔴 'true' is not a product line: AirPods' 'True Wireless' admits no true-led name", () => {
+    const c = indexCandidates(entries, {
+      brand: "Apple",
+      partNumbers: [],
+      productName:
+        "Apple AirPods 4 Active Noise Cancelling True Wireless Bluetooth Earbuds - White",
+    });
+    expect(c.some((x) => x.title.startsWith("true "))).toBe(false);
+    expect(c.some((x) => x.title.startsWith("memory "))).toBe(false);
+  });
+
+  it("🔴 'memory' is not a product line: a name containing it makes no memory-led name a candidate", () => {
+    // 'memory' is in 171 names and leads 1 of them; it is a feature, not a line.
+    for (const productName of [
+      "Acme Memory Foam Mattress Topper, Queen",
+      "Acme Laptop 16GB Memory 512GB SSD",
+    ]) {
+      const c = indexCandidates(entries, {
+        brand: "Acme",
+        partNumbers: [],
+        productName,
+      });
+      expect(c.some((x) => x.title.startsWith("memory "))).toBe(false);
+    }
+    // And a synthetic index where memory-led names are plentiful.
+    const fake: ProductIndexEntry[] = Array.from({ length: 30 }, (_, i) => ({
+      itemId: String(i),
+      url: `u${i}`,
+      name: `memory foam pillow ${i}`,
+    }));
+    for (let i = 0; i < 200; i++) {
+      fake.push({ itemId: `x${i}`, url: `ux${i}`, name: `other thing with memory ${i}` });
+    }
+    expect(
+      indexCandidates(fake, {
+        brand: "Acme",
+        partNumbers: [],
+        productName: "Acme Gaming Laptop 16GB Memory Foam",
+      }),
+    ).toEqual([]);
+  });
+});
