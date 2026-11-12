@@ -636,6 +636,14 @@ the largest, about 3 MB.
 
 **Checked by:** resolution-costco-never-searched, resolution-costco-finds-by-product-line, resolution-costco-other-products-are-not-candidates
 
+#### Scenario: A product Costco names by its line, not its brand, is found
+- GIVEN a client row for an iPad or MacBook that Costco sells under a name leading with "ipad" or "macbook", a word hundreds of Costco's names share
+- WHEN its candidates are taken from Costco's product list
+- THEN the product's own page is among the three Costco reads, the size the client states putting it first
+- AND a word that merely leads some names, such as "memory", does not make every such name a candidate
+
+**Checked by:** resolution-costco-finds-popular-product-lines
+
 #### Scenario: Costco's own item numbers never prove a pairing
 - GIVEN a Costco page that states Costco's internal numbers beside the barcodes of the items it sells
 - WHEN it is read for a pairing

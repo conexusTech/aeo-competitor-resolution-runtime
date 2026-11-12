@@ -2565,6 +2565,29 @@ shows the AirPods are never found by brand alone.
 
 ---
 
+### Check: resolution-costco-finds-popular-product-lines
+
+**Requirement:** A product Costco names by its line, not its brand, is found
+**Surface:** the Costco adapter's `productIndex.candidates`
+**Automated:** `test/adapter-costco.spec.ts` — "demo row $sku: its proven page is within the first three candidates", "every proven row ranks FIRST: the size the client states puts the exact product ahead", "lists each url once", "'true' is not a product line", "'memory' is not a product line"
+
+**Do**
+
+```bash
+npx vitest run test/adapter-costco.spec.ts -t "a product Costco names by its line"
+```
+
+**Expect**
+
+All pass, on the 18,180-entry sitemap fixture. Each of the ten Micro Center rows
+the investigation proved at Costco, and that the fixture holds, has its proven
+page first among its candidates: the six iPads, two MacBook Airs, AirPods Max 2
+and Galaxy Buds4 Pro. Before the change, eight of the ten were not candidates
+at all. Each url is listed once. Neither "true" nor "memory" admits names that
+merely lead with it.
+
+---
+
 ### Check: resolution-costco-other-products-are-not-candidates
 
 **Requirement:** A Costco product is found in its product list, never by search
