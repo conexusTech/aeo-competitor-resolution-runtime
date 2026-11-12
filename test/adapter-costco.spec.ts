@@ -1053,6 +1053,21 @@ describe("🔴 a memory Costco labels is no conflict for a client that named onl
     },
   );
 
+  it.each([
+    ["Apple iPad 128GB", "4000285678"],
+    ["Apple iPad 128GB Silver", "4000285678"],
+    ["Apple TV 4K 128GB", "4000444318"],
+    ["Apple TV 128GB", "4000444318"],
+  ])(
+    "an entry that shares only a capacity with %s keeps its memory as a conflict",
+    (name, id) => {
+      // `apple-macbook-air-133-…-8gb-memory-128gb-ssd` shares "128gb" and
+      // nothing else: it is another product, so its "8gb" still demotes it
+      // and the right page stays third, as on 7847335.
+      expect(rankOf("Apple", name, id)).toBeLessThanOrEqual(2);
+    },
+  );
+
   it("a labelled memory still matches: the entry with the client's size outranks one with another", () => {
     expect(
       order("Acme Laptop 15-inch 24GB 1TB SSD", [

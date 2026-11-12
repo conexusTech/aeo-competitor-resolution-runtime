@@ -696,12 +696,18 @@ function entrySizes(ws: readonly string[]): Sizes {
  * as before, every capacity against every capacity — and so is one that
  * named a capacity the entry does not state: "MacBook Air 13.6\" 16GB 512GB
  * SSD" named a size the `…-8gb-memory-512gb-…` entries lack, and their "8gb"
- * stays the conflict that keeps them behind the 16GB model.
+ * stays the conflict that keeps them behind the 16GB model. So, too, is an
+ * entry whose name shares nothing with the client's but a capacity
+ * (`sharesName`): "Apple iPad 128GB" shares only "128gb" with
+ * `apple-macbook-air-133-…-8gb-memory-128gb-ssd`, which is another product,
+ * and relaxed it tied the iPad and put it 5th.
  */
-function sizeScore(client: Sizes, entry: Sizes): number {
+function sizeScore(client: Sizes, entry: Sizes, sharesName: boolean): number {
   // The client said nothing about memory: it labelled none, and the entry
-  // states every capacity it did name.
+  // states every capacity it did name — and is otherwise the same product
+  // by name, not merely the same size.
   const silentOnMemory =
+    sharesName &&
     client.memory.size === 0 &&
     [...client.capacity].every((w) => entry.capacity.has(w));
   let score = 0;
@@ -821,7 +827,12 @@ export function indexCandidates(
       // The lead counts on both sides: it is the word that matched.
       share: (shared.length + 1) / (rest.length + 1),
       shared: shared.length,
-      sizeShared: sizeScore(sizes, entrySizes(own)),
+      // A distinctive word beyond the lead, not a capacity ("128gb").
+      sizeShared: sizeScore(
+        sizes,
+        entrySizes(own),
+        shared.some((w) => !/^\d+(gb|tb)$/.test(w)),
+      ),
       order,
     });
   });
