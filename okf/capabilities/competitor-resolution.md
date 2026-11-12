@@ -660,6 +660,14 @@ the largest, about 3 MB.
 
 **Checked by:** resolution-costco-memory-is-no-conflict-for-a-storage-only-name
 
+#### Scenario: A listing whose page states the client's model number goes to a person, not "not carried"
+- GIVEN an Amazon listing whose search result names no part number, and whose own page states the client's model number but publishes no barcode
+- WHEN the item is resolved
+- THEN the listing is proposed for a person to confirm, and the item is not filed as not carried
+- AND a page whose barcode disagrees, whose model is another product's, lists several models, or whose listing is renewed or refurbished is never proposed
+
+**Checked by:** resolution-amazon-page-model-goes-to-a-person
+
 #### Scenario: Costco's own item numbers never prove a pairing
 - GIVEN a Costco page that states Costco's internal numbers beside the barcodes of the items it sells
 - WHEN it is read for a pairing

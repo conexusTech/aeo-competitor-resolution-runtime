@@ -2648,6 +2648,24 @@ All pass on the 18,180-entry sitemap fixture. "Apple MacBook Pro 14\" M5 Pro 1TB
 
 ---
 
+### Check: resolution-amazon-page-model-goes-to-a-person
+
+**Requirement:** A listing whose page states the client's model number goes to a person, not "not carried"
+**Surface:** the Amazon adapter's `parseProductPage` (`model`), `pageModelNames` (`src/ranking.ts`), the resolver's page-stated path (`src/resolve.ts`)
+**Automated:** `test/amazon-reads-the-model-number-on-its-page.spec.ts`
+
+**Do**
+
+```bash
+npx vitest run test/amazon-reads-the-model-number-on-its-page.spec.ts
+```
+
+**Expect**
+
+All pass. Replayed through Amazon's real search page for `Apple MH304LL/A` and the real iPad Air page (`B0GQVPX1PJ`, `Item model number` MH304LL/A, no barcode), the client row ends `unverifiable` proposing `B0GQVPX1PJ` with model `MH304LL/A` (it was `not-found`). An agreeing barcode still verifies; a disagreeing barcode, another model (`MH334LL/A`, `MH304LL/B`), a junk or family model (`1`, `A`, `SM-X520`), an accessory (`MH304LL/A-CASE`), a list of models, and the renewed `B0H7LNKQ37` are never proposed; no extra page is fetched.
+
+---
+
 ### Check: resolution-costco-other-products-are-not-candidates
 
 **Requirement:** A Costco product is found in its product list, never by search
