@@ -303,9 +303,17 @@ and T-9 (filing). The runtime is built against them.
 - THEN the reading carries the listing the page names, its barcode as published, its price and whether it is in stock
 - AND a page that is not a product page is refused as not one
 - AND Costco's stock, which its page does not state, is reported unknown
-- AND a Costco page selling several items at different prices is an unreadable offer, never one of the prices
+- AND a Costco page selling several items is read as every barcode it publishes, each with its own item's price or none, never one item's price for the page (since `costco-monitoring-reads-the-paired-item`, 2026-11-12; until then it was an unreadable offer)
 
-**Checked by:** listing-reads-bestbuy-reads-its-page, listing-reads-bh-reads-its-page, listing-reads-costco-reads-its-page, listing-reads-costco-several-prices-are-unreadable
+**Checked by:** listing-reads-bestbuy-reads-its-page, listing-reads-bh-reads-its-page, listing-reads-costco-reads-its-page, listing-reads-costco-several-items-read-per-barcode
+
+#### Scenario: A daily read of a Costco page listing several items reports each item's price
+- GIVEN a Costco page listing several items, priced only for the one it shows first
+- WHEN a monitoring read reads it
+- THEN the reading carries every barcode the page publishes, each with its own item's price or none
+- AND the read is not failed
+
+**Checked by:** listing-reads-costco-several-items-read-per-barcode, listing-reads-costco-per-barcode-prices-on-the-wire
 
 #### Scenario: A competitor's pages are fetched only on its own hosts
 - GIVEN a listing url at Best Buy, B&H or Costco

@@ -1034,24 +1034,37 @@ stock is `null` whatever its JSON-LD availability claims, because the page does
 not state it for the item read. The empty product shell and a search page are
 `not-a-product-page`.
 
-### Check: listing-reads-costco-several-prices-are-unreadable
+### Check: listing-reads-costco-several-items-read-per-barcode
 
-**Requirement:** A Best Buy, B&H or Costco listing page is read for what it says
+**Requirement:** A daily read of a Costco page listing several items reports each item's price
 **Surface:** the Costco adapter's `readListingPage`
-**Automated:** `test/adapter-costco.spec.ts` — "SYNTHETIC: several items at different prices is an unreadable offer", "… whose other prices are not stated is unreadable too", "… all at one price show that price", "… a product page with no price anywhere is an unreadable offer"
+**Automated:** `test/costco-monitoring-reads-the-paired-item.spec.ts` — "the iPad Air page reads as a page: four barcodes, $649.99 for the colour it prices only", "the MacBook Neo page reads with no price for either barcode: its priced sibling lends none", "states the same per-barcode prices resolution does, for every Costco page", the three CONTROLs, "several items with no barcode to price stay an unreadable offer, never a page with no price"
 
 **Do**
 
 ```bash
-npx vitest run test/adapter-costco.spec.ts -t "several items|no price anywhere"
+npx vitest run test/costco-monitoring-reads-the-paired-item.spec.ts -t "is read, not failed"
 ```
 
 **Expect**
 
-Four pass. A page selling several items at different prices, or several whose
-other prices are not stated, is `unreadable-offer`, never one of the prices.
-Several items at one price show that price. A product page with no price
-anywhere is `unreadable-offer`. All four pages are SYNTHETIC, and say so.
+All pass. The real iPad Air page (four colours, one priced) reads as a page with four barcodes, 64999 for Space Gray's only, and no page price; the MacBook Neo page prices neither barcode (its priced sibling lends none); member-only, one-price and withheld-price pages keep their answers; several items with no barcode to price stay `unreadable-offer`.
+
+### Check: listing-reads-costco-per-barcode-prices-on-the-wire
+
+**Requirement:** A daily read of a Costco page listing several items reports each item's price
+**Surface:** `runReadJob` / `readBody` (`src/read-run.ts`), `priceWithinLimits` (`src/wire-limits.ts`)
+**Automated:** `test/costco-monitoring-reads-the-paired-item.spec.ts` — "a read of the iPad page posts every barcode with its own price, and no page price", "a reading with per-barcode prices sends no page price, whatever the reader said", "a per-barcode price the gateway would refuse is sent as no price, never as a refused reading", "an empty list of per-barcode prices is never sent: the key is absent", "CONTROL: the largest price the gateway takes is sent as it is"
+
+**Do**
+
+```bash
+npx vitest run test/costco-monitoring-reads-the-paired-item.spec.ts -t "carries the per-barcode prices"
+```
+
+**Expect**
+
+All pass. The posted reading carries `barcodePrices` with `priceCents: null` beside it; an out-of-range entry is sent as no price; an empty list is never sent; a reading without per-barcode prices is posted exactly as before.
 
 ### Check: listing-reads-bestbuy-own-hosts
 

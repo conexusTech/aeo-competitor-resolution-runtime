@@ -652,6 +652,14 @@ the largest, about 3 MB.
 
 **Checked by:** resolution-costco-prices-the-matched-item, resolution-costco-never-a-siblings-price
 
+#### Scenario: A client naming only its storage still reaches the Costco product that states its memory
+- GIVEN a client row naming a laptop's storage but not its memory, and Costco's name for the product stating both
+- WHEN its candidates are ranked
+- THEN the memory Costco states is no conflict, and the product's page is among the three Costco reads
+- AND a client that names its memory, or a size the entry lacks, is ranked exactly as before
+
+**Checked by:** resolution-costco-memory-is-no-conflict-for-a-storage-only-name
+
 #### Scenario: Costco's own item numbers never prove a pairing
 - GIVEN a Costco page that states Costco's internal numbers beside the barcodes of the items it sells
 - WHEN it is read for a pairing

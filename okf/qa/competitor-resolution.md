@@ -2630,6 +2630,24 @@ or in-cart-only pages price nothing.
 
 ---
 
+### Check: resolution-costco-memory-is-no-conflict-for-a-storage-only-name
+
+**Requirement:** A client naming only its storage still reaches the Costco product that states its memory
+**Surface:** the Costco adapter's `productIndex.candidates` (`sizeScore`)
+**Automated:** `test/adapter-costco.spec.ts` — the block "a memory Costco labels is no conflict for a client that named only its storage" (MacBook Pro 14" by its SSD ranks first; the review's regression rows and the short Apple rows no worse than before; a labelled memory still matches and still conflicts where the client named one; 1TB equals 1000GB; 2-in-1 is no display size)
+
+**Do**
+
+```bash
+npx vitest run test/adapter-costco.spec.ts -t "a memory Costco labels is no conflict"
+```
+
+**Expect**
+
+All pass on the 18,180-entry sitemap fixture. "Apple MacBook Pro 14\" M5 Pro 1TB SSD Space Black" ranks its entry first (it was 4th, outside the three reads); Acer Nitro V, MSI Crosshair 16 Max, CyberPowerPC Gamer Supreme, iBUYPOWER Y40, Surface Laptop 13", and "Apple iPad 128GB" / "Apple TV 4K 128GB" rank no worse than before the change.
+
+---
+
 ### Check: resolution-costco-other-products-are-not-candidates
 
 **Requirement:** A Costco product is found in its product list, never by search
