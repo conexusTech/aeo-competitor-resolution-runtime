@@ -2797,3 +2797,39 @@ npx vitest run test/query-trail.spec.ts -t "null"
 
 A search whose fetch failed, or whose page was not a results page, reports `null`; an empty results page reports `0`. Changing the fallback for an unanswered query to `0` reddens three tests.
 
+---
+
+### Check: resolution-derived-brand-needs-agreement
+
+**Requirement:** A brand is derived from search results only when they agree on it
+**Surface:** `inferBrand` and `identityFromSearchResults`
+**Automated:** `test/derived-brand-needs-agreement.spec.ts`, `test/client-part-number-and-brand.spec.ts` (the corrected control), `test/identity-from-search-results.spec.ts`
+
+**Do**
+
+```bash
+npx vitest run test/derived-brand-needs-agreement.spec.ts test/client-part-number-and-brand.spec.ts test/identity-from-search-results.spec.ts
+```
+
+**Expect**
+
+All pass. "WIRELESS MOUSE M310/…" titles (the September Amazon case) yield no brand, alone or with a second Wireless title; two titles leading "Logitech" in different case agree; one title, or one listing repeated, yields none; "UPC …", "New …", "64GB …" twice yield none, while "3M …" twice yields 3M (the control); a Hebrew title with "M310" mid-title yields none. Over the 68 committed search-engine pages, every derived brand is a maker behind those pages. An uploaded brand outranks titles that agree on another word. Removing the agreement rule, the stoplist or the dedupe reddens a named test.
+
+---
+
+### Check: resolution-derived-brand-replays-unchanged-but-named
+
+**Requirement:** A brand is derived from search results only when they agree on it
+**Surface:** the `newegg-53` replay
+**Automated:** `test/replays-unchanged.spec.ts`, `test/unanswered-probes.spec.ts`, `test/exit-criterion-53-rows.spec.ts`
+
+**Do**
+
+```bash
+npx vitest run test/replays-unchanged.spec.ts test/unanswered-probes.spec.ts test/exit-criterion-53-rows.spec.ts
+```
+
+**Expect**
+
+All pass. 11 rows of `newegg-53` lose a brand and the queries built on it, named in the change log; no outcome or listing changes, except 812348012993, which now stops at a corpus gap (the phrase its plan reaches was never recorded; answered empty off-corpus it proposes the same listing). It is the only exemption in the unanswered-probes comparison, which asserts there is exactly one and fails if the row resolves again.
+

@@ -692,3 +692,13 @@ the largest, about 3 MB.
 
 **Checked by:** resolution-query-trail-counts-each-search, resolution-query-trail-unanswered-is-not-zero
 
+#### Scenario: A brand is derived from search results only when they agree on it
+- GIVEN a client row with no brand, whose barcode's search-engine page lists result titles
+- WHEN its identity is derived from those titles
+- THEN the first title's leading word becomes the brand only when another distinct title leads with the same word
+- AND a generic or boilerplate word ("Wireless", "UPC", "New") or a capacity ("64GB") never becomes a brand
+- AND with no agreement the item has no derived brand, and its searches carry none
+- AND a brand the client uploaded is used as it was
+
+**Checked by:** resolution-derived-brand-needs-agreement, resolution-derived-brand-replays-unchanged-but-named
+
