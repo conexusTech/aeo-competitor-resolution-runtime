@@ -2588,6 +2588,48 @@ merely lead with it.
 
 ---
 
+### Check: resolution-costco-prices-the-matched-item
+
+**Requirement:** A Costco pairing carries the price of the item that matched
+**Surface:** the Costco adapter's `parseProductPage` (`barcodePrices`), `resolve`'s evidence
+**Automated:** `test/costco-prices-the-matched-item.spec.ts` — "the client's Space Gray iPad agrees with the item the page prices: verified at $649.99, from the product page", "matches the per-barcode price whatever encoding the client wrote"; `test/adapter-costco.spec.ts` — "the iPad Air page: four colours, priceInfo pricing item 2042802 at $649.99", "prices the barcode of the item priceInfo prices, and no sibling's"
+
+**Do**
+
+```bash
+npx vitest run test/costco-prices-the-matched-item.spec.ts test/adapter-costco.spec.ts -t "Space Gray iPad|whatever encoding|four colours|no sibling's"
+```
+
+**Expect**
+
+Four pass, on a real Costco iPad Air page that lists four colours and prices
+only Space Gray (item 2042802, $649.99). A client row whose barcode is Space
+Gray's, in any encoding, is verified at 64999 with the price read from the
+product page.
+
+---
+
+### Check: resolution-costco-never-a-siblings-price
+
+**Requirement:** A Costco pairing carries the price of the item that matched
+**Surface:** the Costco adapter's `parseProductPage` (`barcodePrices`), `resolve`'s evidence
+**Automated:** `test/costco-prices-the-matched-item.spec.ts` — "the client's Starlight iPad agrees with a sibling the page does not price: verified, with no price", "the MacBook Neo: the matched item is unpriced, and its priced sibling's $689.99 is never used", "where a page prices per barcode, an unpriced barcode never takes the page's one price"; `test/adapter-costco.spec.ts` — "a barcode two items carry is unpriced unless both show one price", "a JSON-LD price is never credited to priceInfo's item when the JSON-LD names another sku", "member-only or in-cart-only, no barcode is priced"
+
+**Do**
+
+```bash
+npx vitest run test/costco-prices-the-matched-item.spec.ts test/adapter-costco.spec.ts -t "Starlight|MacBook Neo|never takes the page's one price|two items carry|never credited|member-only or in-cart-only"
+```
+
+**Expect**
+
+All pass. A row matching an unpriced colour (Starlight), and the MacBook Neo
+whose page prices only a sibling ($689.99), are verified with no price. A
+barcode two items carry, a JSON-LD price naming another item, and member-only
+or in-cart-only pages price nothing.
+
+---
+
 ### Check: resolution-costco-other-products-are-not-candidates
 
 **Requirement:** A Costco product is found in its product list, never by search

@@ -644,6 +644,14 @@ the largest, about 3 MB.
 
 **Checked by:** resolution-costco-finds-popular-product-lines
 
+#### Scenario: A Costco pairing carries the price of the item that matched
+- GIVEN a Costco page listing several items, priced only for the one it shows first
+- WHEN a client row's barcode agrees with that item
+- THEN the pairing carries that item's price, read from the product page
+- AND a row whose barcode agrees with an item the page does not price carries no price
+
+**Checked by:** resolution-costco-prices-the-matched-item, resolution-costco-never-a-siblings-price
+
 #### Scenario: Costco's own item numbers never prove a pairing
 - GIVEN a Costco page that states Costco's internal numbers beside the barcodes of the items it sells
 - WHEN it is read for a pairing
