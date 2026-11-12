@@ -643,6 +643,92 @@
       "gzBytes": 581
     },
     {
+      "name": "costco-pdp-ipad-air-11-several-items",
+      "why": "iPad Air 11-inch 128GB, product 4000444349: four items (colours) 2042802 Space Gray, 2042803 Starlight, 2042804 Blue and 2042805 Purple, each stating its own UPC; priceInfo prices item 2042802 (UPC 195950823578, Micro Center SKU 001339's) at $649.99 shown and the others are unpriced, so the page has no one price but the matched item has its own; the parent states Costco's own 499993772528",
+      "facts": {
+        "url": "https://www.costco.com/p/-/ipad-air-11-inch-128gb-wi-fi-m4-chip-built-for-apple-intelligence/4000444349",
+        "items": ["2042802", "2042803", "2042804", "2042805"],
+        "pricedItem": "2042802",
+        "product": {
+          "barcode": "195950823578",
+          "additionalBarcodes": [
+            "195950824032",
+            "195950823806",
+            "195950824261"
+          ],
+          "priceCents": null,
+          "barcodePrices": [
+            {
+              "barcode": "195950823578",
+              "priceCents": 64999
+            },
+            {
+              "barcode": "195950824032",
+              "priceCents": null
+            },
+            {
+              "barcode": "195950823806",
+              "priceCents": null
+            },
+            {
+              "barcode": "195950824261",
+              "priceCents": null
+            }
+          ],
+          "inStock": null,
+          "title": "iPad Air 11-inch, 128GB Wi-Fi (M4 chip) Built For Apple Intelligence",
+          "sellerName": "Costco",
+          "unverifiableReason": null
+        },
+        "reading": {
+          "kind": "unreadable-offer",
+          "detail": "several items, not all at one price this build can read"
+        },
+        "source": "meriwether-data-scraper recon/captures/costco-upc/cache",
+        "capturedOn": "2026-11-11",
+        "capturedThrough": "the vendor, country us, by the Costco investigation (row investigate-costco-competitor)",
+        "distilled": "Distilled by scripts/distil-costco.mjs: a product page keeps only its app marker, the JSON-LD Product (name, sku, url, offers) and the flight data's productDetailsData trimmed to the fields parsed (product id and UPC, each item's id, UPC, member-only and price-in-cart flags and short description, the selected item's price); a product sitemap keeps each <url><loc> and nothing else; the sitemap index is kept byte for byte. The adapter's parsers were proven to give identical output on the raw capture and on this file, and test/costco-fixtures.spec.ts checks that no session value (the sign-in link's nonce= and client_id, the monitoring agent's dtTrId, the per-item clientId uuid) remains."
+      },
+      "gzBytes": 691
+    },
+    {
+      "name": "costco-pdp-macbook-neo-sibling-priced",
+      "why": "MacBook Neo 13-inch 256GB, product 4000447603: four items (colours); priceInfo prices item 2046716 (Silver) at $689.99, which states only Costco's own 499993725005, while the item Micro Center SKU 004069's UPC matches, 2046718 (Citrus, 195950851809), is unpriced — so the sibling's price must never reach the pairing",
+      "facts": {
+        "url": "https://www.costco.com/p/-/macbook-neo-laptop-13-inch---apple-a18-pro-chip-built-for-apple-intelligence-6-core-cpu-5-core-gpu-8gb-memory-256gb-ssd-storage/4000447603",
+        "items": ["2046716", "2046717", "2046718", "2046719"],
+        "pricedItem": "2046716",
+        "product": {
+          "barcode": "195950851809",
+          "additionalBarcodes": ["195950853681"],
+          "priceCents": null,
+          "barcodePrices": [
+            {
+              "barcode": "195950851809",
+              "priceCents": null
+            },
+            {
+              "barcode": "195950853681",
+              "priceCents": null
+            }
+          ],
+          "inStock": null,
+          "title": "MacBook Neo Laptop (13-inch) - Apple A18 Pro Chip, Built for Apple Intelligence, 6-core CPU, 5-core GPU, 8GB Memory, 256GB SSD Storage.",
+          "sellerName": "Costco",
+          "unverifiableReason": null
+        },
+        "reading": {
+          "kind": "unreadable-offer",
+          "detail": "several items, not all at one price this build can read"
+        },
+        "source": "meriwether-data-scraper recon/captures/costco-upc/cache",
+        "capturedOn": "2026-11-11",
+        "capturedThrough": "the vendor, country us, by the Costco investigation (row investigate-costco-competitor)",
+        "distilled": "Distilled by scripts/distil-costco.mjs: a product page keeps only its app marker, the JSON-LD Product (name, sku, url, offers) and the flight data's productDetailsData trimmed to the fields parsed (product id and UPC, each item's id, UPC, member-only and price-in-cart flags and short description, the selected item's price); a product sitemap keeps each <url><loc> and nothing else; the sitemap index is kept byte for byte. The adapter's parsers were proven to give identical output on the raw capture and on this file, and test/costco-fixtures.spec.ts checks that no session value (the sign-in link's nonce= and client_id, the monitoring agent's dtTrId, the per-item clientId uuid) remains."
+      },
+      "gzBytes": 777
+    },
+    {
       "name": "costco-search-upc-649532936564",
       "why": "a search for SL900UC's own UPC, which Costco sells: the search app's shell, no product in it — the same as a search for nonsense",
       "facts": {

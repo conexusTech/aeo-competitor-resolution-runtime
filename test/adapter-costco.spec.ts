@@ -36,6 +36,8 @@ const CST1500 = raw("costco-pdp-cst1500suc-internal-parent-upc.html");
 const GOLD_BAR = raw("costco-pdp-gold-bar-member-only.html");
 const SHELL = raw("costco-pdp-shell-no-slug.html");
 const AIRPODS = raw("costco-pdp-airpods-4-anc.html");
+const IPAD_AIR = raw("costco-pdp-ipad-air-11-several-items.html");
+const MACBOOK_NEO = raw("costco-pdp-macbook-neo-sibling-priced.html");
 const SEARCH = raw("costco-search-upc-649532936564.html");
 const INDEX = raw("costco-sitemap-index.xml");
 const EXCERPT = raw("costco-sitemap-p-mod-excerpt.xml");
@@ -190,6 +192,120 @@ describe("parseProductPage", () => {
     );
     expect(p?.barcode).toBe("036000291452");
     expect(p?.additionalBarcodes).toEqual(["000000000017"]);
+  });
+});
+
+/**
+ * 🔴 **A page listing several items prices the one that matched, and only
+ * that one.** `priceCents` answers for every barcode a page publishes, so it is
+ * `null` on a page whose items (colours, versions) are not all priced; the
+ * per-barcode price is what lets the pairing proven by ONE item's barcode carry
+ * that item's price. `parseProductPage` never sees the client's barcode, so it
+ * prices every barcode it publishes and the comparison picks.
+ */
+describe("🔴 a price per barcode, on a page listing several items", () => {
+  it("the iPad Air page: four colours, priceInfo pricing item 2042802 at $649.99", () => {
+    // What the page itself states, read before the parse is trusted.
+    for (const id of ["2042802", "2042803", "2042804", "2042805"]) {
+      expect(IPAD_AIR).toContain(`\\"id\\":\\"${id}\\"`);
+    }
+    expect(IPAD_AIR).toContain('\\"priceInfo\\":{\\"id\\":\\"2042802\\"');
+    expect(IPAD_AIR).toContain("649.99");
+  });
+
+  it("prices the barcode of the item priceInfo prices, and no sibling's", () => {
+    const p = parseProductPage(IPAD_AIR);
+    expect(p?.barcode).toBe("195950823578");
+    expect(p?.barcodePrices).toEqual([
+      { barcode: "195950823578", priceCents: 64999 },
+      { barcode: "195950824032", priceCents: null },
+      { barcode: "195950823806", priceCents: null },
+      { barcode: "195950824261", priceCents: null },
+    ]);
+  });
+
+  it("🔴 keeps `priceCents` null: it answers for every barcode, and the siblings are unpriced", () => {
+    expect(parseProductPage(IPAD_AIR)?.priceCents).toBeNull();
+    // A read job carries no barcode to pick with: still unreadable.
+    expect(readListingPage(IPAD_AIR).kind).toBe("unreadable-offer");
+  });
+
+  it("🔴 the MacBook Neo page: the matched item 2046718 is unpriced, its priced sibling 2046716 never lends it a price", () => {
+    expect(MACBOOK_NEO).toContain('\\"priceInfo\\":{\\"id\\":\\"2046716\\"');
+    const p = parseProductPage(MACBOOK_NEO);
+    // 2046716 states only Costco's own 49999… number, so publishes no barcode.
+    expect(p?.barcode).toBe("195950851809");
+    expect(p?.barcodePrices).toEqual([
+      { barcode: "195950851809", priceCents: null },
+      { barcode: "195950853681", priceCents: null },
+    ]);
+    expect(p?.priceCents).toBeNull();
+  });
+
+  it("SYNTHETIC: a JSON-LD offer naming a sibling's sku prices that sibling", () => {
+    const p = parseProductPage(
+      page(
+        {
+          productData: {
+            id: "9",
+            childCatalogData: [
+              item("111", "036000291452"),
+              item("112", "036000291469"),
+            ],
+          },
+          priceInfo: priced("111", 10),
+        },
+        {
+          "@type": "Product",
+          offers: [
+            { "@type": "Offer", sku: "111", price: 10 },
+            { "@type": "Offer", sku: "112", price: 12 },
+          ],
+        },
+      ),
+    );
+    expect(p?.barcodePrices).toEqual([
+      { barcode: "036000291452", priceCents: 1000 },
+      { barcode: "036000291469", priceCents: 1200 },
+    ]);
+  });
+
+  it("🔴 SYNTHETIC: member-only or in-cart-only, no barcode is priced", () => {
+    for (const flag of [
+      { isMembershipReqd: true },
+      { dispPriceInCartOnly: 1 },
+    ]) {
+      const p = parseProductPage(
+        page({
+          productData: {
+            id: "9",
+            childCatalogData: [
+              item("111", "036000291452", flag),
+              item("112", "036000291469"),
+            ],
+          },
+          priceInfo: priced("111", 10),
+        }),
+      );
+      expect(p?.barcode).toBe("036000291452");
+      expect(p?.priceCents).toBeNull();
+      expect(
+        (p?.barcodePrices ?? []).filter((b) => b.priceCents !== null),
+      ).toEqual([]);
+    }
+  });
+
+  it("🔴 the member-only gold bar prices no barcode", () => {
+    const p = parseProductPage(GOLD_BAR);
+    expect(
+      (p?.barcodePrices ?? []).filter((b) => b.priceCents !== null),
+    ).toEqual([]);
+  });
+
+  it("a page whose one price answers for every barcode states none per barcode", () => {
+    // `priceCents` already says it: nothing per barcode to add.
+    expect(parseProductPage(SL900)?.barcodePrices).toBeUndefined();
+    expect(parseProductPage(AIRPODS)?.barcodePrices).toBeUndefined();
   });
 });
 

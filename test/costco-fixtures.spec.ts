@@ -100,6 +100,8 @@ describe("the committed Costco pages", () => {
     );
     expect(fromCache.map((f) => f.name).sort()).toEqual([
       "costco-pdp-airpods-4-anc",
+      "costco-pdp-ipad-air-11-several-items",
+      "costco-pdp-macbook-neo-sibling-priced",
       "costco-sitemap-index",
       "costco-sitemap-p-mod-full",
     ]);

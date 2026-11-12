@@ -135,7 +135,33 @@ export interface ParsedProduct {
    * at the launch retailer.
    */
   readonly additionalBarcodes: readonly string[];
+  /**
+   * The page's price, answering for EVERY barcode it publishes — or `null`
+   * where it shows none, or shows several items not all at one price.
+   */
   readonly priceCents: number | null;
+  /**
+   * Each barcode the page publishes, with the price the page shows for the
+   * item carrying it — present only where `priceCents` cannot answer for every
+   * barcode, because the page lists several items not all at one price.
+   *
+   * 🔴 **The case this exists for is measured.** Costco's iPad and MacBook
+   * pages list several items (colours) and price only the one they show
+   * first, so `priceCents` is `null` — and a pairing proven by THAT item's
+   * barcode carried no price: 12 of 15 in a production run. `parseProductPage`
+   * is pure and never sees the client's barcode, so, as with
+   * `additionalBarcodes`, it states every barcode's answer and the comparison
+   * picks the one that agreed.
+   *
+   * 🔴 **A barcode's price is its own item's, never a sibling's**: `null`
+   * where the page does not show that item's price, and `null` for every
+   * barcode where the page withholds its prices.
+   *
+   * ⚠️ **Optional, unlike its neighbours**: absent means `priceCents` speaks
+   * for every barcode, which is every page of every other retailer read so
+   * far. Barcodes are verbatim; compare them with `gtinCore`.
+   */
+  readonly barcodePrices?: readonly BarcodePrice[];
   readonly inStock: boolean | null;
   readonly title: string | null;
   /**
@@ -184,6 +210,14 @@ export interface ParsedProduct {
    * retailer without category reads answers `null`.
    */
   readonly category: ListingCategory | null;
+}
+
+/** One barcode a product page publishes, and the price of the item carrying it. */
+export interface BarcodePrice {
+  /** Verbatim, as `ParsedProduct.barcode` is. */
+  readonly barcode: string;
+  /** That item's price as the page shows it, or `null` where it does not. */
+  readonly priceCents: number | null;
 }
 
 /**

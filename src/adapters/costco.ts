@@ -1,4 +1,5 @@
 import type {
+  BarcodePrice,
   CategoryReading,
   ListingPageResult,
   ListingReader,
@@ -244,6 +245,12 @@ interface PageItem {
   readonly priceCents: number | null;
   /** Several items whose prices are not all known to be one price. */
   readonly severalPrices: boolean;
+  /**
+   * Where `severalPrices`, each of `upcs` with its own item's price, or
+   * `null` for the barcode where that price is not shown. Absent otherwise:
+   * `priceCents` then answers for every barcode.
+   */
+  readonly barcodePrices: readonly BarcodePrice[] | null;
   readonly title: string | null;
 }
 
@@ -334,12 +341,29 @@ function pageItem(html: string): PageItem | null {
         ? (itemPrices[0] ?? null)
         : null;
 
+  const severalPrices = visibility === "shown" && onePrice === null;
+
+  // 🔴 **Each barcode its own item's price, never a sibling's.** A barcode
+  // only an unpriced item carries — or the parent's, which names no item —
+  // has none; one two items carry is priced only where both show one price.
+  // Withheld prices never reach here: `severalPrices` needs them shown.
+  const priceOf = (upc: string): number | null => {
+    const prices = items
+      .filter((i) => i.upc === upc)
+      .map((i) => known.get(i.itemNumber) ?? null);
+    const first = prices[0] ?? null;
+    return prices.every((p) => p === first) ? first : null;
+  };
+
   return {
     productId,
     upcs,
     visibility,
     priceCents: visibility === "shown" ? onePrice : null,
-    severalPrices: visibility === "shown" && onePrice === null,
+    severalPrices,
+    barcodePrices: severalPrices
+      ? upcs.map((barcode) => ({ barcode, priceCents: priceOf(barcode) }))
+      : null,
     title: strAt(ld, "name") ?? items[0]?.title ?? null,
   };
 }
@@ -357,6 +381,10 @@ export function parseProductPage(html: string): ParsedProduct | null {
     additionalBarcodes: page.upcs.slice(1),
     // Withheld (member-only, price in cart) or not one price: `null`.
     priceCents: page.priceCents,
+    // 🔑 Not one price: each barcode's own, for the comparison to pick.
+    ...(page.barcodePrices === null
+      ? {}
+      : { barcodePrices: page.barcodePrices }),
     // Costco's page states no stock this build can trust.
     inStock: null,
     title: page.title,

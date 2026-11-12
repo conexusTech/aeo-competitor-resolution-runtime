@@ -741,6 +741,7 @@ async function resolveCounted(
           entry.score,
           agreeing,
           pages.get(entry.candidate.url),
+          "verified",
         ),
         alternatives: alternativesFor({
           ranked: stageRanked,
@@ -1110,6 +1111,7 @@ async function resolveCounted(
         remembered.entry.score,
         remembered.known,
         pages.get(remembered.entry.candidate.url),
+        "verified",
       ),
       alternatives: alternativesFor({
         ranked,
@@ -1144,6 +1146,7 @@ async function resolveCounted(
       entry.score,
       agreeing,
       pages.get(entry.candidate.url),
+      "verified",
     ),
     alternatives: alternativesFor({
       ranked,
@@ -1279,7 +1282,7 @@ async function resolveCounted(
         noBarcodeFound.score,
         null,
         pages.get(noBarcodeFound.candidate.url),
-        true,
+        "unverifiable",
       ),
       alternatives: alternativesFor({
         ranked,
@@ -1381,6 +1384,7 @@ async function resolveCounted(
       proposal.score,
       probed.get(proposal.candidate.url)?.[0] ?? null,
       pages.get(proposal.candidate.url),
+      "unconfirmed",
     ),
     alternatives: alternativesFor({
       ranked,
@@ -1392,11 +1396,35 @@ async function resolveCounted(
 }
 
 /**
+ * The price a page shows for the item whose barcode AGREED, or `null` where
+ * the page states no per-barcode price for it.
+ *
+ * 🔴 **Only the agreeing barcode's own price.** A page listing several items
+ * prices each one separately (`ParsedProduct.barcodePrices`); a sibling's
+ * price is another item's, so a barcode the page does not price gets none
+ * here, and the caller falls back to the price that answers for every barcode.
+ */
+function priceOfAgreeingBarcode(
+  page: ParsedProduct | undefined,
+  agreeing: string,
+): number | null {
+  const entry = page?.barcodePrices?.find((b) =>
+    gtinMatches(agreeing, b.barcode),
+  );
+  return entry?.priceCents ?? null;
+}
+
+/**
  * What a reviewer sees about the chosen listing.
  *
  * 🔑 **Price and stock from the page that settled the pairing, where it says**
  * — the search result's otherwise. Newegg's and Amazon's page parses state
  * neither, so their evidence is the search result's, as it always was.
+ *
+ * 🔴 **A verified pairing takes the price of the item that matched** where
+ * the page prices its items separately — Costco's pages of several colours —
+ * and the page's one price otherwise. Only a verified pairing: the barcode
+ * an `unconfirmed` one carries DISAGREES, so its item is not the client's.
  *
  * @param page The listing's product page as this item read it, or
  * `undefined` where it was never read (a pairing proven from the run's memory,
@@ -1405,12 +1433,19 @@ async function resolveCounted(
 function evidence(
   candidate: ParsedCandidate,
   score: number,
+  /**
+   * What the outcome rests on: for `verified` the value that agreed, for
+   * `unconfirmed` the value that disagreed, for `unverifiable` nothing.
+   */
   retailerBarcode: string | null,
   page: ParsedProduct | undefined,
-  /** Whether this is an `unverifiable` pairing, the only one with a reason. */
-  unverifiable = false,
+  outcome: "verified" | "unverifiable" | "unconfirmed",
 ): ResolutionEvidence {
-  const pagePrice = page?.priceCents ?? null;
+  const matchedPrice =
+    outcome === "verified" && retailerBarcode !== null
+      ? priceOfAgreeingBarcode(page, retailerBarcode)
+      : null;
+  const pagePrice = matchedPrice ?? page?.priceCents ?? null;
   // 🔴 Held to the gateway's limits: every string here is a competitor's.
   return withinEvidenceLimits({
     itemId: candidate.itemId,
@@ -1433,8 +1468,7 @@ function evidence(
     imageUrl: candidate.imageUrl,
     retailerBarcode,
     score,
-    unverifiableReason: unverifiable
-      ? (page?.unverifiableReason ?? null)
-      : null,
+    unverifiableReason:
+      outcome === "unverifiable" ? (page?.unverifiableReason ?? null) : null,
   });
 }
