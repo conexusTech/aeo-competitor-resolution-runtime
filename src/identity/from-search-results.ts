@@ -177,39 +177,68 @@ export function partNumberStem(partNumber: string): string | null {
  * Words that lead product titles on a search page without being anybody's
  * brand.
  *
- * 🔑 **Measured, not guessed**, and short because agreement does most of the
- * work. Every word here led at least two distinct titles on one of the 68
- * committed search-engine pages (the launch replay corpus, 2026-11-12) without
- * being that item's manufacturer, one of its product lines or a part number —
- * `Control System - Thrustmaster …`, `Le Petit Mouse …` (IMAK), `Transceptor
- * de vídeo …` (Avue), `MOUSE LOGITECH M170 …`, `Switch Trendnet …`, `Memory
- * Foam …`, `Single Channel …`, `Palanca de Cambios LOGITECH …`, and `HD`,
- * which is what a Hebrew or Arabic title leads with once its own script is
- * stripped — plus `wireless`, the September Amazon run's
- * `WIRELESS MOUSE M310/PEACOCK BLUE`.
+ * 🔑 **Short, because agreement does most of the work.** Three groups:
+ *
+ * - **Measured leading two or more distinct titles** on one of the 68
+ *   committed search-engine pages (the launch replay corpus, 2026-11-12)
+ *   without being that item's maker, one of its product lines or a part
+ *   number: `Control System - Thrustmaster …`, `Le Petit Mouse …` (IMAK),
+ *   `Transceptor de vídeo …` (Avue), `MOUSE LOGITECH M170 …`, `Switch
+ *   Trendnet …`, `Memory Foam …`, `Single Channel …`, `Palanca de Cambios
+ *   LOGITECH …`.
+ * - **A lookup site's or a seller's boilerplate**, seen leading titles on
+ *   those pages (`UPC`, `UPCs`, `New`, `Quote`, `Deal`, `Sealed`) or its usual
+ *   company (`Genuine`, `OEM`, `Original`).
+ * - `wireless`, the September Amazon run's `WIRELESS MOUSE M310/PEACOCK BLUE`.
  *
  * ⚠️ **Not `case`, `cooler`, `dot` or `night`**: Case Logic, Cooler Master,
  * Dot Line and Night Owl lead their own titles with an ordinary word.
  */
 const NOT_A_BRAND = new Set([
   "control",
-  "hd",
+  "deal",
+  "genuine",
   "le",
   "memory",
   "mouse",
+  "new",
+  "oem",
+  "original",
   "palanca",
+  "quote",
+  "sealed",
   "single",
   "switch",
   "transceptor",
+  "upc",
+  "upcs",
   "wireless",
 ]);
 
-/** A title's leading word, punctuation dropped, as the title spells it. */
-const leadingWord = (title: string): string =>
-  title
-    .replace(/[^\w\s-]/g, " ")
-    .trim()
-    .split(/\s+/)[0] ?? "";
+/**
+ * A capacity or a unit, by its key: `64GB` led two distinct titles on a
+ * committed page. ⚠️ Not a bare `m`: 3M is a maker.
+ */
+const CAPACITY_OR_UNIT = /^\d+(gb|tb|mb|mah|mm|w|v|hz)$/;
+
+/**
+ * A title's leading word, as the title spells it, punctuation dropped.
+ *
+ * 🔴 **The title's own first token, never the first Latin one.** Punctuation
+ * and other scripts used to be stripped from the WHOLE title first, so a
+ * Hebrew or Arabic title "led" with whatever Latin token sat in its middle —
+ * `HD`, or a model number like `M310` — and two such titles agreed on it.
+ * Now a first token with no letters or digits of ours leads with nothing.
+ */
+const leadingWord = (title: string): string => {
+  const token = title.trim().split(/\s+/)[0] ?? "";
+  return (
+    token
+      .replace(/[^\w-]/g, " ")
+      .trim()
+      .split(/\s+/)[0] ?? ""
+  );
+};
 
 /** One word as two titles compare it: case and punctuation aside. */
 const wordKey = (word: string): string =>
@@ -238,7 +267,7 @@ export function inferBrand(titles: readonly string[]): string | null {
   const first = leadingWord(titles[0] ?? "");
   const key = wordKey(first);
   if (first.length < 2 || /^\d+$/.test(first) || key === "") return null;
-  if (NOT_A_BRAND.has(key)) return null;
+  if (NOT_A_BRAND.has(key) || CAPACITY_OR_UNIT.test(key)) return null;
 
   const distinct = new Set(titles.map((t) => t.replace(/\s+/g, " ").trim()));
   let agreeing = 0;

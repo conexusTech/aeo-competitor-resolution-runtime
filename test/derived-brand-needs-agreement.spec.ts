@@ -109,6 +109,39 @@ describe("inferBrand needs the titles to agree", () => {
       ]),
     ).toBeNull();
   });
+
+  it("🔴 never a lookup site's or a seller's boilerplate, however many titles lead with it", () => {
+    expect(
+      inferBrand([
+        "UPC 097855067876 lookup",
+        "UPC 097855067876 - Logitech M310",
+      ]),
+    ).toBeNull();
+    expect(
+      inferBrand(["New Logitech M310 Wireless", "New in box: Logitech M310"]),
+    ).toBeNull();
+  });
+
+  it("🔴 never a capacity or a unit: '64GB' led two titles on a committed page", () => {
+    expect(
+      inferBrand(["64GB SanDisk Ultra Flair", "64GB USB 3.0 Flash Drive"]),
+    ).toBeNull();
+    expect(inferBrand(["1.5TB External Drive", "1.5TB Portable"])).toBeNull();
+  });
+
+  it("still takes a brand that starts with a digit — the CONTROL: 3M", () => {
+    expect(inferBrand(["3M Precise Mouse Pad", "3M Gel Wrist Rest"])).toBe(
+      "3M",
+    );
+  });
+
+  it("🔴 a title in another script leads with no word, not with a Latin token from its middle", () => {
+    // Stripping the script first made "M310" — a model number half-way
+    // through — lead both titles, and agree with itself.
+    expect(
+      inferBrand(["עכבר אלחוטי M310 כחול", "עכבר M310 אלחוטי של לוג'יטק"]),
+    ).toBeNull();
+  });
 });
 
 const corpusPath = fileURLToPath(
@@ -130,16 +163,24 @@ const searchPages = (): Map<string, string> => {
 };
 
 /**
- * Every manufacturer behind the committed search pages, by the first word of
- * its name — the word a title leads with. Read off the pages by hand on
- * 2026-11-12: Case Logic, Cooler Master, Dot Line and Night Owl lead their
- * titles with a word that is ordinary English, and are still the maker.
+ * The makers behind the committed search pages, by the word their titles lead
+ * with — read off the pages by hand on 2026-11-12. Case Logic, Cooler Master,
+ * Dot Line and Night Owl lead with a word that is ordinary English and are
+ * still the maker; Brownmed makes IMAK, and KWI is Kingwin's company.
+ *
+ * ⚠️ **A superset of what the rule derives today**, which is 20 of these. The
+ * rest (Avue, Koss, Sabrent, Tuniq …) are makers it currently answers `null`
+ * for, so a later change that recovers one of them still passes, while any
+ * word that is not a maker still fails.
  */
-const MANUFACTURERS = new Set([
+const MAKERS_BEHIND_THESE_PAGES = new Set([
   "allsop",
   "apc",
+  "avue",
+  "brownmed",
   "buffalo",
   "case",
+  "caselogic",
   "cooler",
   "cyberpower",
   "dot",
@@ -148,14 +189,18 @@ const MANUFACTURERS = new Set([
   "intellinet",
   "kensington",
   "kingwin",
+  "koss",
+  "kwi",
   "logitech",
   "netgear",
   "night",
   "primochill",
+  "sabrent",
   "sandisk",
   "steelseries",
   "thrustmaster",
   "trendnet",
+  "tuniq",
 ]);
 
 describe("on the committed search-engine pages", () => {
@@ -171,7 +216,8 @@ describe("on the committed search-engine pages", () => {
     const invented = [...pages.entries()]
       .map(([barcode, html]) => [barcode, inferBrand(resultTitles(html))])
       .filter(
-        ([, brand]) => brand != null && !MANUFACTURERS.has(brand.toLowerCase()),
+        ([, brand]) =>
+          brand != null && !MAKERS_BEHIND_THESE_PAGES.has(brand.toLowerCase()),
       );
     expect(invented).toEqual([]);
   });
