@@ -146,6 +146,126 @@ export function namesThePartNumber(input: ScoreInput): boolean {
   });
 }
 
+/**
+ * How a model a PRODUCT PAGE states names one of the item's part numbers,
+ * strongest first — or `null` where it does not name one.
+ *
+ * 🔴 **Stricter than `hasPartNumberEvidence` and `namesThePartNumber`, and
+ * on purpose.** Those judge a retailer's search card, and accept a model the
+ * part number merely CONTAINS — so a page stating `Model Number: 1` named
+ * `SM-S931UZKAXAA`, `A` named `MH304LL/A`, and the family `SM-X520` named
+ * `SM-X520NZAAXAR` (Samsung encodes the colour in the suffix). A page's model
+ * is the one thing that sends a listing with no barcode to a person, so it
+ * names the part number only:
+ *
+ * - `exact` — equal, once case, spacing and bidi marks are set aside;
+ * - `stem` — the same regional stem (`K72337WW` or `K72337` for `K72337US`);
+ * - `token` — the part number inside the model as a whole token, bounded by
+ *   spaces, brackets or separators (`MH304LL/A (Wi-Fi)`). A hyphen or slash is
+ *   part of a part number, so `MH304LL/A-CASE` is another one.
+ *
+ * Never the reverse direction, never a shared prefix and never digits the
+ * model shares with the barcode; and a model shorter than
+ * `MIN_PAGE_MODEL_CHARS` letters and digits names nothing.
+ */
+export type PageModelMatch = "exact" | "stem" | "token";
+
+/** Higher is stronger: what chooses between two pages that both name it. */
+export const PAGE_MODEL_STRENGTH: Readonly<Record<PageModelMatch, number>> = {
+  exact: 3,
+  stem: 2,
+  token: 1,
+};
+
+/** The fewest letters and digits a page's model needs to name anything. */
+export const MIN_PAGE_MODEL_CHARS = 4;
+
+const normalisePageModel = (value: string): string =>
+  value
+    .replace(/&(?:lrm|rlm);|[\u200e\u200f]/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toUpperCase();
+
+const alphanumericLength = (value: string): number =>
+  value.replace(/[^A-Z0-9]/gi, "").length;
+
+/** What may bound a token: a space, a bracket or a list separator. */
+const TOKEN_EDGE = /[\s()[\]{},;:|]/;
+
+/** `part` inside `model`, with an edge or the end of the text on both sides. */
+function containsAsToken(model: string, part: string): boolean {
+  for (
+    let at = model.indexOf(part);
+    at >= 0;
+    at = model.indexOf(part, at + 1)
+  ) {
+    const before = at === 0 ? " " : (model[at - 1] ?? " ");
+    const after = model[at + part.length] ?? " ";
+    if (TOKEN_EDGE.test(before) && TOKEN_EDGE.test(after)) return true;
+  }
+  return false;
+}
+
+export function pageModelNames(
+  model: string,
+  partNumbers: readonly string[],
+): PageModelMatch | null {
+  const m = normalisePageModel(model);
+  if (alphanumericLength(m) < MIN_PAGE_MODEL_CHARS) return null;
+  let best: PageModelMatch | null = null;
+  for (const partNumber of partNumbers) {
+    const p = normalisePageModel(partNumber);
+    if (alphanumericLength(p) < MIN_PAGE_MODEL_CHARS) continue;
+    const stem = partNumberStem(p);
+    const match: PageModelMatch | null =
+      m === p
+        ? "exact"
+        : stem !== null && (m === stem || partNumberStem(m) === stem)
+          ? "stem"
+          : containsAsToken(m, p)
+            ? "token"
+            : null;
+    if (
+      match !== null &&
+      (best === null || PAGE_MODEL_STRENGTH[match] > PAGE_MODEL_STRENGTH[best])
+    ) {
+      best = match;
+    }
+  }
+  return best;
+}
+
+/**
+ * Is a stated model shaped like a part number — one token, with a digit —
+ * rather than a description such as `iPad Air 11 (M4)`?
+ *
+ * 🔑 A page stating ANOTHER part number contradicts a title that spells the
+ * client's; a page describing the product in words does not.
+ */
+export function looksLikePartNumber(model: string): boolean {
+  const m = normalisePageModel(model);
+  return (
+    m !== "" &&
+    !/\s/.test(m) &&
+    /\d/.test(m) &&
+    alphanumericLength(m) >= MIN_PAGE_MODEL_CHARS
+  );
+}
+
+/**
+ * Does a listing's title say it is not new — renewed, refurbished, used or
+ * pre-owned?
+ *
+ * 🔴 **Never proposed on a page's model alone** (the lead, 2026-11-12). The
+ * committed Amazon search for `MH304LL/A` lists `B0H7LNKQ37`, "… (Renewed)",
+ * beside the new iPad Air; a person accepting it would show a renewed price
+ * as Amazon's price for the client's product.
+ */
+export function isPreOwned(title: string): boolean {
+  return /\b(?:renewed|refurbished|pre-?owned|used)\b/i.test(title);
+}
+
 /** A signal the scorer can credit. The keys of `WEIGHTS`, and nothing else. */
 export type ScoreSignal = keyof typeof WEIGHTS;
 

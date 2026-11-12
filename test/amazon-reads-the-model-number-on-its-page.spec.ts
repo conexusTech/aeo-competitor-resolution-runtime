@@ -15,6 +15,11 @@ import {
   type Fetcher,
   type FetchResult,
 } from "../src/fetcher/types.js";
+import {
+  isPreOwned,
+  looksLikePartNumber,
+  pageModelNames,
+} from "../src/ranking.js";
 import { DEFAULT_OPTIONS, resolveItem } from "../src/resolve.js";
 import manifest from "./raw/manifest.json" with { type: "json" };
 
@@ -267,13 +272,105 @@ describe("CONTROL: the committed G.SKILL page still verifies by its barcode", ()
   });
 });
 
-describe("the listing whose page states the part number is the one proposed (SYNTHETIC retailer)", () => {
-  const card = (itemId: string, title: string): ParsedCandidate => ({
+describe("Amazon's renewed listing is never proposed on its page's word", () => {
+  const RENEWED_ASIN = "B0H7LNKQ37";
+  const RENEWED_URL = `https://www.amazon.com/dp/${RENEWED_ASIN}`;
+
+  it("the committed search carries it as a renewed card", () => {
+    const renewed = amazonAdapter
+      .parseSearchResults(SEARCH_IPAD)
+      ?.find((c) => c.itemId === RENEWED_ASIN);
+    expect(renewed?.title).toMatch(/\(Renewed\)$/);
+  });
+
+  it("🔴 a renewed listing whose page states MH304LL/A and no barcode is not proposed", async () => {
+    // Only the renewed listing's page is had; the new one's is not.
+    const fetcher = new Replay({
+      [amazonAdapter.buildSearchUrl("Apple MH304LL/A")]: SEARCH_IPAD,
+      [RENEWED_URL]: PAGE_IPAD,
+    });
+    const r = await resolveItem(IPAD, amazonAdapter, fetcher, OPTIONS);
+    // Not vacuous: its page was read.
+    expect(fetcher.asked).toContain(RENEWED_URL);
+    expect(r.outcome).toBe("not-found");
+    expect(r.match).toBeNull();
+  });
+
+  it("CONTROL: with both pages had, the new listing is the one proposed", async () => {
+    const fetcher = new Replay({
+      [amazonAdapter.buildSearchUrl("Apple MH304LL/A")]: SEARCH_IPAD,
+      [RENEWED_URL]: PAGE_IPAD,
+      [IPAD_URL]: PAGE_IPAD,
+    });
+    const r = await resolveItem(IPAD, amazonAdapter, fetcher, OPTIONS);
+    expect(r.outcome).toBe("unverifiable");
+    expect(r.match?.itemId).toBe(IPAD_ASIN);
+  });
+});
+
+describe("pageModelNames: when a page's model states the client's part number", () => {
+  it("names it exactly, whatever the case, spacing or bidi marks", () => {
+    expect(pageModelNames("MH304LL/A", ["MH304LL/A"])).toBe("exact");
+    expect(pageModelNames("  mh304ll/a ‎", ["MH304LL/A"])).toBe("exact");
+    expect(pageModelNames("&lrm;MH304LL/A", ["MH304LL/A"])).toBe("exact");
+  });
+
+  it("names it by its regional stem: another region's suffix, or none", () => {
+    expect(pageModelNames("K72337WW", ["K72337US"])).toBe("stem");
+    expect(pageModelNames("K72337", ["K72337US"])).toBe("stem");
+  });
+
+  it("names it inside a longer model only as a whole token", () => {
+    expect(pageModelNames("MH304LL/A (Wi-Fi)", ["MH304LL/A"])).toBe("token");
+    expect(pageModelNames("MH304LL/A-CASE", ["MH304LL/A"])).toBeNull();
+    expect(pageModelNames("XMH304LL/A", ["MH304LL/A"])).toBeNull();
+  });
+
+  it("🔴 never by a model the part number merely CONTAINS", () => {
+    expect(pageModelNames("1", ["SM-S931UZKAXAA"])).toBeNull();
+    expect(pageModelNames("A", ["MH304LL/A"])).toBeNull();
+    // Samsung encodes the colour in the suffix: the family is not the item.
+    expect(pageModelNames("SM-X520", ["SM-X520NZAAXAR"])).toBeNull();
+    expect(pageModelNames("MH304LL", ["MH304LL/A"])).toBeNull();
+  });
+
+  it("🔴 never by digits it shares with the barcode, nor by a shared prefix", () => {
+    expect(pageModelNames("XZ-8237", ["MH304LL/A"])).toBeNull();
+    expect(pageModelNames("MH304LL/B", ["MH304LL/A"])).toBeNull();
+  });
+
+  it("CONTROL: a model too short to be one names nothing, even when equal", () => {
+    expect(pageModelNames("A1", ["A1"])).toBeNull();
+  });
+
+  it("tells a part number from a description, and a pre-owned title", () => {
+    expect(looksLikePartNumber("CASE-77")).toBe(true);
+    expect(looksLikePartNumber("910-005488")).toBe(true);
+    expect(looksLikePartNumber("iPad Air 11 (M4)")).toBe(false);
+    expect(looksLikePartNumber("Flare")).toBe(false);
+    for (const title of [
+      "iPad Air 2026 (11-inch, Wi-Fi, 128GB) - Space Gray (Renewed)",
+      "Apple iPad Air Refurbished",
+      "iPad Air Pre-Owned",
+      "iPad Air (Used - Like New)",
+    ]) {
+      expect([title, isPreOwned(title)]).toEqual([title, true]);
+    }
+    expect(isPreOwned("iPad Air 11-inch (M4) 128GB")).toBe(false);
+  });
+});
+
+describe("which listing a page's model proposes (SYNTHETIC retailer)", () => {
+  const card = (
+    itemId: string,
+    title: string,
+    brand = "Acme",
+  ): ParsedCandidate => ({
     itemId,
     url: `https://r.test/p/${itemId}`,
     model: null,
     title,
-    brand: "Acme",
+    brand,
     priceCents: 1000,
     inStock: true,
     isFirstParty: null,
@@ -293,12 +390,12 @@ describe("the listing whose page states the part number is the one proposed (SYN
     category: null,
     model,
   });
-  const run = async (pages: Readonly<Record<string, ParsedProduct>>) => {
-    // Ranked first: its title spells the part number. Second: nothing does.
-    const listings = [
-      card("A", "Acme case for the AC-1000X widget"),
-      card("B", "Acme widget"),
-    ];
+  /** Resolve one item over `listings`, in that order, whose pages say `models`. */
+  const run = async (
+    listings: readonly ParsedCandidate[],
+    models: Readonly<Record<string, string | null>>,
+    item: { barcode: string; partNumber: string; brand: string },
+  ) => {
     const adapter: RetailerAdapter = {
       slug: "fake",
       querySupport: {
@@ -308,54 +405,133 @@ describe("the listing whose page states the part number is the one proposed (SYN
       },
       pacing: { pagesAtOnce: 1 },
       fetchProfile: { country: null, timeoutMs: null },
-      maxProbes: 3,
+      maxProbes: 8,
       productIndex: null,
       hosts: ["r.test"],
       buildSearchUrl: (q) => `https://r.test/s?q=${encodeURIComponent(q)}`,
-      parseSearchResults: () => listings,
-      parseProductPage: (html) => pages[html] ?? null,
+      parseSearchResults: () => [...listings],
+      parseProductPage: (html) =>
+        html in models ? page(models[html] ?? null) : null,
     };
-    const bodies: Record<string, string> = {};
-    for (const l of listings) bodies[l.url] = l.url;
     const fetcher: Fetcher = {
       liveRequestCount: 0,
       pagesDelivered: 0,
       fetch: (url) =>
         Promise.resolve({
           url,
-          body: bodies[url] ?? "search",
+          body: url.startsWith("https://r.test/p/")
+            ? url.slice("https://r.test/p/".length)
+            : "search",
           cached: false,
           attempts: 1,
         }),
     };
-    return resolveItem(
-      {
-        barcode: "012345678905",
-        clientSku: "1",
-        partNumber: "AC-1000X",
-        brand: "Acme",
-      },
-      adapter,
-      fetcher,
-      OPTIONS,
-    );
+    return resolveItem({ clientSku: "1", ...item }, adapter, fetcher, OPTIONS);
+  };
+  const APPLE = {
+    barcode: IPAD.barcode,
+    partNumber: "MH304LL/A",
+    brand: "Apple",
   };
 
-  it("🔴 proposes the page that states AC-1000X over a better-ranked page that states another model", async () => {
-    const r = await run({
-      "https://r.test/p/A": page("CASE-77"),
-      "https://r.test/p/B": page("AC-1000X"),
-    });
+  it("🔴 a junk or family model proposes nothing: `1`, `A`, `SM-X520`", async () => {
+    const samsung = { barcode: "887276789012", brand: "Samsung" };
+    for (const [model, partNumber, title] of [
+      ["1", "SM-S931UZKAXAA", "Samsung phone case clear"],
+      ["A", "MH304LL/A", "Tablet stand"],
+      ["SM-X520", "SM-X520NZAAXAR", "Samsung Galaxy Tab S10 FE 256GB Silver"],
+    ] as const) {
+      const r = await run(
+        [card("X", title, "Samsung")],
+        { X: model },
+        {
+          ...samsung,
+          partNumber,
+        },
+      );
+      expect([model, r.outcome, r.match]).toEqual([model, "not-found", null]);
+    }
+  });
+
+  it("🔴 the real listing stating MH304LL/A beats an accessory listed first stating MH304LL/A-CASE", async () => {
+    const r = await run(
+      [
+        card("ACC", "Case for iPad Air 11", "Apple"),
+        card("REAL", "iPad Air 11-inch (M4) 128GB", "Apple"),
+      ],
+      { ACC: "MH304LL/A-CASE", REAL: "MH304LL/A" },
+      APPLE,
+    );
+    expect(r.outcome).toBe("unverifiable");
+    expect(r.match?.itemId).toBe("REAL");
+  });
+
+  it("🔴 an exact model beats a better-ranked page naming it only as a token", async () => {
+    const r = await run(
+      [
+        card("BUNDLE", "iPad Air 11 bundle", "Apple"),
+        card("REAL", "iPad Air 11-inch (M4) 128GB", "Apple"),
+      ],
+      { BUNDLE: "MH304LL/A (bundle)", REAL: "MH304LL/A" },
+      APPLE,
+    );
+    expect(r.match?.itemId).toBe("REAL");
+    expect(r.match?.model).toBe("MH304LL/A");
+  });
+
+  it("CONTROL: at equal strength the better-ranked page is proposed", async () => {
+    const r = await run(
+      [
+        card("FIRST", "iPad Air 11-inch (M4) 128GB", "Apple"),
+        card("SECOND", "iPad Air 11-inch (M4) 128GB Space Gray", "Apple"),
+      ],
+      { FIRST: "MH304LL/A", SECOND: "MH304LL/A" },
+      APPLE,
+    );
+    expect(r.match?.itemId).toBe("FIRST");
+  });
+
+  it("🔴 a listing whose TITLE spells MH304LL/A stays proposed over a lower case page stating it", async () => {
+    for (const realModel of [null, "iPad Air 11 (M4)"]) {
+      const r = await run(
+        [
+          card("REAL", "Apple iPad Air 11 MH304LL/A Space Gray", "Apple"),
+          card("CASE", "Case for iPad Air", "ProCase"),
+        ],
+        { REAL: realModel, CASE: "MH304LL/A" },
+        APPLE,
+      );
+      expect([realModel, r.outcome, r.match?.itemId]).toEqual([
+        realModel,
+        "unverifiable",
+        "REAL",
+      ]);
+    }
+  });
+
+  it("the page stating the part number beats a better-ranked page stating ANOTHER part number", async () => {
+    const r = await run(
+      [
+        card("A", "Acme case for the AC-1000X widget"),
+        card("B", "Acme widget"),
+      ],
+      { A: "CASE-77", B: "AC-1000X" },
+      { barcode: "012345678905", partNumber: "AC-1000X", brand: "Acme" },
+    );
     expect(r.outcome).toBe("unverifiable");
     expect(r.match?.itemId).toBe("B");
     expect(r.match?.model).toBe("AC-1000X");
   });
 
   it("CONTROL: with no page stating a model, the best page without a barcode is proposed, as before", async () => {
-    const r = await run({
-      "https://r.test/p/A": page(null),
-      "https://r.test/p/B": page(null),
-    });
+    const r = await run(
+      [
+        card("A", "Acme case for the AC-1000X widget"),
+        card("B", "Acme widget"),
+      ],
+      { A: null, B: null },
+      { barcode: "012345678905", partNumber: "AC-1000X", brand: "Acme" },
+    );
     expect(r.outcome).toBe("unverifiable");
     expect(r.match?.itemId).toBe("A");
     expect(r.match?.model).toBeNull();

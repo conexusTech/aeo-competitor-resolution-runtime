@@ -39,8 +39,13 @@ import {
   brandAgrees,
   hasConclusiveCandidate,
   hasPartNumberEvidence,
+  isPreOwned,
+  looksLikePartNumber,
   namesThePartNumber,
   MIN_EVIDENCE_TO_REPORT,
+  PAGE_MODEL_STRENGTH,
+  pageModelNames,
+  type PageModelMatch,
   probeOrder,
   rankCandidates,
   scoreCandidate,
@@ -1089,8 +1094,9 @@ async function resolveCounted(
   let noBarcodeFound: { candidate: ParsedCandidate; score: number } | null =
     null;
   /**
-   * The best listing whose page published no barcode and STATES the client's
-   * part number — carrying the page's model and the score it earns.
+   * The listing whose page published no barcode and STATES the client's part
+   * number most strongly, best-ranked among equals — carrying the page's
+   * model, the score it earns, and how the model named the part number.
    *
    * 🔴 **A page's model is part-number evidence for the listing whose page
    * said it, and nothing more.** Amazon's search cards state no model, so its
@@ -1100,34 +1106,47 @@ async function resolveCounted(
    * `Item model number: MH304LL/A`. Such a listing now goes to a person as
    * `unverifiable`; it is never `verified`, which only an agreeing barcode is.
    *
-   * ⚠️ **The model must NAME the part number** (`namesThePartNumber`), not
-   * merely share a prefix with it: a manufacturer numbers a family with a
-   * shared prefix, and a sibling's page is another product's. A page whose
+   * ⚠️ **The model must NAME the part number** — `pageModelNames`: equal, the
+   * same regional stem, or the part number as a whole token inside it. Never a
+   * model the part number merely contains (`1`, `A`, the family `SM-X520`),
+   * never a shared prefix, never digits shared with the barcode. A page whose
    * barcode disagrees is never this, whatever its model says.
+   *
+   * 🔴 **Never a renewed, refurbished, used or pre-owned listing** (the lead):
+   * accepted, it would report a second-hand price as the retailer's.
    *
    * 🔑 **Only pages the item already read**: nothing here buys a page.
    */
-  let modelStated: { candidate: ParsedCandidate; score: number } | null = null;
+  type Stated = {
+    candidate: ParsedCandidate;
+    score: number;
+    match: PageModelMatch;
+  };
+  let modelStated: Stated | null = null;
   const statedOnPage = (
     entry: { candidate: ParsedCandidate },
     published: readonly string[],
-  ): { candidate: ParsedCandidate; score: number } | null => {
+  ): Stated | null => {
     if (published.length !== 0) return null;
+    if (isPreOwned(entry.candidate.title)) return null;
     const model = pages.get(entry.candidate.url)?.model?.trim() ?? "";
     if (model === "") return null;
+    const match = pageModelNames(model, partNumbers);
+    if (match === null) return null;
     const candidate = { ...entry.candidate, model };
-    const input = { ...rankInput, candidate };
-    // The page's model alone must name it: a title that spells the part
-    // number — an accessory "for" the item — is not the page saying so.
-    const pageAlone = { ...candidate, title: "", brand: null };
-    if (
-      !hasPartNumberEvidence(input) ||
-      !namesThePartNumber({ ...input, candidate: pageAlone })
-    ) {
-      return null;
-    }
-    return { candidate, score: scoreCandidate(input) };
+    return {
+      candidate,
+      score: scoreCandidate({ ...rankInput, candidate }),
+      match,
+    };
   };
+  /** The stronger of two, the one already held where they are equal. */
+  const stronger = (held: Stated | null, next: Stated | null): Stated | null =>
+    next !== null &&
+    (held === null ||
+      PAGE_MODEL_STRENGTH[next.match] > PAGE_MODEL_STRENGTH[held.match])
+      ? next
+      : held;
 
   // 🔑 Over EVERY listing found, not only the candidates: a barcode this run
   // already read that agrees with the client's proves the pairing whatever
@@ -1218,7 +1237,8 @@ async function resolveCounted(
     if (published.length === 0 && noBarcodeFound === null) {
       noBarcodeFound = entry;
     }
-    if (modelStated === null) modelStated = statedOnPage(entry, published);
+    // Read in rank order, so among equals the better-ranked listing stays.
+    modelStated = stronger(modelStated, statedOnPage(entry, published));
   }
 
   const best = ranked[0];
@@ -1278,7 +1298,8 @@ async function resolveCounted(
       if (agreeing !== null) return verifiedOn(best, agreeing);
       // Ranked first, so it is the best such listing whatever came before.
       if (bestRead.length === 0) noBarcodeFound = best;
-      modelStated = statedOnPage(best, bestRead) ?? modelStated;
+      // Nothing was held: every page read before this one had a barcode.
+      modelStated = stronger(modelStated, statedOnPage(best, bestRead));
     }
   }
 
@@ -1313,14 +1334,40 @@ async function resolveCounted(
   }
 
   /**
-   * 🔑 **A page that states the client's part number before one that does
-   * not**, where both published no barcode: the page saying so is the
-   * strongest thing short of a barcode, and a better-ranked listing may only
-   * have a title that spells it. Its evidence carries the page's model, so
-   * the reviewer sees why. With no such page, the best listing without a
-   * barcode, as it always was.
+   * Which listing without a barcode goes to the person.
+   *
+   * 🔑 **The best-ranked one stands, as it always did, where it has
+   * part-number evidence of its own and its page does not contradict it** —
+   * a title that spells `MH304LL/A` above a lower "Case for iPad Air" whose
+   * page states it. A page states a contradiction only by naming ANOTHER part
+   * number (`CASE-77`); one describing the product in words
+   * (`iPad Air 11 (M4)`) or stating nothing says nothing against it. Where it
+   * stands and its own page names the part number, its evidence carries that
+   * model.
+   *
+   * Otherwise the listing whose page states the part number, its evidence
+   * carrying the page's model so the reviewer sees why — and with neither,
+   * the best listing without a barcode.
    */
-  const unverifiable = modelStated ?? noBarcodeFound;
+  const standsOnItsOwn = (entry: {
+    candidate: ParsedCandidate;
+    score: number;
+  }): boolean => {
+    if (!hasPartNumberEvidence({ ...rankInput, candidate: entry.candidate })) {
+      return false;
+    }
+    const model = pages.get(entry.candidate.url)?.model?.trim() ?? "";
+    return !(
+      model !== "" &&
+      looksLikePartNumber(model) &&
+      pageModelNames(model, partNumbers) === null
+    );
+  };
+  const unverifiable =
+    noBarcodeFound !== null &&
+    (modelStated === null || standsOnItsOwn(noBarcodeFound))
+      ? (statedOnPage(noBarcodeFound, []) ?? noBarcodeFound)
+      : modelStated;
   if (unverifiable !== null) {
     return {
       ...counted,
