@@ -1,5 +1,8 @@
 # OKF Log
 
+- **Update** — category pages are read (2026-11-12, `insights-reads-category-pages`, `insights-monitor-by-category-where-cheaper`; local `master`, not pushed): B&H, Newegg and Amazon have a category reader, Best Buy and Costco none; a read job walks the categories the gateway planned, sizes others from page 1, and prices a watched listing from its card only when the walk is valid, reading every other listing from its own page in the same container. Every reading carries `priceSource`. Newegg category ids carry their kind (`cat-<n>` / `sub-<n>`).
+- **Learning** — 🔴 **B&H pages a category only from its canonical address.** `/pn/N` of the slug a product page links to comes back as page 1, which reads as the end; the first local walk was invalid on it (28 of 411). Pages 2 and on now come from page 1's `rel=canonical`, accepted only when it is exactly `/c/buy/<slug>/ci/<id>` on B&H's host, with no query and the same id (`a38b272`). An empty page 1 is a failure, never an empty category.
+
 ## 2026-11-11
 
 - **Update** — the runtime's half of `insights-long-run-continues-past-the-job-timeout` (2026-11-11, Phase CI-2, local `master`, not pushed): the job's `stopTakingItemsAfterSec` budget, `yielded`, a SIGTERM hand-back inside the 30 s grace, findings flushed at least every minute, a seal so nothing is sent after the run's end is decided, `leg_id` on every event, and a budget yield that retries its held-back items before handing back. Checked end to end locally against the gateway: a pod stopped mid-run kept its 8 findings and the run finished in a second leg.
