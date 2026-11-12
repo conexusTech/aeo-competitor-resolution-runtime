@@ -29,6 +29,23 @@ export const MAX_CATEGORY_ERROR_LENGTH = 512;
 export const MAX_PRICE_CENTS = 1_000_000_000;
 
 /**
+ * A price as the gateway will take it — a whole number of cents from 1 to
+ * `MAX_PRICE_CENTS` — or `null`.
+ *
+ * 🔴 **Out of range is no price, never a price the gateway refuses.** A price
+ * past the ceiling, or a fraction of a cent, is a parse that went wrong; sent
+ * as it is, the gateway would refuse the reading carrying it.
+ */
+export function priceWithinLimits(priceCents: number | null): number | null {
+  return priceCents !== null &&
+    Number.isInteger(priceCents) &&
+    priceCents > 0 &&
+    priceCents <= MAX_PRICE_CENTS
+    ? priceCents
+    : null;
+}
+
+/**
  * `text` held to `max` characters: as it is when it fits, otherwise cut and
  * ended with "…", so a reader can see it was cut.
  */

@@ -555,8 +555,26 @@ export interface ListingPageReading {
   readonly barcode: string | null;
   /** Further barcodes the same field published. Empty for a single value. */
   readonly additionalBarcodes: readonly string[];
-  /** The price the offer is made at, or `null` when it shows none. Never 0. */
+  /**
+   * The price the offer is made at, or `null` when it shows none. Never 0.
+   * `null` too where the page lists several items not all at one price:
+   * `barcodePrices` then speaks for each.
+   */
   readonly priceCents: number | null;
+  /**
+   * Each barcode the page publishes with its own item's price, exactly as
+   * `ParsedProduct.barcodePrices` states it — present only where `priceCents`
+   * cannot answer for every barcode.
+   *
+   * 🔴 **A read job carries no paired barcode, and needs none.** One reading
+   * of a page serves every pairing that points at it, and those can be
+   * different items of the same page (colours of one iPad). So the reading
+   * states every barcode's answer and the gateway files each pairing at the
+   * price of the barcode it was proven by — never `priceCents`, never a
+   * sibling's. Without this, a Costco page listing several items was an
+   * `unreadable-offer`, and every daily read of one failed.
+   */
+  readonly barcodePrices?: readonly BarcodePrice[];
   /** `null` where the page states no availability this build recognises. */
   readonly inStock: boolean | null;
   /** The page's breadcrumb category, as `ParsedProduct.category` reads it. */

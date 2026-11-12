@@ -420,12 +420,6 @@ export function readListingPage(html: string): ListingPageResult {
             : "not a Costco product page",
     };
   }
-  if (page.severalPrices) {
-    return {
-      kind: "unreadable-offer",
-      detail: "several items, not all at one price this build can read",
-    };
-  }
   // 🔴 A price Costco WITHHOLDS from a signed-out visitor is the page's
   // answer, not a failed reading: no price, and a page.
   if (page.visibility === "none") {
@@ -440,7 +434,12 @@ export function readListingPage(html: string): ListingPageResult {
       pageItemId: page.productId,
       barcode: page.upcs[0] ?? null,
       additionalBarcodes: page.upcs.slice(1),
+      // Several items not all at one price: `null`, and each barcode's own
+      // price below — the read job names no barcode, so the gateway picks.
       priceCents: page.priceCents,
+      ...(page.barcodePrices === null
+        ? {}
+        : { barcodePrices: page.barcodePrices }),
       inStock: null,
       category: null,
     },

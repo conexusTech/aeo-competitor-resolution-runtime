@@ -681,8 +681,24 @@
           "unverifiableReason": null
         },
         "reading": {
-          "kind": "unreadable-offer",
-          "detail": "several items, not all at one price this build can read"
+          "kind": "page",
+          "page": {
+            "pageItemId": "4000444349",
+            "barcode": "195950823578",
+            "additionalBarcodes": [
+              "195950824032",
+              "195950823806",
+              "195950824261"
+            ],
+            "priceCents": null,
+            "barcodePrices": [
+              { "barcode": "195950823578", "priceCents": 64999 },
+              { "barcode": "195950824032", "priceCents": null },
+              { "barcode": "195950823806", "priceCents": null },
+              { "barcode": "195950824261", "priceCents": null }
+            ],
+            "inStock": null
+          }
         },
         "source": "meriwether-data-scraper recon/captures/costco-upc/cache",
         "capturedOn": "2026-11-11",
@@ -718,8 +734,18 @@
           "unverifiableReason": null
         },
         "reading": {
-          "kind": "unreadable-offer",
-          "detail": "several items, not all at one price this build can read"
+          "kind": "page",
+          "page": {
+            "pageItemId": "4000447603",
+            "barcode": "195950851809",
+            "additionalBarcodes": ["195950853681"],
+            "priceCents": null,
+            "barcodePrices": [
+              { "barcode": "195950851809", "priceCents": null },
+              { "barcode": "195950853681", "priceCents": null }
+            ],
+            "inStock": null
+          }
         },
         "source": "meriwether-data-scraper recon/captures/costco-upc/cache",
         "capturedOn": "2026-11-11",

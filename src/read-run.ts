@@ -50,6 +50,7 @@ import { isOwnHostUrl } from "./own-hosts.js";
 import {
   MAX_PAGES_AT_ONCE,
   pagesAtOnce,
+  type BarcodePrice,
   type CategoryReading,
   type ListingCategory,
   type ListingReader,
@@ -70,6 +71,7 @@ import {
   type ReadListing,
   type ReportOutcome,
 } from "./gateway/client.js";
+import { priceWithinLimits } from "./wire-limits.js";
 import {
   NEVER_STOPPED,
   SHUTDOWN,
@@ -139,8 +141,21 @@ export interface PageReading extends ReadingBase {
   /** Trimmed. `""` = the page publishes the field empty; `null` = no field. */
   readonly barcode: string | null;
   readonly additionalBarcodes: readonly string[];
-  /** `null` only where the page offers no price. Never 0. */
+  /**
+   * `null` where the page offers no price — and always `null` beside
+   * `barcodePrices`, which then speaks for each barcode. Never 0.
+   */
   readonly priceCents: number | null;
+  /**
+   * Each published barcode with its own item's price, or `null` for one the
+   * page does not price — only where the page lists several items not all at
+   * one price. The gateway files each pairing at the price of the barcode it
+   * was proven by.
+   *
+   * 🔴 **Absent, not empty, everywhere else**: a reading without it is the
+   * reading every gateway built before it already takes, byte for byte.
+   */
+  readonly barcodePrices?: readonly BarcodePrice[];
   /** `null` where the page states no availability this build recognises. */
   readonly inStock: boolean | null;
   readonly failure: null;
@@ -380,6 +395,11 @@ function readBody(
     );
   }
   const page = result.page;
+  const barcodePrices = page.barcodePrices?.map((b) => ({
+    barcode: b.barcode,
+    // 🔴 One price past the gateway's limits would refuse the whole reading.
+    priceCents: priceWithinLimits(b.priceCents),
+  }));
   return {
     itemId: listing.itemId,
     pageItemId: page.pageItemId,
@@ -387,7 +407,10 @@ function readBody(
     pageFound: true,
     barcode: page.barcode,
     additionalBarcodes: page.additionalBarcodes,
-    priceCents: page.priceCents,
+    // 🔴 Never a page price beside per-barcode prices: the gateway takes a
+    // pairing's price from those alone, and expects `null` here.
+    priceCents: barcodePrices === undefined ? page.priceCents : null,
+    ...(barcodePrices === undefined ? {} : { barcodePrices }),
     inStock: page.inStock,
     failure: null,
     priceSource: PRICE_SOURCE.productPage,

@@ -51,7 +51,7 @@ import type {
 import {
   boundText,
   MAX_CATEGORY_ERROR_LENGTH,
-  MAX_PRICE_CENTS,
+  priceWithinLimits,
 } from "./wire-limits.js";
 
 /**
@@ -110,23 +110,6 @@ export function categoryKey(raw: string): string {
   url.searchParams.sort();
   const path = url.pathname.replace(/\/+$/, "");
   return `${url.protocol}//${url.host}${path}${url.search}`;
-}
-
-/**
- * A card's price as the gateway will take it: a whole number of cents from
- * 1 to its ceiling, or none.
- *
- * 🔴 **Out of range is no price, never a price the gateway refuses.** A card
- * reading as more than the gateway accepts, or as a fraction of a cent, is a
- * parse that went wrong; with no price its listing is read from its own page.
- */
-function takenPrice(priceCents: number | null): number | null {
-  return priceCents !== null &&
-    Number.isInteger(priceCents) &&
-    priceCents > 0 &&
-    priceCents <= MAX_PRICE_CENTS
-    ? priceCents
-    : null;
 }
 
 /**
@@ -373,7 +356,9 @@ export async function walkCategory(
       seen.add(card.itemId);
       if (watched.has(card.itemId) && !found.has(card.itemId)) {
         found.set(card.itemId, {
-          card: { ...card, priceCents: takenPrice(card.priceCents) },
+          // A card price the gateway would refuse is no price: its listing
+          // is then read from its own page.
+          card: { ...card, priceCents: priceWithinLimits(card.priceCents) },
           readAt: fetched.readAt,
         });
       }

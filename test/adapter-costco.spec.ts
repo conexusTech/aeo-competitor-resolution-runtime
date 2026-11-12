@@ -226,8 +226,14 @@ describe("🔴 a price per barcode, on a page listing several items", () => {
 
   it("🔴 keeps `priceCents` null: it answers for every barcode, and the siblings are unpriced", () => {
     expect(parseProductPage(IPAD_AIR)?.priceCents).toBeNull();
-    // A read job carries no barcode to pick with: still unreadable.
-    expect(readListingPage(IPAD_AIR).kind).toBe("unreadable-offer");
+    // A read job carries no barcode to pick with, so its reading states every
+    // barcode's own price and the gateway picks — never a failed read.
+    const r = readListingPage(IPAD_AIR);
+    expect(r.kind).toBe("page");
+    expect(r.kind === "page" ? r.page.priceCents : 0).toBeNull();
+    expect(r.kind === "page" ? r.page.barcodePrices : null).toEqual(
+      parseProductPage(IPAD_AIR)?.barcodePrices,
+    );
   });
 
   it("🔴 the MacBook Neo page: the matched item 2046718 is unpriced, its priced sibling 2046716 never lends it a price", () => {
@@ -456,7 +462,7 @@ describe("readListingPage", () => {
     expect(readListingPage("<html></html>").kind).toBe("not-a-product-page");
   });
 
-  it("🔴 SYNTHETIC: several items at different prices is an unreadable offer", () => {
+  it("🔴 SYNTHETIC: several items at different prices read as each barcode's own price, and no page price", () => {
     const body = page(
       {
         productData: {
@@ -476,11 +482,25 @@ describe("readListingPage", () => {
         ],
       },
     );
-    expect(readListingPage(body).kind).toBe("unreadable-offer");
+    expect(readListingPage(body)).toStrictEqual({
+      kind: "page",
+      page: {
+        pageItemId: "9",
+        barcode: "036000291452",
+        additionalBarcodes: ["036000291469"],
+        priceCents: null,
+        barcodePrices: [
+          { barcode: "036000291452", priceCents: 1000 },
+          { barcode: "036000291469", priceCents: 1200 },
+        ],
+        inStock: null,
+        category: null,
+      },
+    });
     expect(parseProductPage(body)?.priceCents).toBeNull();
   });
 
-  it("SYNTHETIC: several items whose other prices are not stated is unreadable too", () => {
+  it("SYNTHETIC: several items whose other prices are not stated price only the item priceInfo names", () => {
     const body = page({
       productData: {
         id: "9",
@@ -491,7 +511,12 @@ describe("readListingPage", () => {
       },
       priceInfo: priced("111", 10),
     });
-    expect(readListingPage(body).kind).toBe("unreadable-offer");
+    const r = readListingPage(body);
+    expect(r.kind === "page" ? r.page.priceCents : 0).toBeNull();
+    expect(r.kind === "page" ? r.page.barcodePrices : null).toEqual([
+      { barcode: "036000291452", priceCents: 1000 },
+      { barcode: "036000291469", priceCents: null },
+    ]);
   });
 
   it("SYNTHETIC: several items all at one price show that price", () => {
