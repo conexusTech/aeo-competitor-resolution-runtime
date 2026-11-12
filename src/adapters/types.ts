@@ -211,6 +211,23 @@ export interface ParsedProduct {
    * retailer without category reads answers `null`.
    */
   readonly category: ListingCategory | null;
+  /**
+   * The manufacturer's part number as the page states it — or `null`, or
+   * absent, where the page states none this build reads.
+   *
+   * 🔴 **Evidence for the listing whose page said it, never proof.** Amazon's
+   * search cards state no model, so an Amazon candidate showed part-number
+   * evidence only where its title happened to spell the part number — and an
+   * item whose pages publish no barcode (every Apple listing measured) was
+   * filed as not carried although its page said `Item model number:
+   * MH304LL/A`. A page whose model names the client's part number makes its
+   * listing `unverifiable` — a person decides — and only an agreeing barcode
+   * ever verifies.
+   *
+   * ⚠️ **Optional**: a retailer whose search result already carries the model
+   * leaves it out, and absent means exactly what it meant before it existed.
+   */
+  readonly model?: string | null;
 }
 
 /** One barcode a product page publishes, and the price of the item carrying it. */

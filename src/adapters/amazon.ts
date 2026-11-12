@@ -141,6 +141,26 @@ const BARCODE_LABELS: ReadonlySet<string> = new Set([
 ]);
 
 /**
+ * Every label Amazon has been observed to state a part number under, most
+ * specific first.
+ *
+ * 🔑 **Measured, verbatim, on two real pages:** the committed G.SKILL page
+ * states `Model Number` and `Mfr Part Number` (both
+ * `F5-6000J3636F16GX2-FX5`), and the iPad Air page `B0GQVPX1PJ` states `Item
+ * model number` (`MH304LL/A`) and no barcode. `Manufacturer Part Number` is
+ * the long form of the first, unmeasured.
+ *
+ * ⚠️ **`Model Name` is not one of them**: the G.SKILL page states `Flare X5
+ * Series` under it — a product line, which every sibling shares.
+ */
+const MODEL_LABELS: readonly string[] = [
+  "mfr part number",
+  "manufacturer part number",
+  "item model number",
+  "model number",
+];
+
+/**
  * ⚠️ **No measured refusal, so no limit is claimed.** The launch retailer routes
  * a numeric query of 10+ digits to an error page, which is why that field
  * exists. Amazon has not been observed to refuse any query shape: a bare
@@ -268,12 +288,21 @@ export function parseSearchResults(html: string): ParsedCandidate[] | null {
 
 export function parseProductPage(html: string): ParsedProduct {
   const values: string[] = [];
+  /** Each part-number label's first value, by label. */
+  const models = new Map<string, string>();
   DETAIL_ROW.lastIndex = 0;
   let row: RegExpExecArray | null;
   while ((row = DETAIL_ROW.exec(html)) !== null) {
     const label = textOf(row[1] ?? "")
       .toLowerCase()
       .replace(/[:：]\s*$/, "");
+    if (MODEL_LABELS.includes(label) && !models.has(label)) {
+      // 🔴 The iPad Air page leads every value with an `&lrm;` ENTITY, not the
+      // character `textOf` strips: read as text it would be part of the model.
+      const model = textOf((row[2] ?? "").replace(/&(?:lrm|rlm);/g, " "));
+      if (model !== "") models.set(label, model);
+      continue;
+    }
     if (!BARCODE_LABELS.has(label)) continue;
     // 🔴 One field, possibly several barcodes. A real product page publishes
     // `812348010548 191120055664` in a single cell and the client's value was
@@ -302,6 +331,11 @@ export function parseProductPage(html: string): ParsedProduct {
     isFirstParty: null,
     unverifiableReason: null,
     category: breadcrumbCategory(html),
+    // The most specific label the page states, as the page states it.
+    model:
+      MODEL_LABELS.map((label) => models.get(label)).find(
+        (value) => value !== undefined,
+      ) ?? null,
   };
 }
 

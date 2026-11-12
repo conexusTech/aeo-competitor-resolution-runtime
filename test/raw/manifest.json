@@ -100,6 +100,37 @@
       "gzBytes": 402269
     },
     {
+      "name": "amazon-search-apple-mh304lla",
+      "why": "Amazon's answer to the client's part number for an Apple item: the iPad Air B0GQVPX1PJ is the first of 16 results, and no card states a model or spells MH304LL/A in its title, so the card alone gives no part-number evidence",
+      "facts": {
+        "url": "https://www.amazon.com/s?k=Apple%20MH304LL%2FA",
+        "query": "Apple MH304LL/A",
+        "candidates": 16,
+        "first": "B0GQVPX1PJ",
+        "capturedOn": "2026-11-12",
+        "capturedThrough": "the vendor, one request (two in all with the product page)",
+        "distilled": "Distilled by scripts/distil-category.mjs (amazon): only the results container, each result cell (its ASIN, title, image, offered price and any Currently unavailable), the no-results widget and the shown page are kept. The adapter's search parse, product-page parse (barcode and model), listing reading and category reader were proven to give identical output on the raw capture and on this file. The raw page carried the proxy session id and anti-CSRF tokens; none survives by construction, and test/amazon-reads-the-model-number-on-its-page.spec.ts checks for every marker known."
+      },
+      "gzBytes": 1310
+    },
+    {
+      "name": "amazon-pdp-ipad-air-model-no-barcode",
+      "why": "the iPad Air B0GQVPX1PJ's page states Item model number MH304LL/A and publishes no barcode (Apple listings on Amazon publish none), so the listing can be proposed to a person but never proven; every detail value is led by an &lrm; entity",
+      "facts": {
+        "url": "https://www.amazon.com/dp/B0GQVPX1PJ",
+        "model": "MH304LL/A",
+        "modelLabel": "Item model number",
+        "barcode": null,
+        "detailRows": 7,
+        "priceCents": 64900,
+        "inStock": true,
+        "capturedOn": "2026-11-12",
+        "capturedThrough": "the vendor, one request",
+        "distilled": "Distilled by scripts/distil-category.mjs (amazon-product): only the product title, the ASIN, the featured buying option's price and availability, and every row of the product-details table are kept (the page has no breadcrumb). The adapter's search parse, product-page parse (barcode and model), listing reading and category reader were proven to give identical output on the raw capture and on this file. The raw page carried the proxy session id and anti-CSRF tokens; none survives by construction, and test/amazon-reads-the-model-number-on-its-page.spec.ts checks for every marker known."
+      },
+      "gzBytes": 647
+    },
+    {
       "name": "bestbuy-search-upc-first-party",
       "why": "a barcode search Best Buy answers: the M310 silver's UPC returns one text-matched listing, Best Buy's own",
       "facts": {

@@ -43,6 +43,7 @@ import {
   MIN_EVIDENCE_TO_REPORT,
   probeOrder,
   rankCandidates,
+  scoreCandidate,
   tokenise,
 } from "./ranking.js";
 import type {
@@ -1087,6 +1088,46 @@ async function resolveCounted(
   /** The best listing we found but could not compare — an `unverifiable`. */
   let noBarcodeFound: { candidate: ParsedCandidate; score: number } | null =
     null;
+  /**
+   * The best listing whose page published no barcode and STATES the client's
+   * part number — carrying the page's model and the score it earns.
+   *
+   * 🔴 **A page's model is part-number evidence for the listing whose page
+   * said it, and nothing more.** Amazon's search cards state no model, so its
+   * candidates had evidence only where a title spelled the part number, and
+   * an item whose pages publish no barcode — every Apple listing measured —
+   * was filed as not carried although the loop below had read a page saying
+   * `Item model number: MH304LL/A`. Such a listing now goes to a person as
+   * `unverifiable`; it is never `verified`, which only an agreeing barcode is.
+   *
+   * ⚠️ **The model must NAME the part number** (`namesThePartNumber`), not
+   * merely share a prefix with it: a manufacturer numbers a family with a
+   * shared prefix, and a sibling's page is another product's. A page whose
+   * barcode disagrees is never this, whatever its model says.
+   *
+   * 🔑 **Only pages the item already read**: nothing here buys a page.
+   */
+  let modelStated: { candidate: ParsedCandidate; score: number } | null = null;
+  const statedOnPage = (
+    entry: { candidate: ParsedCandidate },
+    published: readonly string[],
+  ): { candidate: ParsedCandidate; score: number } | null => {
+    if (published.length !== 0) return null;
+    const model = pages.get(entry.candidate.url)?.model?.trim() ?? "";
+    if (model === "") return null;
+    const candidate = { ...entry.candidate, model };
+    const input = { ...rankInput, candidate };
+    // The page's model alone must name it: a title that spells the part
+    // number — an accessory "for" the item — is not the page saying so.
+    const pageAlone = { ...candidate, title: "", brand: null };
+    if (
+      !hasPartNumberEvidence(input) ||
+      !namesThePartNumber({ ...input, candidate: pageAlone })
+    ) {
+      return null;
+    }
+    return { candidate, score: scoreCandidate(input) };
+  };
 
   // 🔑 Over EVERY listing found, not only the candidates: a barcode this run
   // already read that agrees with the client's proves the pairing whatever
@@ -1177,6 +1218,7 @@ async function resolveCounted(
     if (published.length === 0 && noBarcodeFound === null) {
       noBarcodeFound = entry;
     }
+    if (modelStated === null) modelStated = statedOnPage(entry, published);
   }
 
   const best = ranked[0];
@@ -1236,6 +1278,7 @@ async function resolveCounted(
       if (agreeing !== null) return verifiedOn(best, agreeing);
       // Ranked first, so it is the best such listing whatever came before.
       if (bestRead.length === 0) noBarcodeFound = best;
+      modelStated = statedOnPage(best, bestRead) ?? modelStated;
     }
   }
 
@@ -1252,6 +1295,7 @@ async function resolveCounted(
   const leadWordFloor = productIndex !== null && noBarcodeFound !== null;
   if (
     !leadWordFloor &&
+    modelStated === null &&
     (best.score < MIN_EVIDENCE_TO_REPORT || !bestHasEvidence)
   ) {
     return {
@@ -1268,7 +1312,16 @@ async function resolveCounted(
     };
   }
 
-  if (noBarcodeFound !== null) {
+  /**
+   * 🔑 **A page that states the client's part number before one that does
+   * not**, where both published no barcode: the page saying so is the
+   * strongest thing short of a barcode, and a better-ranked listing may only
+   * have a title that spells it. Its evidence carries the page's model, so
+   * the reviewer sees why. With no such page, the best listing without a
+   * barcode, as it always was.
+   */
+  const unverifiable = modelStated ?? noBarcodeFound;
+  if (unverifiable !== null) {
     return {
       ...counted,
       outcome: "unverifiable",
@@ -1278,15 +1331,15 @@ async function resolveCounted(
       probes,
       requests: fetcher.liveRequestCount,
       match: evidence(
-        noBarcodeFound.candidate,
-        noBarcodeFound.score,
+        unverifiable.candidate,
+        unverifiable.score,
         null,
-        pages.get(noBarcodeFound.candidate.url),
+        pages.get(unverifiable.candidate.url),
         "unverifiable",
       ),
       alternatives: alternativesFor({
         ranked,
-        chosen: noBarcodeFound.candidate,
+        chosen: unverifiable.candidate,
         probed: probeOutcomes,
         scoreInput: rankInput,
       }),

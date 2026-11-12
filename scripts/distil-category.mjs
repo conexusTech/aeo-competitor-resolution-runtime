@@ -17,9 +17,16 @@
  * fields the parser reads removes them by construction, and the output is then
  * checked for every session marker known anyway.
  *
+ * ⚠️ **`amazon-product` distils one Amazon product page, not a grid.** It
+ * keeps the page's title marker, its ASIN, the featured buying option's price
+ * and availability, the breadcrumb's browse-node links and every row of the
+ * product-details table, and is proven by the same parses: the listing reading
+ * and the product parse (barcode and model) must come out identical.
+ *
  * Usage (build first: `npm run build`):
  *   node scripts/distil-category.mjs newegg <raw.html> <out.html.gz>
  *   node scripts/distil-category.mjs amazon <raw.html> <out.html.gz>
+ *   node scripts/distil-category.mjs amazon-product <raw.html> <out.html.gz>
  */
 
 import fs from "node:fs";
@@ -146,6 +153,83 @@ function distilAmazon(html) {
   );
 }
 
+/** What `parseProductPage` and `readListingPage` read off a product page. */
+const PRODUCT_TITLE = /<span[^>]*\sid="productTitle"[^>]*>([^<]*)</;
+const ASIN_INPUT = /<input\b[^>]*\bid="ASIN"[^>]*>/;
+const VALUE_ATTRIBUTE = /\bvalue="([^"]*)"/;
+const BUYBOX = 'id="buybox"';
+const PRICE_TO_PAY = /class="a-price\b[^"]*\bapex-pricetopay-value\b[^"]*"/;
+const OFFSCREEN = /<span class="a-offscreen">([^<]*)</;
+const AVAILABILITY = /primary-availability-message[^>]*>([^<]*)</;
+const NO_FEATURED_OFFER = />\s*No featured offers available\s*</i;
+const DETAIL_ROW =
+  /prodDetSectionEntry"[^>]*>([\s\S]{0,160}?)<\/th>[\s\S]{0,240}?prodDetAttrValue"[^>]*>([\s\S]{0,160}?)</g;
+const BREADCRUMB_MARKER = "wayfinding-breadcrumbs_feature_div";
+const NODE_LINK = /href="[^"]*[?&](?:amp;)?node=(\d+)[^"]*"[^>]*>([^<]*)</g;
+
+function distilAmazonProduct(html) {
+  const title = PRODUCT_TITLE.exec(html)?.[1];
+  if (title === undefined) throw new Error("no product title");
+  const asinTag = ASIN_INPUT.exec(html)?.[0];
+  const asin =
+    asinTag === undefined ? undefined : VALUE_ATTRIBUTE.exec(asinTag)?.[1];
+
+  // The featured option's own figures, each read after the buy box opens:
+  // the proof below fails the run if they are not the ones the parser takes.
+  const box = html.indexOf(BUYBOX);
+  let offer = "";
+  if (box >= 0) {
+    const tail = html.slice(box);
+    const at = tail.search(PRICE_TO_PAY);
+    const price =
+      at < 0 ? undefined : OFFSCREEN.exec(tail.slice(at, at + 1200))?.[1];
+    const availability = AVAILABILITY.exec(tail)?.[1];
+    offer =
+      `<div id="buybox"><div data-a-accordion-row-name="featured">` +
+      (price === undefined
+        ? ""
+        : `<span class="a-price apex-pricetopay-value"><span class="a-offscreen">${price}</span></span>`) +
+      (availability === undefined
+        ? ""
+        : `<span class="primary-availability-message">${availability}</span>`) +
+      "</div></div>";
+  }
+
+  const crumbsAt = html.indexOf(BREADCRUMB_MARKER);
+  const crumbs =
+    crumbsAt < 0
+      ? ""
+      : `<div id="${BREADCRUMB_MARKER}">` +
+        [...html.slice(crumbsAt, crumbsAt + 6000).matchAll(NODE_LINK)]
+          .map((l) => `<a href="/b?node=${l[1]}">${l[2]}</a>`)
+          .join("") +
+        "</div>";
+
+  const rows = [...html.matchAll(DETAIL_ROW)]
+    .map(
+      (r) =>
+        `<tr><th class="prodDetSectionEntry">${r[1]}</th>` +
+        `<td class="prodDetAttrValue">${r[2]}</td></tr>`,
+    )
+    .join("");
+
+  return (
+    "<!doctype html><!-- distilled Amazon product page: only the fields the " +
+    "adapter reads; see scripts/distil-category.mjs --><html><body>" +
+    crumbs +
+    `<span id="productTitle">${title}</span>` +
+    (asin === undefined
+      ? ""
+      : `<input type="hidden" id="ASIN" value="${asin}">`) +
+    offer +
+    (NO_FEATURED_OFFER.test(html)
+      ? "<span>No featured offers available</span>"
+      : "") +
+    `<table>${rows}</table>` +
+    "</body></html>"
+  );
+}
+
 const amazonParses = (body) =>
   JSON.stringify({
     category: [1, 2, 3].map((n) => amazon.readCategoryPage(body, n)),
@@ -172,13 +256,14 @@ const SESSION_MARKERS = [
 const RETAILERS = {
   newegg: { distil: distilNewegg, parses: neweggParses },
   amazon: { distil: distilAmazon, parses: amazonParses },
+  "amazon-product": { distil: distilAmazonProduct, parses: amazonParses },
 };
 
 const [retailer, from, out] = process.argv.slice(2);
 const chosen = RETAILERS[retailer ?? ""];
 if (chosen === undefined || from === undefined || out === undefined) {
   console.error(
-    "usage: node scripts/distil-category.mjs <newegg|amazon> <raw.html> <out.html.gz>",
+    "usage: node scripts/distil-category.mjs <newegg|amazon|amazon-product> <raw.html> <out.html.gz>",
   );
   process.exit(2);
 }
