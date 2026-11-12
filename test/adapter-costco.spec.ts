@@ -638,25 +638,132 @@ describe("🔴 a product Costco names by its line, not its brand, is found", () 
       });
       expect(c.some((x) => x.title.startsWith("memory "))).toBe(false);
     }
-    // And a synthetic index where memory-led names are plentiful.
-    const fake: ProductIndexEntry[] = Array.from({ length: 30 }, (_, i) => ({
-      itemId: String(i),
-      url: `u${i}`,
-      name: `memory foam pillow ${i}`,
+    // And a synthetic index where "memory" is distinctive (55 of 6,000
+    // names, under the 1-in-100 line) yet rarely leads (5 of its 55): the
+    // lead share alone keeps it from being a line, whatever the client says.
+    const fake: ProductIndexEntry[] = Array.from({ length: 5945 }, (_, i) => ({
+      itemId: `f${i}`,
+      url: `uf${i}`,
+      name: `filler item ${i}`,
     }));
-    for (let i = 0; i < 200; i++) {
+    for (let i = 0; i < 5; i++) {
       fake.push({
-        itemId: `x${i}`,
-        url: `ux${i}`,
-        name: `other thing with memory ${i}`,
+        itemId: `m${i}`,
+        url: `um${i}`,
+        name: `memory foam pillow ${i}`,
+      });
+    }
+    for (let i = 0; i < 50; i++) {
+      fake.push({
+        itemId: `w${i}`,
+        url: `uw${i}`,
+        name: `gel pad with memory ${i}`,
       });
     }
     expect(
       indexCandidates(fake, {
         brand: "Acme",
         partNumbers: [],
-        productName: "Acme Gaming Laptop 16GB Memory Foam",
+        productName: "Acme Memory Foam Pillow",
       }),
     ).toEqual([]);
+  });
+});
+
+/**
+ * Rows the rule on master found and an earlier version of this change lost
+ * (rank 0-based on master, measured on the full fixture), and size spellings
+ * a client writes that Costco's slugs spell differently.
+ */
+describe("🔴 the product-line change loses nothing master found, and reads sizes as clients write them", () => {
+  const entries: readonly ProductIndexEntry[] = parseSitemap(FULL) ?? [];
+  const at = (
+    brand: string,
+    productName: string,
+    id: string,
+    partNumbers: string[] = [],
+  ): number =>
+    indexCandidates(entries, { brand, partNumbers, productName }).findIndex(
+      (c) => c.itemId === id,
+    );
+
+  it("a line the old rule found (uses in at most 1 name in 1,000) is still one, anywhere in the client's name", () => {
+    // Master ranked these at 1, 1 and 6 (0-based): none may be worse.
+    expect(
+      at(
+        "Samsung",
+        'Samsung Galaxy Book4 Edge 14" Copilot+ PC Laptop Snapdragon X Elite 16GB 512GB SSD',
+        "4201013672",
+      ),
+    ).toBeLessThanOrEqual(1);
+    // "TP-Link": the brand is two words; "archer" leads Costco's name.
+    expect(
+      at(
+        "TP-Link",
+        "TP-Link Archer BE9500 Tri-Band WiFi 7 Router",
+        "4000342316",
+      ),
+    ).toBeLessThanOrEqual(1);
+    expect(
+      at("Epson", "Epson EcoTank Pro ET-5880", "4000433738"),
+    ).toBeLessThanOrEqual(6);
+  });
+
+  it('reads a display size written 34" — the LG monitor ranks as on master (at most second, behind the 34 class entry)', () => {
+    expect(
+      at(
+        "LG",
+        'LG 34" UltraWide WQHD 144Hz HDR10 Curved Computer Monitor',
+        "4201029370",
+      ),
+    ).toBeLessThanOrEqual(1);
+  });
+
+  it.each([
+    ['Apple 11" iPad Air M4 128GB Wi-Fi', "4000444349"],
+    ["Apple iPad Air (M4) 11in 128GB", "4000444349"],
+    ['Apple MacBook Air 13.6" Laptop M5 chip 16GB 512GB SSD', "4000444336"],
+    ["Apple iPad 11-inch 128GB Wi-Fi (A16 chip)", "4000285678"],
+  ])("%s: its page is among the first three", (productName, id) => {
+    const rank = at("Apple", productName, id);
+    expect(rank).toBeGreaterThanOrEqual(0);
+    expect(rank).toBeLessThan(3);
+  });
+
+  it("an iPad mini written 8.3-inch finds Costco's 83-inch mini, which master never listed", () => {
+    // Costco sells it at 64GB and 256GB, not the 128GB asked for: the right
+    // display size at another capacity is a conflict, so it follows the
+    // entries that conflict with nothing, yet is found (master: absent).
+    for (const id of ["100806381", "100806296"]) {
+      const rank = at(
+        "Apple",
+        "Apple iPad mini 8.3-inch 128GB Wi-Fi (A17 Pro)",
+        id,
+      );
+      expect(rank).toBeGreaterThanOrEqual(0);
+      expect(rank).toBeLessThan(10);
+    }
+  });
+
+  it("a size kind the client did not state is neutral, never a demotion", () => {
+    // No capacity stated: the 128GB and 256GB iPad Air 11-inch both stay among
+    // the first three, whatever their capacity.
+    const c = indexCandidates(entries, {
+      brand: "Apple",
+      partNumbers: [],
+      productName: 'Apple 11" iPad Air M4 Wi-Fi',
+    });
+    const top = c.slice(0, 3).map((x) => x.itemId);
+    expect(top).toContain("4000444349");
+    expect(top).toContain("4000444378");
+  });
+
+  it('ranks a 65 class entry first for a 65" Class U8000H', () => {
+    const c = indexCandidates(entries, {
+      brand: "Samsung",
+      partNumbers: [],
+      productName: 'Samsung 65" Class U8000H',
+    });
+    expect(c[0]?.itemId).toBe("4201040398");
   });
 });
