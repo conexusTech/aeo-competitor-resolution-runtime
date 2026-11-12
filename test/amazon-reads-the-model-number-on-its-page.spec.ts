@@ -18,6 +18,7 @@ import {
 import {
   isPreOwned,
   looksLikePartNumber,
+  normalisePageModel,
   pageModelNames,
 } from "../src/ranking.js";
 import { DEFAULT_OPTIONS, resolveItem } from "../src/resolve.js";
@@ -339,6 +340,20 @@ describe("pageModelNames: when a page's model states the client's part number", 
     expect(pageModelNames("MH304LL/B", ["MH304LL/A"])).toBeNull();
   });
 
+  it("🔴 never as a token among OTHER part numbers: a page listing the models it fits", () => {
+    // A screen protector's page lists every iPad Air it fits.
+    expect(
+      pageModelNames("MH304LL/A, MH334LL/A, MH314LL/A", ["MH304LL/A"]),
+    ).toBeNull();
+    expect(pageModelNames("MH304LL/A / MH334LL/A", ["MH304LL/A"])).toBeNull();
+    // CONTROL: words beside it are not another part number.
+    expect(pageModelNames("MH304LL/A (Wi-Fi)", ["MH304LL/A"])).toBe("token");
+  });
+
+  it("normalises a page's model as it compares it: no bidi mark survives", () => {
+    expect(normalisePageModel("\u200e mh304ll/a &lrm;")).toBe("MH304LL/A");
+  });
+
   it("CONTROL: a model too short to be one names nothing, even when equal", () => {
     expect(pageModelNames("A1", ["A1"])).toBeNull();
   });
@@ -521,6 +536,39 @@ describe("which listing a page's model proposes (SYNTHETIC retailer)", () => {
     expect(r.outcome).toBe("unverifiable");
     expect(r.match?.itemId).toBe("B");
     expect(r.match?.model).toBe("AC-1000X");
+  });
+
+  it("🔴 a screen protector whose page lists MH304LL/A among other models is not proposed", async () => {
+    const r = await run(
+      [card("GUARD", "Screen protector for iPad Air", "ProCase")],
+      { GUARD: "MH304LL/A, MH334LL/A, MH314LL/A" },
+      APPLE,
+    );
+    expect(r.outcome).toBe("not-found");
+    expect(r.match).toBeNull();
+  });
+
+  it("🔴 a renewed listing whose title spells MH304LL/A does not keep its place over a new one whose page states it", async () => {
+    const r = await run(
+      [
+        card("RENEWED", "Apple iPad Air 11 MH304LL/A (Renewed)", "Apple"),
+        card("NEW", "iPad Air 11-inch (M4) 128GB", "Apple"),
+      ],
+      { RENEWED: null, NEW: "MH304LL/A" },
+      APPLE,
+    );
+    expect(r.outcome).toBe("unverifiable");
+    expect(r.match?.itemId).toBe("NEW");
+  });
+
+  it("the evidence carries the page's model as it was compared, not as the page spelled it", async () => {
+    const r = await run(
+      [card("REAL", "iPad Air 11-inch (M4) 128GB", "Apple")],
+      { REAL: "\u200e mh304ll/a " },
+      APPLE,
+    );
+    expect(r.outcome).toBe("unverifiable");
+    expect(r.match?.model).toBe("MH304LL/A");
   });
 
   it("CONTROL: with no page stating a model, the best page without a barcode is proposed, as before", async () => {

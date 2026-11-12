@@ -42,6 +42,7 @@ import {
   isPreOwned,
   looksLikePartNumber,
   namesThePartNumber,
+  normalisePageModel,
   MIN_EVIDENCE_TO_REPORT,
   PAGE_MODEL_STRENGTH,
   pageModelNames,
@@ -1133,7 +1134,8 @@ async function resolveCounted(
     if (model === "") return null;
     const match = pageModelNames(model, partNumbers);
     if (match === null) return null;
-    const candidate = { ...entry.candidate, model };
+    // As it was compared: no bidi mark or stray spacing reaches the reviewer.
+    const candidate = { ...entry.candidate, model: normalisePageModel(model) };
     return {
       candidate,
       score: scoreCandidate({ ...rankInput, candidate }),
@@ -1337,7 +1339,8 @@ async function resolveCounted(
    * Which listing without a barcode goes to the person.
    *
    * 🔑 **The best-ranked one stands, as it always did, where it has
-   * part-number evidence of its own and its page does not contradict it** —
+   * part-number evidence of its own, is not second-hand, and its page does
+   * not contradict it** —
    * a title that spells `MH304LL/A` above a lower "Case for iPad Air" whose
    * page states it. A page states a contradiction only by naming ANOTHER part
    * number (`CASE-77`); one describing the product in words
@@ -1356,6 +1359,10 @@ async function resolveCounted(
     if (!hasPartNumberEvidence({ ...rankInput, candidate: entry.candidate })) {
       return false;
     }
+    // 🔴 A second-hand listing never keeps its place over a new one whose page
+    // states the part number (the lead): accepted, it would report a renewed
+    // price as the retailer's.
+    if (isPreOwned(entry.candidate.title)) return false;
     const model = pages.get(entry.candidate.url)?.model?.trim() ?? "";
     return !(
       model !== "" &&

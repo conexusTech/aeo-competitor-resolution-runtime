@@ -161,8 +161,9 @@ export function namesThePartNumber(input: ScoreInput): boolean {
  * - `exact` — equal, once case, spacing and bidi marks are set aside;
  * - `stem` — the same regional stem (`K72337WW` or `K72337` for `K72337US`);
  * - `token` — the part number inside the model as a whole token, bounded by
- *   spaces, brackets or separators (`MH304LL/A (Wi-Fi)`). A hyphen or slash is
- *   part of a part number, so `MH304LL/A-CASE` is another one.
+ *   spaces, brackets or separators (`MH304LL/A (Wi-Fi)`), and no OTHER
+ *   part-number-shaped token beside it. A hyphen or slash is part of a part
+ *   number, so `MH304LL/A-CASE` is another one.
  *
  * Never the reverse direction, never a shared prefix and never digits the
  * model shares with the barcode; and a model shorter than
@@ -180,7 +181,11 @@ export const PAGE_MODEL_STRENGTH: Readonly<Record<PageModelMatch, number>> = {
 /** The fewest letters and digits a page's model needs to name anything. */
 export const MIN_PAGE_MODEL_CHARS = 4;
 
-const normalisePageModel = (value: string): string =>
+/**
+ * A page's model as `pageModelNames` compares it, and as a pairing's evidence
+ * carries it: bidi marks (Amazon's `&lrm;`) and extra spacing gone, upper case.
+ */
+export const normalisePageModel = (value: string): string =>
   value
     .replace(/&(?:lrm|rlm);|[\u200e\u200f]/gi, " ")
     .replace(/\s+/g, " ")
@@ -192,6 +197,21 @@ const alphanumericLength = (value: string): number =>
 
 /** What may bound a token: a space, a bracket or a list separator. */
 const TOKEN_EDGE = /[\s()[\]{},;:|]/;
+const TOKEN_EDGES = /[\s()[\]{},;:|]+/;
+
+/**
+ * Does the model hold a part-number-shaped token other than `part`?
+ *
+ * 🔴 **A page listing several models names none of them.** A screen
+ * protector's page states `MH304LL/A, MH334LL/A, MH314LL/A` — every iPad Air
+ * it fits — and the client's part number is among them as a whole token.
+ */
+const namesAnotherPartNumber = (model: string, part: string): boolean =>
+  model
+    .split(TOKEN_EDGES)
+    .some(
+      (piece) => piece !== "" && piece !== part && looksLikePartNumber(piece),
+    );
 
 /** `part` inside `model`, with an edge or the end of the text on both sides. */
 function containsAsToken(model: string, part: string): boolean {
@@ -223,7 +243,7 @@ export function pageModelNames(
         ? "exact"
         : stem !== null && (m === stem || partNumberStem(m) === stem)
           ? "stem"
-          : containsAsToken(m, p)
+          : containsAsToken(m, p) && !namesAnotherPartNumber(m, p)
             ? "token"
             : null;
     if (
