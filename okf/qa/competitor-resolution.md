@@ -2724,3 +2724,40 @@ npx vitest run test/adapter-costco.spec.ts -t "never swallow a real barcode|EAN-
 Two pass. A genuine EAN-13 beginning `400`, and every real barcode on the
 committed pages, is still published. 🔑 The control: refusing every value
 beginning `4` would pass the check above and lose real European barcodes.
+
+---
+
+### Check: resolution-shorthand-name-spelled-out
+
+**Requirement:** A row with no part number is searched by its name spelled out
+**Surface:** `planSearch` / `planQueries` in the query plan
+**Automated:** `test/query-plan.spec.ts` — the spelled-out block, including all 25 Newegg misses table-driven and the plan-equals-`6c1368d` table
+
+**Do**
+
+```bash
+npx vitest run test/query-plan.spec.ts
+```
+
+**Expect**
+
+All pass. Each of the 25 Micro Center names Newegg missed in production plans its spelled-out form (e.g. `MSI MAG X870E TOMAHAWK MAX WIFI`), with only whole tokens expanded (`WFH`, `AORUSX`, `WF-7` untouched; `AX`, `PRO`, `ICE`, `MAX`, `ATX`, `MATX` never expanded); a name already led by its brand is not prefixed again. 🔑 The control: for every input in the table, the plan without the fallback equals `6c1368d`'s exactly, so a row with a client part number, or any row's capped six queries, are unchanged.
+
+---
+
+### Check: resolution-spelled-out-only-after-an-empty-answer
+
+**Requirement:** A row with no part number is searched by its name spelled out
+**Surface:** the search loop in `resolveItem`
+**Automated:** `test/spelled-out-fallback.spec.ts`
+
+**Do**
+
+```bash
+npx vitest run test/spelled-out-fallback.spec.ts
+```
+
+**Expect**
+
+All pass. The spelled-out form is asked only after the name as written answered a results page with no listings, and finds the listing the name could not. It is not asked when the name found a listing, when the name's fetch failed or came back as something other than a results page, or for a row whose client supplied a part number. Removing the empty-answer condition reddens the three "NOT asked" cases; passing no client part number reddens the client-part-number case.
+

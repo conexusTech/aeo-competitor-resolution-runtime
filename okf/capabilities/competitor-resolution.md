@@ -675,3 +675,11 @@ the largest, about 3 MB.
 - AND a genuine barcode that happens to begin like one of Costco's numbers is still a barcode
 
 **Checked by:** resolution-costco-own-numbers-never-verify, resolution-costco-real-barcode-still-read
+
+#### Scenario: A row with no part number is searched by its name spelled out
+- GIVEN a client row with a brand and a shorthand product name, such as MSI "MAG X870E TOMAHAWK MAX WF", and no part number
+- WHEN its queries are planned for a retailer whose search needs every word
+- THEN the name is also searched spelled out, brand first, with the shorthand expanded ("MSI MAG X870E TOMAHAWK MAX WIFI")
+- AND a row with a part number keeps its part-number queries
+
+**Checked by:** resolution-shorthand-name-spelled-out, resolution-spelled-out-only-after-an-empty-answer
