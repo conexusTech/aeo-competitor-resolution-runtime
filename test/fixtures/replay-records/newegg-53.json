@@ -39,13 +39,13 @@
    "queriesTried": [
     "CyberPower CP1350PFCLCD"
    ],
+   "requests": 0,
    "queryTrail": [
     {
      "query": "CyberPower CP1350PFCLCD",
      "candidateCount": 1
     }
-   ],
-   "requests": 0
+   ]
   },
   "asked": [
    "https://www.google.com/search?q=%22649532609635%22",
@@ -85,30 +85,24 @@
    "outcome": "verified",
    "identity": {
     "partNumber": "41369",
-    "brand": "Control",
+    "brand": null,
     "title": "Control System - Thrustmaster T-Flight HOTAS X - Multicolor",
     "provenance": "barcode-derived",
     "corroboratedBy": []
    },
    "queriesTried": [
-    "Control 41369",
     "Thrustmaster T-Flight HOTAS"
    ],
+   "requests": 0,
    "queryTrail": [
-    {
-     "query": "Control 41369",
-     "candidateCount": 0
-    },
     {
      "query": "Thrustmaster T-Flight HOTAS",
      "candidateCount": 16
     }
-   ],
-   "requests": 0
+   ]
   },
   "asked": [
    "https://www.google.com/search?q=%22663296413697%22",
-   "https://www.newegg.com/p/pl?d=Control%2041369",
    "https://www.newegg.com/p/pl?d=Thrustmaster%20T-Flight%20HOTAS",
    "https://www.newegg.com/black-thrustmaster-t-flight-hotas-x-joystick/p/N82E16879337003"
   ]
@@ -143,6 +137,7 @@
     "ALLSOP-30200-",
     "Allsop Accutrack Slimline XL"
    ],
+   "requests": 0,
    "queryTrail": [
     {
      "query": "Allsop ASP30200",
@@ -168,8 +163,7 @@
      "query": "Allsop Accutrack Slimline XL",
      "candidateCount": 0
     }
-   ],
-   "requests": 0
+   ]
   },
   "asked": [
    "https://www.google.com/search?q=%22035286302005%22",
@@ -211,6 +205,7 @@
     "ALLSOP-30201",
     "Allsop Accutrack Slimline Graphite"
    ],
+   "requests": 0,
    "queryTrail": [
     {
      "query": "Allsop 120269786-AC",
@@ -236,8 +231,7 @@
      "query": "Allsop Accutrack Slimline Graphite",
      "candidateCount": 0
     }
-   ],
-   "requests": 0
+   ]
   },
   "asked": [
    "https://www.google.com/search?q=%22035286302012%22",
@@ -298,6 +292,7 @@
     "Case DCB-306",
     "DCB-306"
    ],
+   "requests": 0,
    "queryTrail": [
     {
      "query": "Case DCB-306",
@@ -307,8 +302,7 @@
      "query": "DCB-306",
      "candidateCount": 1
     }
-   ],
-   "requests": 0
+   ]
   },
   "asked": [
    "https://www.google.com/search?q=%22085854213196%22",
@@ -359,6 +353,7 @@
     "120240127-M",
     "Allsop 30205"
    ],
+   "requests": 0,
    "queryTrail": [
     {
      "query": "Allsop 120240127-M",
@@ -372,8 +367,7 @@
      "query": "Allsop 30205",
      "candidateCount": 2
     }
-   ],
-   "requests": 0
+   ]
   },
   "asked": [
    "https://www.google.com/search?q=%22035286302050%22",
@@ -409,7 +403,7 @@
   "resolution": {
    "barcode": "897337030295",
    "clientSku": "",
-   "candidatesSeen": 12,
+   "candidatesSeen": 6,
    "probes": 6,
    "match": null,
    "alternatives": [],
@@ -420,42 +414,30 @@
    "outcome": "not-found",
    "identity": {
     "partNumber": "03029",
-    "brand": "PrimoChill",
+    "brand": null,
     "title": "PrimoChill 60 cc Cooling System Fill Syringe",
     "provenance": "barcode-derived",
     "corroboratedBy": []
    },
    "queriesTried": [
-    "PrimoChill PRIMOCHILL-60",
     "PRIMOCHILL-60",
-    "PrimoChill 03029",
     "PrimoChill 60 cc Cooling System Fill Syringe"
    ],
+   "requests": 0,
    "queryTrail": [
-    {
-     "query": "PrimoChill PRIMOCHILL-60",
-     "candidateCount": 6
-    },
     {
      "query": "PRIMOCHILL-60",
      "candidateCount": 6
     },
     {
-     "query": "PrimoChill 03029",
-     "candidateCount": 0
-    },
-    {
      "query": "PrimoChill 60 cc Cooling System Fill Syringe",
      "candidateCount": 0
     }
-   ],
-   "requests": 0
+   ]
   },
   "asked": [
    "https://www.google.com/search?q=%22897337030295%22",
-   "https://www.newegg.com/p/pl?d=PrimoChill%20PRIMOCHILL-60",
    "https://www.newegg.com/p/pl?d=PRIMOCHILL-60",
-   "https://www.newegg.com/p/pl?d=PrimoChill%2003029",
    "https://www.newegg.com/p/pl?d=PrimoChill%2060%20cc%20Cooling%20System%20Fill%20Syringe",
    "https://www.newegg.com/p/2YM-000S-003B2",
    "https://www.newegg.com/p/3C6-00TN-008G9",
@@ -581,13 +563,13 @@
    "queriesTried": [
     "TPE-TG44G"
    ],
+   "requests": 0,
    "queryTrail": [
     {
      "query": "TPE-TG44G",
      "candidateCount": 9
     }
-   ],
-   "requests": 0
+   ]
   },
   "asked": [
    "https://www.google.com/search?q=%22710931505184%22",
@@ -635,13 +617,13 @@
    "queriesTried": [
     "Cooler N200"
    ],
+   "requests": 0,
    "queryTrail": [
     {
      "query": "Cooler N200",
      "candidateCount": 16
     }
-   ],
-   "requests": 0
+   ]
   },
   "asked": [
    "https://www.google.com/search?q=%22884102021862%22",
@@ -682,6 +664,7 @@
     "Dot 04472",
     "Dot Line SmartPhone Tripod Mount"
    ],
+   "requests": 0,
    "queryTrail": [
     {
      "query": "Dot 04472",
@@ -691,8 +674,7 @@
      "query": "Dot Line SmartPhone Tripod Mount",
      "candidateCount": 1
     }
-   ],
-   "requests": 0
+   ]
   },
   "asked": [
    "https://www.google.com/search?q=%22034447044723%22",
@@ -807,6 +789,7 @@
     "1012233-REG",
     "Logitech LOGITECH-Z150-2"
    ],
+   "requests": 0,
    "queryTrail": [
     {
      "query": "Logitech Z150",
@@ -832,8 +815,7 @@
      "query": "Logitech LOGITECH-Z150-2",
      "candidateCount": 4
     }
-   ],
-   "requests": 0
+   ]
   },
   "asked": [
    "https://www.google.com/search?q=%22097855100665%22",
@@ -872,6 +854,7 @@
     "PrimoChill 02591",
     "PrimoChill Intensifier UV Coolant Concentrate 15"
    ],
+   "requests": 0,
    "queryTrail": [
     {
      "query": "PrimoChill 02591",
@@ -881,8 +864,7 @@
      "query": "PrimoChill Intensifier UV Coolant Concentrate 15",
      "candidateCount": 0
     }
-   ],
-   "requests": 0
+   ]
   },
   "asked": [
    "https://www.google.com/search?q=%22897337025918%22",
@@ -1007,6 +989,7 @@
     "SanDisk 64GB",
     "64GB"
    ],
+   "requests": 0,
    "queryTrail": [
     {
      "query": "SanDisk 64GB",
@@ -1016,8 +999,7 @@
      "query": "64GB",
      "candidateCount": 36
     }
-   ],
-   "requests": 0
+   ]
   },
   "asked": [
    "https://www.google.com/search?q=%22619659102180%22",
@@ -1069,6 +1051,7 @@
     "PrimoChill 02595",
     "PrimoChill Intensifier Transparent Fluid Dye UV"
    ],
+   "requests": 0,
    "queryTrail": [
     {
      "query": "PrimoChill B00AG243IM",
@@ -1086,8 +1069,7 @@
      "query": "PrimoChill Intensifier Transparent Fluid Dye UV",
      "candidateCount": 3
     }
-   ],
-   "requests": 0
+   ]
   },
   "asked": [
    "https://www.google.com/search?q=%22897337025956%22",
@@ -1128,6 +1110,7 @@
     "PrimoChill 02592",
     "PrimoChill UV"
    ],
+   "requests": 0,
    "queryTrail": [
     {
      "query": "PrimoChill B00AG245JE",
@@ -1145,8 +1128,7 @@
      "query": "PrimoChill UV",
      "candidateCount": 36
     }
-   ],
-   "requests": 0
+   ]
   },
   "asked": [
    "https://www.google.com/search?q=%22897337025925%22",
@@ -1280,13 +1262,13 @@
    "queriesTried": [
     "Buffalo 1-BAY"
    ],
+   "requests": 0,
    "queryTrail": [
     {
      "query": "Buffalo 1-BAY",
      "candidateCount": 36
     }
-   ],
-   "requests": 0
+   ]
   },
   "asked": [
    "https://www.google.com/search?q=%22747464127859%22",
@@ -1350,13 +1332,13 @@
    "queriesTried": [
     "Buffalo LS210D0401"
    ],
+   "requests": 0,
    "queryTrail": [
     {
      "query": "Buffalo LS210D0401",
      "candidateCount": 2
     }
-   ],
-   "requests": 0
+   ]
   },
   "asked": [
    "https://www.google.com/search?q=%22747464127873%22",
@@ -1420,13 +1402,13 @@
    "queriesTried": [
     "Buffalo LS220D0402"
    ],
+   "requests": 0,
    "queryTrail": [
     {
      "query": "Buffalo LS220D0402",
      "candidateCount": 2
     }
-   ],
-   "requests": 0
+   ]
   },
   "asked": [
    "https://www.google.com/search?q=%22747464128634%22",
@@ -1498,13 +1480,13 @@
    "queriesTried": [
     "Buffalo LS220D0802"
    ],
+   "requests": 0,
    "queryTrail": [
     {
      "query": "Buffalo LS220D0802",
      "candidateCount": 2
     }
-   ],
-   "requests": 0
+   ]
   },
   "asked": [
    "https://www.google.com/search?q=%22747464128658%22",
@@ -1544,30 +1526,24 @@
    "outcome": "verified",
    "identity": {
     "partNumber": "18720",
-    "brand": "On-ear",
+    "brand": null,
     "title": "On-ear Headphones 1 Pk - KOSS",
     "provenance": "barcode-derived",
     "corroboratedBy": []
    },
    "queriesTried": [
-    "On-ear KEB6IK",
     "KEB6IK"
    ],
+   "requests": 0,
    "queryTrail": [
-    {
-     "query": "On-ear KEB6IK",
-     "candidateCount": 0
-    },
     {
      "query": "KEB6IK",
      "candidateCount": 1
     }
-   ],
-   "requests": 0
+   ]
   },
   "asked": [
    "https://www.google.com/search?q=%22021299187203%22",
-   "https://www.newegg.com/p/pl?d=On-ear%20KEB6IK",
    "https://www.newegg.com/p/pl?d=KEB6IK",
    "https://www.newegg.com/black-koss-keb6ik-earbud/p/N82E16826263223"
   ]
@@ -1688,13 +1664,13 @@
    "queriesTried": [
     "NETGEAR 8-PORT"
    ],
+   "requests": 0,
    "queryTrail": [
     {
      "query": "NETGEAR 8-PORT",
      "candidateCount": 36
     }
-   ],
-   "requests": 0
+   ]
   },
   "asked": [
    "https://www.google.com/search?q=%22606449070156%22",
@@ -1732,6 +1708,7 @@
     "IMA20215",
     "IMAK Ergo Glider Black"
    ],
+   "requests": 0,
    "queryTrail": [
     {
      "query": "IMAK A20215",
@@ -1757,8 +1734,7 @@
      "query": "IMAK Ergo Glider Black",
      "candidateCount": 0
     }
-   ],
-   "requests": 0
+   ]
   },
   "asked": [
    "https://www.google.com/search?q=%22649833202153%22",
@@ -1787,42 +1763,30 @@
    "outcome": "not-found",
    "identity": {
     "partNumber": "00605",
-    "brand": "Avue",
+    "brand": null,
     "title": "Avue BNC Male Twist On Connector (8 Pack)",
     "provenance": "barcode-derived",
     "corroboratedBy": []
    },
    "queriesTried": [
-    "Avue ACN-BMTO081",
     "ACN-BMTO081",
-    "Avue 00605",
     "Avue BNC Male Twist On Connector (8 Pack)"
    ],
+   "requests": 0,
    "queryTrail": [
     {
-     "query": "Avue ACN-BMTO081",
-     "candidateCount": 0
-    },
-    {
      "query": "ACN-BMTO081",
-     "candidateCount": 0
-    },
-    {
-     "query": "Avue 00605",
      "candidateCount": 0
     },
     {
      "query": "Avue BNC Male Twist On Connector (8 Pack)",
      "candidateCount": 0
     }
-   ],
-   "requests": 0
+   ]
   },
   "asked": [
    "https://www.google.com/search?q=%22852552006050%22",
-   "https://www.newegg.com/p/pl?d=Avue%20ACN-BMTO081",
    "https://www.newegg.com/p/pl?d=ACN-BMTO081",
-   "https://www.newegg.com/p/pl?d=Avue%2000605",
    "https://www.newegg.com/p/pl?d=Avue%20BNC%20Male%20Twist%20On%20Connector%20(8%20Pack)"
   ]
  },
@@ -1876,30 +1840,24 @@
    "outcome": "not-found",
    "identity": {
     "partNumber": "00619",
-    "brand": "Avue",
+    "brand": null,
     "title": "Avue BNC Female to RNC Male Adapter (8 Pack)",
     "provenance": "barcode-derived",
     "corroboratedBy": []
    },
    "queriesTried": [
-    "Avue 00619",
     "Avue BNC Female to RNC Male Adapter (8 Pack)"
    ],
+   "requests": 0,
    "queryTrail": [
-    {
-     "query": "Avue 00619",
-     "candidateCount": 0
-    },
     {
      "query": "Avue BNC Female to RNC Male Adapter (8 Pack)",
      "candidateCount": 0
     }
-   ],
-   "requests": 0
+   ]
   },
   "asked": [
    "https://www.google.com/search?q=%22852552006197%22",
-   "https://www.newegg.com/p/pl?d=Avue%2000619",
    "https://www.newegg.com/p/pl?d=Avue%20BNC%20Female%20to%20RNC%20Male%20Adapter%20(8%20Pack)"
   ]
  },
@@ -1920,30 +1878,24 @@
    "outcome": "not-found",
    "identity": {
     "partNumber": "00625",
-    "brand": "Avue",
+    "brand": null,
     "title": "Avue BNC Female to Female Adapter (8 Pack)",
     "provenance": "barcode-derived",
     "corroboratedBy": []
    },
    "queriesTried": [
-    "Avue 00625",
     "Avue BNC Female to Female Adapter (8 Pack)"
    ],
+   "requests": 0,
    "queryTrail": [
-    {
-     "query": "Avue 00625",
-     "candidateCount": 0
-    },
     {
      "query": "Avue BNC Female to Female Adapter (8 Pack)",
      "candidateCount": 0
     }
-   ],
-   "requests": 0
+   ]
   },
   "asked": [
    "https://www.google.com/search?q=%22852552006258%22",
-   "https://www.newegg.com/p/pl?d=Avue%2000625",
    "https://www.newegg.com/p/pl?d=Avue%20BNC%20Female%20to%20Female%20Adapter%20(8%20Pack)"
   ]
  },
@@ -1972,30 +1924,24 @@
    "outcome": "not-found",
    "identity": {
     "partNumber": "00399",
-    "brand": "Avue",
+    "brand": null,
     "title": "Avue Passive Video Transceiver with Pigtail",
     "provenance": "barcode-derived",
     "corroboratedBy": []
    },
    "queriesTried": [
-    "Avue 00399",
     "Avue Passive Video Transceiver with Pigtail"
    ],
+   "requests": 0,
    "queryTrail": [
-    {
-     "query": "Avue 00399",
-     "candidateCount": 0
-    },
     {
      "query": "Avue Passive Video Transceiver with Pigtail",
      "candidateCount": 0
     }
-   ],
-   "requests": 0
+   ]
   },
   "asked": [
    "https://www.google.com/search?q=%22855597003992%22",
-   "https://www.newegg.com/p/pl?d=Avue%2000399",
    "https://www.newegg.com/p/pl?d=Avue%20Passive%20Video%20Transceiver%20with%20Pigtail"
   ]
  },
@@ -2016,42 +1962,30 @@
    "outcome": "not-found",
    "identity": {
     "partNumber": "00316",
-    "brand": "Avue",
+    "brand": null,
     "title": "Avue DC12V 1A Power Adapter",
     "provenance": "barcode-derived",
     "corroboratedBy": []
    },
    "queriesTried": [
-    "Avue APW-D1210A",
     "APW-D1210A",
-    "Avue 00316",
     "Avue DC12V 1A Power Adapter"
    ],
+   "requests": 0,
    "queryTrail": [
     {
-     "query": "Avue APW-D1210A",
-     "candidateCount": 0
-    },
-    {
      "query": "APW-D1210A",
-     "candidateCount": 0
-    },
-    {
-     "query": "Avue 00316",
      "candidateCount": 0
     },
     {
      "query": "Avue DC12V 1A Power Adapter",
      "candidateCount": 0
     }
-   ],
-   "requests": 0
+   ]
   },
   "asked": [
    "https://www.google.com/search?q=%22855597003169%22",
-   "https://www.newegg.com/p/pl?d=Avue%20APW-D1210A",
    "https://www.newegg.com/p/pl?d=APW-D1210A",
-   "https://www.newegg.com/p/pl?d=Avue%2000316",
    "https://www.newegg.com/p/pl?d=Avue%20DC12V%201A%20Power%20Adapter"
   ]
  },
@@ -2171,13 +2105,13 @@
    "queriesTried": [
     "NETGEAR AC1900"
    ],
+   "requests": 0,
    "queryTrail": [
     {
      "query": "NETGEAR AC1900",
      "candidateCount": 26
     }
-   ],
-   "requests": 0
+   ]
   },
   "asked": [
    "https://www.google.com/search?q=%22606449106657%22",
@@ -2202,42 +2136,30 @@
    "outcome": "not-found",
    "identity": {
     "partNumber": "00398",
-    "brand": "Transceptor",
+    "brand": null,
     "title": "Transceptor de vídeo HD pasivo de un solo canal HDTVI, HDCVI ...",
     "provenance": "barcode-derived",
     "corroboratedBy": []
    },
    "queriesTried": [
-    "Transceptor AVB300P",
     "AVB300P",
-    "Transceptor 00398",
     "AVUE Video"
    ],
+   "requests": 0,
    "queryTrail": [
     {
-     "query": "Transceptor AVB300P",
-     "candidateCount": 0
-    },
-    {
      "query": "AVB300P",
-     "candidateCount": 0
-    },
-    {
-     "query": "Transceptor 00398",
      "candidateCount": 0
     },
     {
      "query": "AVUE Video",
      "candidateCount": 4
     }
-   ],
-   "requests": 0
+   ]
   },
   "asked": [
    "https://www.google.com/search?q=%22855597003985%22",
-   "https://www.newegg.com/p/pl?d=Transceptor%20AVB300P",
    "https://www.newegg.com/p/pl?d=AVB300P",
-   "https://www.newegg.com/p/pl?d=Transceptor%2000398",
    "https://www.newegg.com/p/pl?d=AVUE%20Video",
    "https://www.newegg.com/p/0J2-00B8-00022",
    "https://www.newegg.com/p/3C6-03HG-00010",
@@ -2370,6 +2292,7 @@
     "Sandisk 128GB",
     "128GB"
    ],
+   "requests": 0,
    "queryTrail": [
     {
      "query": "Sandisk 128GB",
@@ -2379,8 +2302,7 @@
      "query": "128GB",
      "candidateCount": 36
     }
-   ],
-   "requests": 0
+   ]
   },
   "asked": [
    "https://www.google.com/search?q=%22619659113551%22",
@@ -2402,11 +2324,8 @@
   "missing": "https://www.newegg.com/p/pl?d=TURNIQ-TX-4-HI",
   "asked": [
    "https://www.google.com/search?q=%226933337311393%22",
-   "https://www.newegg.com/p/pl?d=Tuniq%20TX-4",
    "https://www.newegg.com/p/pl?d=TX-4",
-   "https://www.newegg.com/p/pl?d=Tuniq%20TUNIQ-TX-4-HI",
    "https://www.newegg.com/p/pl?d=TUNIQ-TX-4-HI",
-   "https://www.newegg.com/p/pl?d=Tuniq%20TURNIQ-TX-4-HI",
    "https://www.newegg.com/p/pl?d=TURNIQ-TX-4-HI"
   ]
  },
@@ -2516,6 +2435,7 @@
     "7-PORT",
     "Kingwin KW525"
    ],
+   "requests": 0,
    "queryTrail": [
     {
      "query": "Kingwin KW525-7U3C",
@@ -2541,8 +2461,7 @@
      "query": "Kingwin KW525",
      "candidateCount": 2
     }
-   ],
-   "requests": 0
+   ]
   },
   "asked": [
    "https://www.google.com/search?q=%22812348012672%22",
@@ -2683,6 +2602,7 @@
     "1374570-REG",
     "Logitech G920-DRI"
    ],
+   "requests": 0,
    "queryTrail": [
     {
      "query": "Logitech G920",
@@ -2708,8 +2628,7 @@
      "query": "Logitech G920-DRI",
      "candidateCount": 0
     }
-   ],
-   "requests": 0
+   ]
   },
   "asked": [
    "https://www.google.com/search?q=%22097855114693%22",
@@ -2843,6 +2762,7 @@
     "G923",
     "Logitech LOG-941-000119-B"
    ],
+   "requests": 0,
    "queryTrail": [
     {
      "query": "Logitech G920",
@@ -2868,8 +2788,7 @@
      "query": "Logitech LOG-941-000119-B",
      "candidateCount": 0
     }
-   ],
-   "requests": 0
+   ]
   },
   "asked": [
    "https://www.google.com/search?q=%22097855112859%22",
@@ -2998,13 +2917,13 @@
    "queriesTried": [
     "Sandisk 64GB"
    ],
+   "requests": 0,
    "queryTrail": [
     {
      "query": "Sandisk 64GB",
      "candidateCount": 36
     }
-   ],
-   "requests": 0
+   ]
   },
   "asked": [
    "https://www.google.com/search?q=%22619659075538%22",
@@ -3128,13 +3047,13 @@
    "queriesTried": [
     "32GB"
    ],
+   "requests": 0,
    "queryTrail": [
     {
      "query": "32GB",
      "candidateCount": 41
     }
-   ],
-   "requests": 0
+   ]
   },
   "asked": [
    "https://www.google.com/search?q=%22848354017011%22",
@@ -3190,6 +3109,7 @@
     "1250384-REG",
     "Thrustmaster QCHGV1Z00-6632"
    ],
+   "requests": 0,
    "queryTrail": [
     {
      "query": "Thrustmaster RJ12",
@@ -3215,8 +3135,7 @@
      "query": "Thrustmaster QCHGV1Z00-6632",
      "candidateCount": 0
     }
-   ],
-   "requests": 0
+   ]
   },
   "asked": [
    "https://www.google.com/search?q=%22663296420367%22",
@@ -3264,133 +3183,12 @@
  },
  {
   "barcode": "812348012993",
-  "kind": "resolved",
-  "resolution": {
-   "barcode": "812348012993",
-   "clientSku": "",
-   "candidatesSeen": 9,
-   "probes": 5,
-   "match": {
-    "itemId": "2WM-04B7-00001",
-    "url": "https://www.newegg.com/p/2WM-04B7-00001",
-    "title": "Kingwin Powered USB Hub 3.0 w/ 1 USB-C Port, SD Card Reader & Micro SD Card Reader - Sata Power Port w/Lightning Speed Data Transfer Up to 5Gbps - 5.25\" Computer Case Front Bay, black (KW525-3U3CR)",
-    "brand": "Kingwin Inc.",
-    "model": "DEEUB01K0RPTN0",
-    "priceCents": 6899,
-    "priceSource": "search_results_page",
-    "inStock": true,
-    "isFirstParty": false,
-    "sellerName": "Deep Source Trading Shop",
-    "imageUrl": null,
-    "retailerBarcode": null,
-    "score": 10,
-    "unverifiableReason": null
-   },
-   "alternatives": [
-    {
-     "itemId": "04P-005W-000U8",
-     "url": "https://www.newegg.com/weiler-01299-sanders/p/04P-005W-000U8",
-     "title": "WEILER 93004 Crimped Wire Wheel Wire Brush, Arbor, 12\"",
-     "brand": "Weiler",
-     "model": "01299",
-     "priceCents": 15299,
-     "inStock": true,
-     "isFirstParty": false,
-     "sellerName": "Zoro",
-     "retailerBarcode": "012382012991",
-     "barcodeState": "disagreed",
-     "score": 18,
-     "reasonRankedLower": "the client's part number does not appear in its listing text — and the barcode it publishes disagrees with the client's"
-    },
-    {
-     "itemId": "0PS-03BU-00132",
-     "url": "https://www.newegg.com/p/0PS-03BU-00132",
-     "title": "Powered USB Hub 3.0 w/ 1 USB-C Port, SD Card Reader & Micro SD Card Reader - Sata Power Port w/Lightning Speed Data Transfer Up to 5Gbps - 5.25\" Computer Case Front Bay, black (KW525-3U3CR)",
-     "brand": "Generic Brand",
-     "model": "179464730903",
-     "priceCents": 6399,
-     "inStock": true,
-     "isFirstParty": false,
-     "sellerName": "YiManYunDongZhuangBeiSHOP",
-     "retailerBarcode": null,
-     "barcodeState": "absent",
-     "score": 10,
-     "reasonRankedLower": "it matched the same signals as the chosen listing and lost a tie on discovery order — it publishes no barcode, so a swap cannot be verified either"
-    },
-    {
-     "itemId": "0X6-0FA2-00N46",
-     "url": "https://www.newegg.com/p/0X6-0FA2-00N46",
-     "title": "Powered USB Hub 3.0 w/ 1 USB-C Port, SD Card Reader & Micro SD Card Reader - Sata Power Port w/Lightning Speed Data Transfer Up to 5Gbps - 5.25\" Computer Case Front Bay, black (KW525-3U3CR)",
-     "brand": "DIVI",
-     "model": "DIVI3CX12LD1894",
-     "priceCents": 10558,
-     "inStock": true,
-     "isFirstParty": false,
-     "sellerName": "Grandwood Tech Limited",
-     "retailerBarcode": null,
-     "barcodeState": "absent",
-     "score": 10,
-     "reasonRankedLower": "it matched the same signals as the chosen listing and lost a tie on discovery order — it publishes no barcode, so a swap cannot be verified either"
-    },
-    {
-     "itemId": "3C6-00WU-00185",
-     "url": "https://www.newegg.com/p/3C6-00WU-00185",
-     "title": "Kingwin Powered USB Hub 3.0 w/ 1 USB-C Port, SD Card Reader & Micro SD Card Reader - Sata Power Port w/Lightning Speed Data Transfer Up to 5Gbps - 5.25\" Computer Case Front Bay, black (KW525-3U3CR)",
-     "brand": "Dm Enterprises Inc",
-     "model": "356571552708",
-     "priceCents": 7499,
-     "inStock": true,
-     "isFirstParty": false,
-     "sellerName": "Tactifans Outdoor Sport Goods",
-     "retailerBarcode": null,
-     "barcodeState": "absent",
-     "score": 10,
-     "reasonRankedLower": "it matched the same signals as the chosen listing and lost a tie on discovery order — it publishes no barcode, so a swap cannot be verified either"
-    }
-   ],
-   "failure": null,
-   "searchesUnfetched": 0,
-   "searchesNotResultsPage": 0,
-   "probesUnanswered": 0,
-   "outcome": "unverifiable",
-   "identity": {
-    "partNumber": "01299",
-    "brand": "Powered",
-    "title": "Powered USB Hub 3.0 w/ 1 USB-C Port, SD Card Reader ...",
-    "provenance": "barcode-derived",
-    "corroboratedBy": []
-   },
-   "queriesTried": [
-    "Powered KW525-3U3CR",
-    "KW525-3U3CR",
-    "Powered 01299"
-   ],
-   "queryTrail": [
-    {
-     "query": "Powered KW525-3U3CR",
-     "candidateCount": 4
-    },
-    {
-     "query": "KW525-3U3CR",
-     "candidateCount": 4
-    },
-    {
-     "query": "Powered 01299",
-     "candidateCount": 1
-    }
-   ],
-   "requests": 0
-  },
+  "kind": "stopped",
+  "missing": "https://www.newegg.com/p/pl?d=Powered%20USB%20Hub%20USB-C%20Port%20Card",
   "asked": [
    "https://www.google.com/search?q=%22812348012993%22",
-   "https://www.newegg.com/p/pl?d=Powered%20KW525-3U3CR",
    "https://www.newegg.com/p/pl?d=KW525-3U3CR",
-   "https://www.newegg.com/p/pl?d=Powered%2001299",
-   "https://www.newegg.com/weiler-01299-sanders/p/04P-005W-000U8",
-   "https://www.newegg.com/p/2WM-04B7-00001",
-   "https://www.newegg.com/p/0PS-03BU-00132",
-   "https://www.newegg.com/p/0X6-0FA2-00N46",
-   "https://www.newegg.com/p/3C6-00WU-00185"
+   "https://www.newegg.com/p/pl?d=Powered%20USB%20Hub%20USB-C%20Port%20Card"
   ]
  },
  {
@@ -3514,6 +3312,7 @@
     "34772439-LOGITE",
     "Logitech PRODUCT115571"
    ],
+   "requests": 0,
    "queryTrail": [
     {
      "query": "Logitech K780",
@@ -3539,8 +3338,7 @@
      "query": "Logitech PRODUCT115571",
      "candidateCount": 0
     }
-   ],
-   "requests": 0
+   ]
   },
   "asked": [
    "https://www.google.com/search?q=%22097855122834%22",
@@ -3609,13 +3407,13 @@
    "queriesTried": [
     "APC BN450M"
    ],
+   "requests": 0,
    "queryTrail": [
     {
      "query": "APC BN450M",
      "candidateCount": 2
     }
-   ],
-   "requests": 0
+   ]
   },
   "asked": [
    "https://www.google.com/search?q=%22731304329374%22",
@@ -3651,6 +3449,7 @@
     "Fujifilm 94466",
     "Fujifilm instax mini Rainbow Instant Film"
    ],
+   "requests": 0,
    "queryTrail": [
     {
      "query": "Fujifilm FUJ16437401",
@@ -3668,8 +3467,7 @@
      "query": "Fujifilm instax mini Rainbow Instant Film",
      "candidateCount": 13
     }
-   ],
-   "requests": 0
+   ]
   },
   "asked": [
    "https://www.google.com/search?q=%22074101944662%22",

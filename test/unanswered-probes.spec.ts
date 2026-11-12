@@ -361,9 +361,33 @@ describe("🔴 the 53-row Newegg replay", () => {
     expect(before.filter((b) => b.outcome !== null).length).toBeGreaterThan(30);
   });
 
+  /**
+   * ⚠️ **Rows this comparison no longer holds, each with its reason.** Keyed
+   * by barcode, the only key these rows carry (their client SKU is empty).
+   *
+   * - `812348012993` — `insights-derived-identity-invents-a-brand`. Its old
+   *   `unverifiable` rested on `Powered 01299`, a query built on a brand read
+   *   off one listing's title; that query's wrong answer ended the search.
+   *   With no brand the plan reaches the inferred phrase, a page the corpus
+   *   never recorded, so the replay stops there. Answered with an empty
+   *   results page (an experiment run off-corpus, not committed), the row
+   *   proposes the same listing, `2WM-04B7-00001`.
+   */
+  const CORPUS_GAPS = new Set(["812348012993"]);
+
+  it("exempts exactly one row, so the exemption cannot grow silently", () => {
+    expect(CORPUS_GAPS.size).toBe(1);
+    for (const barcode of CORPUS_GAPS) {
+      expect(before.some((b) => b.barcode === barcode)).toBe(true);
+      // Exempt because it now stops at a corpus gap, and only while it does.
+      expect(after.get(barcode), barcode).toBeNull();
+    }
+  });
+
   it("🔴 every row whose probes all answered has exactly the outcome, failure and listing it had", () => {
     let compared = 0;
     for (const b of before) {
+      if (CORPUS_GAPS.has(b.barcode)) continue;
       const r = after.get(b.barcode);
       if (b.outcome === null) {
         expect(r, b.barcode).toBeNull();

@@ -487,7 +487,13 @@ describe("772269: the client's brand overrides a derived 'WIRELESS'", () => {
     barcodeIsSearchable: false,
   };
 
-  it("CONTROL: with no client brand, the derived identity is 'WIRELESS'", async () => {
+  it("with no client brand, nothing derives 'WIRELESS' any more", async () => {
+    // ⚠️ Changed by insights-derived-identity-invents-a-brand. This was the
+    // CONTROL asserting the defect itself (`WIRELESS`, `WIRELESS M310`,
+    // `WIRELESS 06787`); a derived brand now needs titles that agree and is
+    // never a word measured leading titles without being a brand. The proof
+    // that the client's brand outranks one the titles DO agree on lives in
+    // derived-brand-needs-agreement.spec.ts.
     const { adapter, fetcher } = retailer(NO_BARCODE, {}, {}, engine);
     const r = await resolveItem(
       { barcode: LOGITECH_M310_UPC, clientSku: "772269" },
@@ -495,9 +501,10 @@ describe("772269: the client's brand overrides a derived 'WIRELESS'", () => {
       fetcher,
       OPTIONS,
     );
-    expect(r.identity?.brand).toBe("WIRELESS");
-    expect(r.queriesTried).toContain("WIRELESS M310");
-    expect(r.queriesTried).toContain("WIRELESS 06787");
+    expect(r.identity?.brand ?? null).toBeNull();
+    expect(r.queriesTried).not.toContain("WIRELESS M310");
+    expect(r.queriesTried).not.toContain("WIRELESS 06787");
+    expect(r.queriesTried).toContain("M310");
   });
 
   it("🔴 the client's brand is the item's brand, and no query is scoped to 'WIRELESS'", async () => {

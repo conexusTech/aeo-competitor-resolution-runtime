@@ -173,15 +173,79 @@ export function partNumberStem(partNumber: string): string | null {
   return stem !== undefined && stem.length >= 4 ? stem : null;
 }
 
-/** The first word of the first title, when it looks like a brand. */
-export function inferBrand(titles: readonly string[]): string | null {
-  const first = (titles[0] ?? "")
+/**
+ * Words that lead product titles on a search page without being anybody's
+ * brand.
+ *
+ * 🔑 **Measured, not guessed**, and short because agreement does most of the
+ * work. Every word here led at least two distinct titles on one of the 68
+ * committed search-engine pages (the launch replay corpus, 2026-11-12) without
+ * being that item's manufacturer, one of its product lines or a part number —
+ * `Control System - Thrustmaster …`, `Le Petit Mouse …` (IMAK), `Transceptor
+ * de vídeo …` (Avue), `MOUSE LOGITECH M170 …`, `Switch Trendnet …`, `Memory
+ * Foam …`, `Single Channel …`, `Palanca de Cambios LOGITECH …`, and `HD`,
+ * which is what a Hebrew or Arabic title leads with once its own script is
+ * stripped — plus `wireless`, the September Amazon run's
+ * `WIRELESS MOUSE M310/PEACOCK BLUE`.
+ *
+ * ⚠️ **Not `case`, `cooler`, `dot` or `night`**: Case Logic, Cooler Master,
+ * Dot Line and Night Owl lead their own titles with an ordinary word.
+ */
+const NOT_A_BRAND = new Set([
+  "control",
+  "hd",
+  "le",
+  "memory",
+  "mouse",
+  "palanca",
+  "single",
+  "switch",
+  "transceptor",
+  "wireless",
+]);
+
+/** A title's leading word, punctuation dropped, as the title spells it. */
+const leadingWord = (title: string): string =>
+  title
     .replace(/[^\w\s-]/g, " ")
     .trim()
-    .split(/\s+/)[0];
-  return first !== undefined && first.length >= 2 && !/^\d+$/.test(first)
-    ? first
-    : null;
+    .split(/\s+/)[0] ?? "";
+
+/** One word as two titles compare it: case and punctuation aside. */
+const wordKey = (word: string): string =>
+  word.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+/**
+ * The first title's leading word, when the titles AGREE that it leads.
+ *
+ * 🔴 **It used to be the first word of the first title, unconditionally**, and
+ * that is how `WIRELESS MOUSE M310/PEACOCK BLUE` made `WIRELESS` a brand and
+ * every query after it searched `WIRELESS M310` and `WIRELESS 06787`. A
+ * manufacturer's name leads every seller's listing for the product; a word
+ * one seller happened to lead with does not. So the word must lead at least
+ * one other DISTINCT title — the same principle `inferPhrase` scores by — and
+ * must not be a word measured leading titles without being a brand.
+ *
+ * ⚠️ **Distinct titles, not results**: the same listing shown twice is one
+ * seller, and two copies of its title are no agreement at all.
+ *
+ * ⚠️ **Only ever the first title's word.** Agreement elsewhere on the page
+ * does not promote a different one: that would change the brand, and so the
+ * plan, of rows whose first title already agrees. Without agreement the answer
+ * is `null`, which is honest — the plan then searches without a brand.
+ */
+export function inferBrand(titles: readonly string[]): string | null {
+  const first = leadingWord(titles[0] ?? "");
+  const key = wordKey(first);
+  if (first.length < 2 || /^\d+$/.test(first) || key === "") return null;
+  if (NOT_A_BRAND.has(key)) return null;
+
+  const distinct = new Set(titles.map((t) => t.replace(/\s+/g, " ").trim()));
+  let agreeing = 0;
+  for (const title of distinct) {
+    if (wordKey(leadingWord(title)) === key) agreeing++;
+  }
+  return agreeing >= 2 ? first : null;
 }
 
 /**

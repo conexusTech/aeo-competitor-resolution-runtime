@@ -116,8 +116,17 @@ describe("partNumberStem", () => {
 });
 
 describe("inferBrand and inferPhrase", () => {
-  it("takes the brand from the first word of the first title", () => {
-    expect(inferBrand(["Allsop Accutrack Slimline Mousepad"])).toBe("Allsop");
+  it("takes the brand from the first word of the first title, when another title agrees", () => {
+    // ⚠️ Changed by insights-derived-identity-invents-a-brand: this once
+    // passed on ONE title, which is exactly how "WIRELESS MOUSE M310/…" made
+    // `WIRELESS` a brand. A lone title now yields none — see
+    // derived-brand-needs-agreement.spec.ts.
+    expect(
+      inferBrand([
+        "Allsop Accutrack Slimline Mousepad",
+        "Allsop Accutrack Mousepad XL",
+      ]),
+    ).toBe("Allsop");
   });
 
   it("refuses a numeric first word as a brand", () => {

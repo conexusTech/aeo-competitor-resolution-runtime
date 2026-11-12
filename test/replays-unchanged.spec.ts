@@ -37,6 +37,17 @@ import {
  *   field removed, were shown equal to the old records. Of its 184 entries,
  *   104 are a results page or index lookup listing nothing (`0`) and 80
  *   list something; none is `null`, because every corpus page answered.
+ * - `insights-derived-identity-invents-a-brand` made a brand derived from
+ *   the search engine's page need two agreeing titles: 11 newegg-53 rows lose
+ *   a brand that was a generic word or rested on one listing, and with it the
+ *   queries built on that brand. Verified rows 663296413697 and 021299187203
+ *   keep their listing; seven not-found rows (897337030295, 852552006050,
+ *   852552006197, 852552006258, 855597003992, 855597003169, 855597003985)
+ *   stay not-found; 6933337311393 stops where it did. 812348012993 now stops
+ *   at a corpus gap: the phrase its plan reaches once `Powered 01299` is no
+ *   longer asked. With that page answered empty it proposes the same
+ *   listing, 2WM-04B7-00001 — an experiment run off-corpus and not
+ *   committed; the corpus holds no such page.
  */
 
 const recorded = (name: (typeof REPLAYS)[number]): ReplayedRow[] =>
