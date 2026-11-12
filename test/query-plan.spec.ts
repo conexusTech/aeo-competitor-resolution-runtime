@@ -437,11 +437,174 @@ describe("planSearch spells out the client's name, as a fallback", () => {
       phrase: "SteelSeries QcK",
       productName: "QcK Mini GAM",
     };
-    const full = planQueries(steelSeries, LAUNCH);
-    expect(full).toHaveLength(MAX_QUERY_ATTEMPTS);
-    expect(full).not.toContain("SteelSeries QcK Mini GAMING");
-    expect(full.slice(0, 2)).toEqual(["SteelSeries 63005", "63005"]);
+    // The whole plan, exactly as before the spelled-out name existed.
+    const full = planSearch(steelSeries, LAUNCH);
+    expect(full.queries).toEqual([
+      "SteelSeries 63005",
+      "63005",
+      "SteelSeries 01043",
+      "SteelSeries QCK-MINI",
+      "QCK-MINI",
+      "SteelSeries QCK-MINI-2",
+    ]);
+    expect(full.askedOnlyIfEmpty.size).toBe(0);
   });
+
+  /** What `planSearch` would ask with every fallback left unasked. */
+  const unconditional = (plan: ReturnType<typeof planSearch>): string[] =>
+    plan.queries.filter((q) => !plan.askedOnlyIfEmpty.has(q));
+
+  it("🔴 takes no slot from the plan — the fallback goes beyond the cap, as the barcode does", () => {
+    // The review's probe: four part-number attempts, the name and the phrase
+    // fill the six. Counted among them, the fallback cut the phrase, so the
+    // row was asked one question fewer than before whenever it went unasked.
+    const plan = planSearch(
+      {
+        barcode: "not-a-barcode",
+        brand: "MSI",
+        partNumbers: ["ZQ-9000", "ZQ-9100"],
+        clientPartNumber: null,
+        phrase: "MSI MAG Board",
+        productName: "MAG X870E TOMAHAWK MAX WF",
+      },
+      LAUNCH,
+    );
+    expect(plan.queries).toEqual([
+      "MSI ZQ-9000",
+      "ZQ-9000",
+      "MSI ZQ-9100",
+      "ZQ-9100",
+      "MAG X870E TOMAHAWK MAX WF",
+      "MSI MAG Board",
+      "MSI MAG X870E TOMAHAWK MAX WIFI",
+    ]);
+    expect(plan.queries).toHaveLength(MAX_QUERY_ATTEMPTS + 1);
+    expect([...plan.askedOnlyIfEmpty]).toEqual([
+      ["MSI MAG X870E TOMAHAWK MAX WIFI", "MAG X870E TOMAHAWK MAX WF"],
+    ]);
+  });
+
+  it("🔑 is not conditional where the plan already asks the same query", () => {
+    // The phrase IS the spelled-out name: it is asked anyway, so nothing is
+    // added and nothing is made to wait on the name's answer.
+    const plan = planSearch(
+      {
+        barcode: "not-a-barcode",
+        brand: "MSI",
+        partNumbers: [],
+        clientPartNumber: null,
+        phrase: "MSI MAG X870E TOMAHAWK MAX WIFI",
+        productName: "MAG X870E TOMAHAWK MAX WF",
+      },
+      LAUNCH,
+    );
+    expect(plan.queries).toEqual([
+      "MAG X870E TOMAHAWK MAX WF",
+      "MSI MAG X870E TOMAHAWK MAX WIFI",
+    ]);
+    expect(plan.askedOnlyIfEmpty.size).toBe(0);
+  });
+
+  /**
+   * 🔴 The plan without its fallback, for each input, exactly as `6c1368d`
+   * (before the spelled-out name) planned it — computed by running that
+   * commit's `planQueries` on these inputs. With and without the client's own
+   * part number, and with 0, 2 and 5 inferred ones.
+   */
+  const BEFORE: readonly {
+    client: string | null;
+    inferred: readonly string[];
+    plan: readonly string[];
+  }[] = [
+    {
+      client: null,
+      inferred: [],
+      plan: ["MAG X870E TOMAHAWK MAX WF", "MSI MAG Board"],
+    },
+    {
+      client: null,
+      inferred: ["ZQ-9000", "ZQ-9100"],
+      plan: [
+        "MSI ZQ-9000",
+        "ZQ-9000",
+        "MSI ZQ-9100",
+        "ZQ-9100",
+        "MAG X870E TOMAHAWK MAX WF",
+        "MSI MAG Board",
+      ],
+    },
+    {
+      client: null,
+      inferred: ["ZQ-9000", "ZQ-9100", "ZQ-9200", "ZQ-9300", "ZQ-9400"],
+      plan: [
+        "MSI ZQ-9000",
+        "ZQ-9000",
+        "MSI ZQ-9100",
+        "ZQ-9100",
+        "MSI ZQ-9200",
+        "ZQ-9200",
+      ],
+    },
+    {
+      client: "7E59-001R",
+      inferred: [],
+      plan: [
+        "MSI 7E59-001R",
+        "7E59-001R",
+        "MAG X870E TOMAHAWK MAX WF",
+        "MSI MAG Board",
+      ],
+    },
+    {
+      client: "7E59-001R",
+      inferred: ["ZQ-9000", "ZQ-9100"],
+      plan: [
+        "MSI 7E59-001R",
+        "7E59-001R",
+        "MSI ZQ-9000",
+        "ZQ-9000",
+        "MSI ZQ-9100",
+        "ZQ-9100",
+      ],
+    },
+    {
+      client: "7E59-001R",
+      inferred: ["ZQ-9000", "ZQ-9100", "ZQ-9200", "ZQ-9300", "ZQ-9400"],
+      plan: [
+        "MSI 7E59-001R",
+        "7E59-001R",
+        "MSI ZQ-9000",
+        "ZQ-9000",
+        "MSI ZQ-9100",
+        "ZQ-9100",
+      ],
+    },
+  ];
+
+  it.each(BEFORE)(
+    "asks unconditionally exactly what it asked before (client $client, inferred $inferred)",
+    ({ client, inferred, plan }) => {
+      const now = planSearch(
+        {
+          barcode: "4006381333931",
+          brand: "MSI",
+          partNumbers: client === null ? inferred : [client, ...inferred],
+          clientPartNumber: client,
+          phrase: "MSI MAG Board",
+          productName: "MAG X870E TOMAHAWK MAX WF",
+        },
+        LAUNCH,
+      );
+      expect(unconditional(now)).toEqual(plan);
+      // Anything beyond it is the fallback, and only where it can be opened.
+      const extra = now.queries.slice(plan.length);
+      expect(extra).toEqual(
+        client === null && plan.includes("MAG X870E TOMAHAWK MAX WF")
+          ? ["MSI MAG X870E TOMAHAWK MAX WIFI"]
+          : [],
+      );
+    },
+  );
 
   it("🔴 still plans it where the part numbers were only INFERRED — the HTTPS case", () => {
     // A search-engine page yields part-number candidates that are often not

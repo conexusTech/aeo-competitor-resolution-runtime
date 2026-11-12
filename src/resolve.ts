@@ -559,16 +559,16 @@ async function resolveCounted(
   };
 
   /**
+   * How many listings each search ANSWERED with — only a results page the
+   * retailer served; a failed fetch or another page is never recorded.
+   */
+  const answeredWith = new Map<string, number>();
+  /**
    * Ask the retailer one query, adding what it answers to the pool.
    *
    * Returns whether it answered with a results page. A fetch that failed and
    * a body that is not a results page are both tallied as unanswered.
    */
-  /**
-   * How many listings each search ANSWERED with — only a results page the
-   * retailer served; a failed fetch or another page is never recorded.
-   */
-  const answeredWith = new Map<string, number>();
   const search = async (query: string): Promise<boolean> => {
     tried.push(query);
     const { body } = await tryFetch(

@@ -39,8 +39,9 @@ export interface QueryPlanInput {
    * 🔑 **Always tried as written**, because that is what the retailer's own
    * search box is good at: "X870 TAICHI CREATOR" returns the item on the
    * first page where "ASRock X870" returns nothing. Where the item has no part
-   * number from the client it is ALSO tried spelled out, right after and only
-   * if that found nothing — see `spelledOutName` and `planSearch`.
+   * number from the client it is ALSO tried spelled out, after the plan and
+   * only if the name as written found nothing — see `spelledOutName` and
+   * `planSearch`.
    * A brand is never prefixed onto a name that already leads with it:
    * "ASRock ASRock X870 Taichi" is a query no catalogue answers.
    */
@@ -128,7 +129,10 @@ const sameQuery = (a: string, b: string): boolean =>
 
 /** The ordered attempts, and which of them depend on an earlier one. */
 export interface QueryPlan {
-  /** Every attempt, in order — conditional ones in their place. */
+  /**
+   * Every attempt, in order: the plan, then any conditional attempt beyond
+   * it, outside `MAX_QUERY_ATTEMPTS`.
+   */
   readonly queries: string[];
   /**
    * 🔑 A query asked ONLY IF another, asked before it, was answered with an
@@ -252,36 +256,38 @@ export function planSearch(
    *
    * ⚠️ **A fallback, never a second ask.** 220 of those 227 names differ when
    * spelled out, so asking both would buy ~220 searches a run per retailer
-   * that the name as written already answers. It is planned here, in its
-   * place, and `askedOnlyIfEmpty` tells the search loop when to skip it.
-   * Nothing is planned where the two forms are one query to a search box.
+   * that the name as written already answers. `askedOnlyIfEmpty` tells the
+   * search loop when to skip it. Nothing is added where the plan already
+   * asks the same query to a search box.
+   *
+   * 🔴 **Outside `MAX_QUERY_ATTEMPTS`, as the barcode is, and after the
+   * plan.** Counted among the six, an unasked fallback still took a slot and
+   * cut the phrase, so a row was asked one question fewer than before. Kept
+   * out, everything asked unconditionally is exactly the plan it always was,
+   * and the fallback costs a request only when it is asked.
    *
    * ⚠️ **A row whose client gave a part number is asked exactly what it was
-   * asked before**: its exact key is already on the plan.
+   * asked before**: its exact key is already on the plan. And a name cut off
+   * the plan has no answer to open a fallback, so none is planned.
    */
-  const asWritten = input.productName?.trim() ?? "";
-  push(asWritten);
-  if (asWritten !== "" && input.clientPartNumber === null) {
-    const spelledOut = spelledOutName(asWritten, brand);
-    if (
-      !sameQuery(spelledOut, asWritten) &&
-      attempts.includes(asWritten) &&
-      !attempts.includes(spelledOut)
-    ) {
-      push(spelledOut);
-      if (attempts.includes(spelledOut))
-        askedOnlyIfEmpty.set(spelledOut, asWritten);
-    }
-  }
+  push(input.productName);
   push(input.phrase);
 
   const queries = [
     ...attempts.slice(0, first),
     ...attempts.slice(first, first + MAX_QUERY_ATTEMPTS),
   ];
-  // A conditional attempt cut off the end is not on the plan at all. (It
-  // always follows the attempt that opens it, so that one is never cut alone.)
-  for (const query of [...askedOnlyIfEmpty.keys()])
-    if (!queries.includes(query)) askedOnlyIfEmpty.delete(query);
+
+  const asWritten = input.productName?.trim() ?? "";
+  if (input.clientPartNumber === null && queries.includes(asWritten)) {
+    const spelledOut = spelledOutName(asWritten, brand);
+    if (
+      canQuery(support, spelledOut) &&
+      !queries.some((planned) => sameQuery(planned, spelledOut))
+    ) {
+      queries.push(spelledOut);
+      askedOnlyIfEmpty.set(spelledOut, asWritten);
+    }
+  }
   return { queries, askedOnlyIfEmpty };
 }
