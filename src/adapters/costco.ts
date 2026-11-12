@@ -674,10 +674,7 @@ export function indexCandidates(
       shared: shared.length,
       // Sizes the entry shares, less the sizes it states that the client did
       // not: "16gb" is not "8gb", and the 15-inch is not the 13-inch.
-      sizeShared: sizesOf(own).reduce(
-        (n, w) => n + (sizes.has(w) ? 1 : -1),
-        0,
-      ),
+      sizeShared: sizesOf(own).reduce((n, w) => n + (sizes.has(w) ? 1 : -1), 0),
       order,
     });
   });

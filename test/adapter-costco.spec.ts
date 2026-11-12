@@ -486,16 +486,86 @@ const PROVEN: readonly {
   /** Whether the proven url ranks FIRST, not merely within three. */
   first: boolean;
 }[] = [
-  { sku: "001339", brand: "Apple", name: "iPad Air 11-inch, 128GB Wi-Fi (M4 chip) Built For Apple Intelligence, Space Gray", part: "MH304LL/A", url: `${COSTCO}ipad-air-11-inch-128gb-wi-fi-m4-chip-built-for-apple-intelligence/4000444349`, first: true },
-  { sku: "001420", brand: "Apple", name: "iPad Air 13-inch, 128GB Wi-Fi (M4 chip) Built For Apple Intelligence, Space Gray", part: "MH5N4LL/A", url: `${COSTCO}ipad-air-13-inch-128gb-wi-fi-m4-chip-built-for-apple-intelligence/4000444330`, first: true },
-  { sku: "001479", brand: "Apple", name: "iPad Air 13-inch, 256GB Wi-Fi (M4 chip) Built For Apple Intelligence, Space Gray", part: "MH5U4LL/A", url: `${COSTCO}ipad-air-13-inch-256gb-wi-fi-m4-chip-built-for-apple-intelligence/4000444398`, first: true },
-  { sku: "001370", brand: "Apple", name: "iPad Air 11-inch, 256GB Wi-Fi (M4 chip) Built For Apple Intelligence, Space Gray", part: "MH354LL/A", url: `${COSTCO}ipad-air-11-inch-256gb-wi-fi-m4-chip-built-for-apple-intelligence/4000444378`, first: true },
-  { sku: "941617", brand: "Apple", name: "iPad Pro 11-inch, 256GB Wi-Fi (M5 chip) Built For Apple Intelligence, Space Black", part: "MDWK4LL/A", url: `${COSTCO}ipad-pro-11-inch-256gb-wi-fi-m5-chip-built-for-apple-intelligence/4000285636`, first: true },
-  { sku: "941641", brand: "Apple", name: "iPad Pro 13-inch, 256GB Wi-Fi (M5 chip) Built For Apple Intelligence, Space Black", part: "MDYJ4LL/A", url: `${COSTCO}ipad-pro-13-inch-256gb-wi-fi-m5-chip-built-for-apple-intelligence/4000366725`, first: true },
-  { sku: "002030", brand: "Apple", name: "MacBook Air Laptop (13-inch) - Apple M5 Chip, Built for Apple Intelligence, 10-core CPU, 8-core GPU, 16GB Memory, 512GB SSD Storage, Midnight.", part: "MDHE4LL/A", url: `${COSTCO}macbook-air-laptop-13-inch-with-apple-m5-chip-built-for-apple-intelligence/4000444336`, first: true },
-  { sku: "002303", brand: "Apple", name: "MacBook Air Laptop (15-inch) - Apple M5 chip, Built for Apple Intelligence, 10-core CPU, 10-core GPU, 16GB Memory, 512GB SSD Storage, Midnight.", part: "MDVH4LL/A", url: `${COSTCO}macbook-air-laptop-15-inch-with-apple-m5-chip-built-for-apple-intelligence/4000444232`, first: true },
-  { sku: "013466", brand: "Apple", name: "Apple Airpods Max 2, Midnight", part: "MHWK4AM/A", url: `${COSTCO}apple-airpods-max-2/4000444301`, first: true },
-  { sku: "009746", brand: "Samsung", name: "Samsung Galaxy Buds4 Pro True Wireless Earbuds, Black", part: "SM-R640NZKAXAR", url: `${COSTCO}samsung-galaxy-buds4-pro-true-wireless-earbuds/4201049488`, first: true },
+  {
+    sku: "001339",
+    brand: "Apple",
+    name: "iPad Air 11-inch, 128GB Wi-Fi (M4 chip) Built For Apple Intelligence, Space Gray",
+    part: "MH304LL/A",
+    url: `${COSTCO}ipad-air-11-inch-128gb-wi-fi-m4-chip-built-for-apple-intelligence/4000444349`,
+    first: true,
+  },
+  {
+    sku: "001420",
+    brand: "Apple",
+    name: "iPad Air 13-inch, 128GB Wi-Fi (M4 chip) Built For Apple Intelligence, Space Gray",
+    part: "MH5N4LL/A",
+    url: `${COSTCO}ipad-air-13-inch-128gb-wi-fi-m4-chip-built-for-apple-intelligence/4000444330`,
+    first: true,
+  },
+  {
+    sku: "001479",
+    brand: "Apple",
+    name: "iPad Air 13-inch, 256GB Wi-Fi (M4 chip) Built For Apple Intelligence, Space Gray",
+    part: "MH5U4LL/A",
+    url: `${COSTCO}ipad-air-13-inch-256gb-wi-fi-m4-chip-built-for-apple-intelligence/4000444398`,
+    first: true,
+  },
+  {
+    sku: "001370",
+    brand: "Apple",
+    name: "iPad Air 11-inch, 256GB Wi-Fi (M4 chip) Built For Apple Intelligence, Space Gray",
+    part: "MH354LL/A",
+    url: `${COSTCO}ipad-air-11-inch-256gb-wi-fi-m4-chip-built-for-apple-intelligence/4000444378`,
+    first: true,
+  },
+  {
+    sku: "941617",
+    brand: "Apple",
+    name: "iPad Pro 11-inch, 256GB Wi-Fi (M5 chip) Built For Apple Intelligence, Space Black",
+    part: "MDWK4LL/A",
+    url: `${COSTCO}ipad-pro-11-inch-256gb-wi-fi-m5-chip-built-for-apple-intelligence/4000285636`,
+    first: true,
+  },
+  {
+    sku: "941641",
+    brand: "Apple",
+    name: "iPad Pro 13-inch, 256GB Wi-Fi (M5 chip) Built For Apple Intelligence, Space Black",
+    part: "MDYJ4LL/A",
+    url: `${COSTCO}ipad-pro-13-inch-256gb-wi-fi-m5-chip-built-for-apple-intelligence/4000366725`,
+    first: true,
+  },
+  {
+    sku: "002030",
+    brand: "Apple",
+    name: "MacBook Air Laptop (13-inch) - Apple M5 Chip, Built for Apple Intelligence, 10-core CPU, 8-core GPU, 16GB Memory, 512GB SSD Storage, Midnight.",
+    part: "MDHE4LL/A",
+    url: `${COSTCO}macbook-air-laptop-13-inch-with-apple-m5-chip-built-for-apple-intelligence/4000444336`,
+    first: true,
+  },
+  {
+    sku: "002303",
+    brand: "Apple",
+    name: "MacBook Air Laptop (15-inch) - Apple M5 chip, Built for Apple Intelligence, 10-core CPU, 10-core GPU, 16GB Memory, 512GB SSD Storage, Midnight.",
+    part: "MDVH4LL/A",
+    url: `${COSTCO}macbook-air-laptop-15-inch-with-apple-m5-chip-built-for-apple-intelligence/4000444232`,
+    first: true,
+  },
+  {
+    sku: "013466",
+    brand: "Apple",
+    name: "Apple Airpods Max 2, Midnight",
+    part: "MHWK4AM/A",
+    url: `${COSTCO}apple-airpods-max-2/4000444301`,
+    first: true,
+  },
+  {
+    sku: "009746",
+    brand: "Samsung",
+    name: "Samsung Galaxy Buds4 Pro True Wireless Earbuds, Black",
+    part: "SM-R640NZKAXAR",
+    url: `${COSTCO}samsung-galaxy-buds4-pro-true-wireless-earbuds/4201049488`,
+    first: true,
+  },
 ];
 
 describe("🔴 a product Costco names by its line, not its brand, is found", () => {
@@ -575,7 +645,11 @@ describe("🔴 a product Costco names by its line, not its brand, is found", () 
       name: `memory foam pillow ${i}`,
     }));
     for (let i = 0; i < 200; i++) {
-      fake.push({ itemId: `x${i}`, url: `ux${i}`, name: `other thing with memory ${i}` });
+      fake.push({
+        itemId: `x${i}`,
+        url: `ux${i}`,
+        name: `other thing with memory ${i}`,
+      });
     }
     expect(
       indexCandidates(fake, {
