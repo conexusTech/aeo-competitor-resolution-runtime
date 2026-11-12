@@ -268,3 +268,176 @@ describe("planQueries and the client's description", () => {
     expect(plan).toEqual(["Allsop 30184", "30184"]);
   });
 });
+
+/**
+ * 🔴 **A row with no part number was searched by a name its retailer could not
+ * answer.** Measured in production on 2026-11-12: 25 of Micro Center's 227
+ * motherboard rows were filed `not_carried` at Newegg after ONE query and no
+ * candidate — the name as written, unbranded and in Micro Center's shorthand.
+ * Newegg's search needs every word: `MAG X870E TOMAHAWK MAX WF` answers 0,
+ * `MSI MAG X870E TOMAHAWK MAX WIFI` answers 6, the product first.
+ */
+describe("planQueries spells out the client's name", () => {
+  const nameOnly = (brand: string | null, productName: string) => ({
+    barcode: "not-a-barcode",
+    brand,
+    partNumbers: [],
+    phrase: null,
+    productName,
+  });
+
+  it("asks the name spelled out, brand first and shorthand expanded, ahead of the name as written", () => {
+    const plan = planQueries(
+      nameOnly("MSI", "MAG X870E TOMAHAWK MAX WF"),
+      LAUNCH,
+    );
+
+    expect(plan).toEqual([
+      "MSI MAG X870E TOMAHAWK MAX WIFI",
+      "MAG X870E TOMAHAWK MAX WF",
+    ]);
+  });
+
+  it("never prefixes a brand the name already leads with", () => {
+    expect(
+      planQueries(nameOnly("ASUS", "ASUS TUF GAM A520M-PLUS"), LAUNCH),
+    ).toEqual(["ASUS TUF GAMING A520M-PLUS", "ASUS TUF GAM A520M-PLUS"]);
+    // Whatever the case either is written in.
+    expect(planQueries(nameOnly("ASRock", "ASROCK B850M-C"), LAUNCH)).toEqual([
+      "ASROCK B850M-C",
+    ]);
+  });
+
+  it("adds only the brand to a name with no shorthand", () => {
+    expect(
+      planQueries(nameOnly("ASRock", "X870 TAICHI CREATOR"), LAUNCH),
+    ).toEqual(["ASRock X870 TAICHI CREATOR", "X870 TAICHI CREATOR"]);
+  });
+
+  it("expands the shorthand alone where no brand is known", () => {
+    expect(planQueries(nameOnly(null, "Z890 UD WF6E"), LAUNCH)).toEqual([
+      "Z890 UD WIFI6E",
+      "Z890 UD WF6E",
+    ]);
+  });
+
+  it("🔑 asks nothing extra when the spelled-out name is the name as written", () => {
+    // The cost guard: no brand, no shorthand, one query.
+    expect(planQueries(nameOnly(null, "X870 TAICHI CREATOR"), LAUNCH)).toEqual([
+      "X870 TAICHI CREATOR",
+    ]);
+  });
+
+  it("expands whole words only, never a word that merely contains a shorthand", () => {
+    expect(
+      planQueries(nameOnly(null, "WFH AORUSX GAMX MASTRO WF-7"), LAUNCH),
+    ).toEqual(["WFH AORUSX GAMX MASTRO WF-7"]);
+  });
+
+  it("🔴 leaves real product words alone", () => {
+    // Each of these is shorthand-shaped and also a word in somebody's real
+    // product name, so none of them may be rewritten.
+    const name = "B760M-A AX D4 MATX PRO ICE MAX ATX II WS EEB";
+    expect(planQueries(nameOnly(null, name), LAUNCH)).toEqual([name]);
+  });
+
+  it("🔴 keeps a row WITH a part number on the plan it always had", () => {
+    // A part number is the exact key; the name is a fallback. An item that has
+    // one is asked exactly what it was asked before — no extra query, nothing
+    // pushed off the end of a full plan.
+    const withPartNumbers = [
+      {
+        barcode: "035286301848",
+        brand: "Allsop",
+        partNumbers: ["30184"],
+        phrase: null,
+        productName: "Mousepad Pro XL WF",
+      },
+      {
+        barcode: "813810010431",
+        brand: "SteelSeries",
+        partNumbers: ["63005", "QCK-MINI", "QCK-MINI-2", "QCK-HEAVY"],
+        phrase: "SteelSeries QcK",
+        productName: "QcK Mini GAM",
+      },
+    ];
+    expect(planQueries(withPartNumbers[0]!, LAUNCH)).toEqual([
+      "Allsop 30184",
+      "30184",
+      "Mousepad Pro XL WF",
+    ]);
+    const full = planQueries(withPartNumbers[1]!, LAUNCH);
+    expect(full).toHaveLength(MAX_QUERY_ATTEMPTS);
+    expect(full).not.toContain("SteelSeries QcK Mini GAMING");
+    expect(full.slice(0, 2)).toEqual(["SteelSeries 63005", "63005"]);
+  });
+
+  /**
+   * Every Micro Center row Newegg filed `not_carried` on 2026-11-12, with the
+   * brand the client sent and what its spelled-out search must be.
+   */
+  const NEWEGG_MISSES: readonly (readonly [string, string, string])[] = [
+    ["MSI", "MPG B850I EDGE TI ITX WF", "MSI MPG B850I EDGE TI ITX WIFI"],
+    ["ASUS", "ROG STRIX B650A GAMING WF", "ASUS ROG STRIX B650A GAMING WIFI"],
+    [
+      "Gigabyte",
+      "X870E AOR XTRM X3D AI TOP",
+      "Gigabyte X870E AORUS XTREME X3D AI TOP",
+    ],
+    ["MSI", "PRO B760-P WIFI D4 ATX", "MSI PRO B760-P WIFI D4 ATX"],
+    ["Gigabyte", "A620M S2H AM5 MATX D5", "Gigabyte A620M S2H AM5 MATX D5"],
+    [
+      "Gigabyte",
+      "X870 AORUS ELITE WF7 ICE",
+      "Gigabyte X870 AORUS ELITE WIFI7 ICE",
+    ],
+    [
+      "Gigabyte",
+      "X870 AORUS ELITE WF7 AM5",
+      "Gigabyte X870 AORUS ELITE WIFI7 AM5",
+    ],
+    [
+      "Gigabyte",
+      "X870E AORUS ELITE WF7 AM5",
+      "Gigabyte X870E AORUS ELITE WIFI7 AM5",
+    ],
+    ["MSI", "MPG X870E CARBON WF", "MSI MPG X870E CARBON WIFI"],
+    ["ASRock", "X870 STEEL LEGEND WF", "ASRock X870 STEEL LEGEND WIFI"],
+    ["ASRock", "X870 RIPTIDE WF", "ASRock X870 RIPTIDE WIFI"],
+    ["Gigabyte", "Z890 UD WF6E", "Gigabyte Z890 UD WIFI6E"],
+    ["ASUS", "ROG STRIX B850-A GAM WF", "ASUS ROG STRIX B850-A GAMING WIFI"],
+    ["ASUS", "TUF GAMING B860M-PLUS WF", "ASUS TUF GAMING B860M-PLUS WIFI"],
+    ["ASUS", "B650E MAX GAMING WF", "ASUS B650E MAX GAMING WIFI"],
+    ["ASUS", "PRIME X299- A II", "ASUS PRIME X299- A II"],
+    ["MSI", "PRO Z890P WF", "MSI PRO Z890P WIFI"],
+    [
+      "Gigabyte",
+      "X870E AORUS MASTR X3D ICE",
+      "Gigabyte X870E AORUS MASTER X3D ICE",
+    ],
+    [
+      "ASUS",
+      "ROG STRIX X870E-E GAM WF7",
+      "ASUS ROG STRIX X870E-E GAMING WIFI7",
+    ],
+    ["ASUS", "B850M-PLUS TUF GAMING WF7", "ASUS B850M-PLUS TUF GAMING WIFI7"],
+    ["ASUS", "PRO WS W890-E SAGE SE EEB", "ASUS PRO WS W890-E SAGE SE EEB"],
+    ["ASUS", "ASUS TUF GAM A520M-PLUS", "ASUS TUF GAMING A520M-PLUS"],
+    ["ASUS", "PRIME B860MA WF CSM", "ASUS PRIME B860MA WIFI CSM"],
+    ["ASRock", "ASROCK B850M-C", "ASROCK B850M-C"],
+    ["MSI", "MAG X870E TOMAHAWK MAX WF", "MSI MAG X870E TOMAHAWK MAX WIFI"],
+  ];
+
+  it("covers all 25 of Newegg's misses", () => {
+    expect(NEWEGG_MISSES).toHaveLength(25);
+  });
+
+  it.each(NEWEGG_MISSES)(
+    "%s %s is searched as %s, then as written",
+    (brand, name, spelledOut) => {
+      const plan = planQueries(nameOnly(brand, name), LAUNCH);
+      expect(plan[0]).toBe(spelledOut);
+      expect(plan).toEqual(spelledOut === name ? [name] : [spelledOut, name]);
+    },
+  );
+});

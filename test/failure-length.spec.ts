@@ -87,6 +87,31 @@ describe("🔴 a resolution's failure", () => {
     expect(r.failure).toContain("never by part number");
     expect(r.failure?.length ?? 0).toBeLessThanOrEqual(MAX_FAILURE_LENGTH);
   });
+
+  it("calls the client's name spelled out the client's product name, never a derivation", async () => {
+    // An EAN-13 that fits no UPC-A derives no item reference, so every query
+    // asked is the client's name, in one form or the other.
+    const r = await resolveItem(
+      {
+        barcode: "4006381333931",
+        clientSku: "SKU-1",
+        brand: "MSI",
+        productName: "MAG X870E TOMAHAWK MAX WF",
+      },
+      adapter,
+      fetcher,
+      {
+        ...DEFAULT_OPTIONS,
+        clientCatalogueUrlTemplate: "https://catalogue.test/{sku}",
+      },
+    );
+    expect(r.queriesTried).toEqual([
+      "MSI MAG X870E TOMAHAWK MAX WIFI",
+      "MAG X870E TOMAHAWK MAX WF",
+    ]);
+    expect(r.failure).toContain("the client's product name");
+    expect(r.failure).not.toContain("derived from its barcode");
+  });
 });
 
 describe("🔴 the gateway client never posts a failure past the limit", () => {

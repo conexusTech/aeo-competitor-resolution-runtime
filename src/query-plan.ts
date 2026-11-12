@@ -26,11 +26,12 @@ export interface QueryPlanInput {
   /**
    * What the CLIENT calls the product, from their own list.
    *
-   * 🔑 **Tried unbranded and as written**, because that is what the retailer's
-   * own search box is good at: "X870 TAICHI CREATOR" returns the item on the
-   * first page where "ASRock X870" returns nothing. The brand is deliberately
-   * NOT prefixed — a client name often carries it already, and doubling it
-   * ("ASRock ASRock X870 Taichi") is a query no catalogue answers.
+   * 🔑 **Always tried as written**, because that is what the retailer's own
+   * search box is good at: "X870 TAICHI CREATOR" returns the item on the
+   * first page where "ASRock X870" returns nothing. Where the item has no part
+   * number it is ALSO tried spelled out, ahead of that — see `spelledOutName`.
+   * A brand is never prefixed onto a name that already leads with it:
+   * "ASRock ASRock X870 Taichi" is a query no catalogue answers.
    */
   readonly productName: string | null;
 }
@@ -52,6 +53,54 @@ export function barcodeQuery(
   const core = gtinCore(barcode);
   if (core === "") return null;
   return core.padStart(core.length > 12 ? 13 : 12, "0");
+}
+
+/**
+ * Micro Center's shorthand, and the word each one stands for.
+ *
+ * 🔑 **Measured, not guessed**: every entry is a whole word in Micro Center's
+ * own motherboard names (227 rows, 2026-11-12), written in full elsewhere in
+ * the same list — `WF` 46 times beside `WIFI` 43, `GAM` 12 beside `GAMING` 37.
+ * A retailer whose search needs every word answers none of them: Newegg finds
+ * nothing for `MAG X870E TOMAHAWK MAX WF` and the product first for
+ * `MSI MAG X870E TOMAHAWK MAX WIFI`.
+ *
+ * 🔴 **Only words that mean nothing else.** `AX`, `PRO`, `ICE`, `MAX`, `ATX`,
+ * `MATX`, `II`, `WS` and `EEB` are shorthand-shaped and also real words in
+ * somebody's product name, and `D4`/`D5` are also cameras — rewriting any of
+ * them would turn a right query into a wrong one. They stay as written.
+ */
+const SHORTHAND: ReadonlyMap<string, string> = new Map([
+  ["WF", "WIFI"],
+  ["WF7", "WIFI7"],
+  ["WF6E", "WIFI6E"],
+  ["GAM", "GAMING"],
+  ["AOR", "AORUS"],
+  ["MASTR", "MASTER"],
+  ["XTRM", "XTREME"],
+  ["TOMHWK", "TOMAHAWK"],
+  ["CREATR", "CREATOR"],
+  ["ELTE", "ELITE"],
+]);
+
+/** Whitespace-separated words, empty ones dropped. */
+const wordsOf = (text: string): string[] =>
+  text.split(/\s+/).filter((w) => w !== "");
+
+/**
+ * The client's name as a retailer's search reads it: the brand first, unless
+ * the name already leads with it, and the shorthand written out.
+ *
+ * ⚠️ **Whole words only**: `WFH` and `AORUSX` are not `WF` and `AOR`, and a
+ * hyphenated `WF-7` is left as written.
+ */
+export function spelledOutName(name: string, brand: string | null): string {
+  const words = wordsOf(name).map((w) => SHORTHAND.get(w.toUpperCase()) ?? w);
+  const brandWords = wordsOf(brand ?? "");
+  const leadsWithBrand =
+    words.slice(0, brandWords.length).join(" ").toUpperCase() ===
+    brandWords.join(" ").toUpperCase();
+  return (leadsWithBrand ? words : [...brandWords, ...words]).join(" ");
 }
 
 /**
@@ -147,7 +196,21 @@ export function planQueries(
    * 🔑 It sits before the INFERRED phrase deliberately: this is what the
    * customer says the product is, and that is worth more than a phrase we
    * assembled from somebody else's result titles.
+   *
+   * 🔴 **Spelled out first, where the item has no part number.** Measured in
+   * production on 2026-11-12: 25 of Micro Center's 227 motherboards were filed
+   * `not_carried` at Newegg after one query — this name, unbranded and in
+   * shorthand — and no candidate. Newegg's search needs every word, so
+   * `ROG STRIX B850-A GAM WF` answers nothing while
+   * `ASUS ROG STRIX B850-A GAMING WIFI` answers 36. The name as written still
+   * follows it, and costs nothing extra where the two are the same.
+   *
+   * ⚠️ **Only where there is no part number.** An item with one has its exact
+   * key on the plan already; it is asked exactly what it was asked before,
+   * and nothing is pushed off the end of a full plan.
    */
+  if (input.productName != null && input.partNumbers.length === 0)
+    push(spelledOutName(input.productName, brand));
   push(input.productName);
   push(input.phrase);
 

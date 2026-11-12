@@ -34,7 +34,7 @@ import {
   type IdentityProvenance,
   type ProductIdentity,
 } from "./identity/types.js";
-import { barcodeQuery, planQueries } from "./query-plan.js";
+import { barcodeQuery, planQueries, spelledOutName } from "./query-plan.js";
 import {
   brandAgrees,
   hasConclusiveCandidate,
@@ -1039,12 +1039,15 @@ async function resolveCounted(
   const searchedBy = (): string => {
     const barcode = barcodeQuery(request.barcode, adapter.querySupport);
     const name = request.productName?.trim() ?? null;
+    // The plan's spelled-out form of that name is still the client's name.
+    const spelledOut =
+      name === null ? null : spelledOutName(name, identity?.brand ?? null);
     const kinds: string[] = [];
     for (const query of tried) {
       const kind =
         query === barcode
           ? "its barcode"
-          : query === name
+          : query === name || query === spelledOut
             ? "the client's product name"
             : query === phrase?.trim()
               ? "a phrase from search results"
