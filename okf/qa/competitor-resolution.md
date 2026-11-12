@@ -2761,3 +2761,39 @@ npx vitest run test/spelled-out-fallback.spec.ts
 
 All pass. The spelled-out form is asked only after the name as written answered a results page with no listings, and finds the listing the name could not. It is not asked when the name found a listing, when the name's fetch failed or came back as something other than a results page, or for a row whose client supplied a part number. Removing the empty-answer condition reddens the three "NOT asked" cases; passing no client part number reddens the client-part-number case.
 
+---
+
+### Check: resolution-query-trail-counts-each-search
+
+**Requirement:** Every search a resolution made reports how many listings it returned
+**Surface:** `reportedQueries` and `resolveItem`; the resolution sent to the gateway
+**Automated:** `test/query-trail.spec.ts`, `test/product-index.spec.ts` (the `index:<brand>` counts), `test/replays-unchanged.spec.ts` (every replay row's trail equals `queriesTried` and sums to `candidatesSeen`)
+
+**Do**
+
+```bash
+npx vitest run test/query-trail.spec.ts test/product-index.spec.ts test/replays-unchanged.spec.ts
+```
+
+**Expect**
+
+All pass. A two-query resolution sends `[{name, 0}, {spelled-out, 7}]`; an off-host listing still counts in its page's total; Costco's `index:<brand>` carries the entries it found; the trail always has `queriesTried`'s order and length, capped at 50 with each query cut to 500 characters. 🔑 The control: on all four replay records the trail's counts sum to `candidatesSeen`, the number the runtime already reported.
+
+---
+
+### Check: resolution-query-trail-unanswered-is-not-zero
+
+**Requirement:** Every search a resolution made reports how many listings it returned
+**Surface:** `reportedQueries`
+**Automated:** `test/query-trail.spec.ts` — the failed-fetch and not-a-results-page cases
+
+**Do**
+
+```bash
+npx vitest run test/query-trail.spec.ts -t "null"
+```
+
+**Expect**
+
+A search whose fetch failed, or whose page was not a results page, reports `null`; an empty results page reports `0`. Changing the fallback for an unanswered query to `0` reddens three tests.
+

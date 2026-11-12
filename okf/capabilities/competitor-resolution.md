@@ -683,3 +683,12 @@ the largest, about 3 MB.
 - AND a row with a part number keeps its part-number queries
 
 **Checked by:** resolution-shorthand-name-spelled-out, resolution-spelled-out-only-after-an-empty-answer
+
+#### Scenario: Every search a resolution made reports how many listings it returned
+- GIVEN an item whose resolution asked a retailer several searches
+- WHEN its result reaches the gateway
+- THEN each search is reported with the number of listings its results page held, 0 for an empty page
+- AND a search whose page failed or was not a results page reports no count, never 0
+
+**Checked by:** resolution-query-trail-counts-each-search, resolution-query-trail-unanswered-is-not-zero
+
