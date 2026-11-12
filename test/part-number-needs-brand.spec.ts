@@ -202,6 +202,7 @@ describe("planQueries, where a part number needs the brand", () => {
     partNumbers: ["29538"],
     phrase: null,
     productName: null,
+    clientPartNumber: null,
   };
 
   it("asks the bare part number before the brand-scoped one", () => {

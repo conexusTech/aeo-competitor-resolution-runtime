@@ -34,7 +34,7 @@ import {
   type IdentityProvenance,
   type ProductIdentity,
 } from "./identity/types.js";
-import { barcodeQuery, planQueries, spelledOutName } from "./query-plan.js";
+import { barcodeQuery, planSearch, spelledOutName } from "./query-plan.js";
 import {
   brandAgrees,
   hasConclusiveCandidate,
@@ -564,6 +564,11 @@ async function resolveCounted(
    * Returns whether it answered with a results page. A fetch that failed and
    * a body that is not a results page are both tallied as unanswered.
    */
+  /**
+   * How many listings each search ANSWERED with — only a results page the
+   * retailer served; a failed fetch or another page is never recorded.
+   */
+  const answeredWith = new Map<string, number>();
   const search = async (query: string): Promise<boolean> => {
     tried.push(query);
     const { body } = await tryFetch(
@@ -583,6 +588,7 @@ async function resolveCounted(
       notAResultsPage++;
       return false;
     }
+    answeredWith.set(query, candidates.length);
     candidatesSeen += candidates.length;
     for (const candidate of candidates) admit(candidate);
     return true;
@@ -878,11 +884,12 @@ async function resolveCounted(
     candidatesSeen += found.length;
     for (const candidate of found) admit(candidate);
   } else {
-    const queries = planQueries(
+    const { queries, askedOnlyIfEmpty } = planSearch(
       {
         barcode: request.barcode,
         brand: identity?.brand ?? null,
         partNumbers,
+        clientPartNumber: supplied(request.partNumber),
         phrase,
         productName: request.productName ?? null,
       },
@@ -935,6 +942,11 @@ async function resolveCounted(
       if (!canQuery(adapter.querySupport, query)) continue;
       // The barcode stage's query has been asked; never twice.
       if (tried.includes(query)) continue;
+      // 🔑 A fallback is bought only when the query it stands behind was
+      // answered with an empty results page — the client's name spelled out,
+      // after the name as written found nothing.
+      const opener = askedOnlyIfEmpty.get(query);
+      if (opener !== undefined && answeredWith.get(opener) !== 0) continue;
       if (!(await search(query))) continue;
 
       if (

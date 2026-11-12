@@ -21,6 +21,16 @@ export interface QueryPlanInput {
   readonly brand: string | null;
   /** Part-number candidates, best first. */
   readonly partNumbers: readonly string[];
+  /**
+   * The part number the CLIENT's own list states, or `null`.
+   *
+   * 🔴 **Not the same as `partNumbers` being non-empty.** Those include
+   * candidates inferred from a search engine's page for the barcode, which
+   * are often not the product's part number at all (`HTTPS`, measured). Only
+   * the client's own part number is an exact key worth sparing the
+   * spelled-out name for.
+   */
+  readonly clientPartNumber: string | null;
   /** A phrase to fall back on when no part number is known. */
   readonly phrase: string | null;
   /**
@@ -29,7 +39,8 @@ export interface QueryPlanInput {
    * 🔑 **Always tried as written**, because that is what the retailer's own
    * search box is good at: "X870 TAICHI CREATOR" returns the item on the
    * first page where "ASRock X870" returns nothing. Where the item has no part
-   * number it is ALSO tried spelled out, ahead of that — see `spelledOutName`.
+   * number from the client it is ALSO tried spelled out, right after and only
+   * if that found nothing — see `spelledOutName` and `planSearch`.
    * A brand is never prefixed onto a name that already leads with it:
    * "ASRock ASRock X870 Taichi" is a query no catalogue answers.
    */
@@ -60,7 +71,8 @@ export function barcodeQuery(
  *
  * 🔑 **Measured, not guessed**: every entry is a whole word in Micro Center's
  * own motherboard names (227 rows, 2026-11-12), written in full elsewhere in
- * the same list — `WF` 46 times beside `WIFI` 43, `GAM` 12 beside `GAMING` 37.
+ * the same list — `WF` 46 times beside `WIFI` 43, `GAM` 12 beside `GAMING` 37, `XHAIR` 2
+ * beside `CROSSHAIR` 5.
  * A retailer whose search needs every word answers none of them: Newegg finds
  * nothing for `MAG X870E TOMAHAWK MAX WF` and the product first for
  * `MSI MAG X870E TOMAHAWK MAX WIFI`.
@@ -81,6 +93,7 @@ const SHORTHAND: ReadonlyMap<string, string> = new Map([
   ["TOMHWK", "TOMAHAWK"],
   ["CREATR", "CREATOR"],
   ["ELTE", "ELITE"],
+  ["XHAIR", "CROSSHAIR"],
 ]);
 
 /** Whitespace-separated words, empty ones dropped. */
@@ -95,12 +108,35 @@ const wordsOf = (text: string): string[] =>
  * hyphenated `WF-7` is left as written.
  */
 export function spelledOutName(name: string, brand: string | null): string {
-  const words = wordsOf(name).map((w) => SHORTHAND.get(w.toUpperCase()) ?? w);
+  const words = wordsOf(name);
   const brandWords = wordsOf(brand ?? "");
+  // 🔴 Read off the name AS WRITTEN: a brand that is itself shorthand-shaped
+  // (`AOR`) still leads its own name, and is never rewritten.
   const leadsWithBrand =
     words.slice(0, brandWords.length).join(" ").toUpperCase() ===
     brandWords.join(" ").toUpperCase();
-  return (leadsWithBrand ? words : [...brandWords, ...words]).join(" ");
+  const lead = leadsWithBrand ? words.slice(0, brandWords.length) : brandWords;
+  const rest = words
+    .slice(leadsWithBrand ? brandWords.length : 0)
+    .map((w) => SHORTHAND.get(w.toUpperCase()) ?? w);
+  return [...lead, ...rest].join(" ");
+}
+
+/** Whether two queries are one to a search box: spacing and case aside. */
+const sameQuery = (a: string, b: string): boolean =>
+  wordsOf(a).join(" ").toUpperCase() === wordsOf(b).join(" ").toUpperCase();
+
+/** The ordered attempts, and which of them depend on an earlier one. */
+export interface QueryPlan {
+  /** Every attempt, in order — conditional ones in their place. */
+  readonly queries: string[];
+  /**
+   * 🔑 A query asked ONLY IF another, asked before it, was answered with an
+   * empty results page — keyed by the conditional query, valued by the one
+   * whose empty answer opens it. A failed fetch, or a page that was not a
+   * results page, says nothing about the query and opens nothing.
+   */
+  readonly askedOnlyIfEmpty: ReadonlyMap<string, string>;
 }
 
 /**
@@ -128,7 +164,16 @@ export function planQueries(
   input: QueryPlanInput,
   support: QuerySupport,
 ): string[] {
+  return planSearch(input, support).queries;
+}
+
+/** `planQueries`, with the attempts that are asked only on an empty answer. */
+export function planSearch(
+  input: QueryPlanInput,
+  support: QuerySupport,
+): QueryPlan {
   const attempts: string[] = [];
+  const askedOnlyIfEmpty = new Map<string, string>();
   const push = (q: string | null | undefined): void => {
     if (q == null) return;
     const trimmed = q.trim();
@@ -197,25 +242,46 @@ export function planQueries(
    * customer says the product is, and that is worth more than a phrase we
    * assembled from somebody else's result titles.
    *
-   * 🔴 **Spelled out first, where the item has no part number.** Measured in
-   * production on 2026-11-12: 25 of Micro Center's 227 motherboards were filed
+   * 🔴 **Then spelled out, where the client gave no part number — and only
+   * if the name as written found nothing.** Measured in production on
+   * 2026-11-12: 25 of Micro Center's 227 motherboards were filed
    * `not_carried` at Newegg after one query — this name, unbranded and in
    * shorthand — and no candidate. Newegg's search needs every word, so
    * `ROG STRIX B850-A GAM WF` answers nothing while
-   * `ASUS ROG STRIX B850-A GAMING WIFI` answers 36. The name as written still
-   * follows it, and costs nothing extra where the two are the same.
+   * `ASUS ROG STRIX B850-A GAMING WIFI` answers 36.
    *
-   * ⚠️ **Only where there is no part number.** An item with one has its exact
-   * key on the plan already; it is asked exactly what it was asked before,
-   * and nothing is pushed off the end of a full plan.
+   * ⚠️ **A fallback, never a second ask.** 220 of those 227 names differ when
+   * spelled out, so asking both would buy ~220 searches a run per retailer
+   * that the name as written already answers. It is planned here, in its
+   * place, and `askedOnlyIfEmpty` tells the search loop when to skip it.
+   * Nothing is planned where the two forms are one query to a search box.
+   *
+   * ⚠️ **A row whose client gave a part number is asked exactly what it was
+   * asked before**: its exact key is already on the plan.
    */
-  if (input.productName != null && input.partNumbers.length === 0)
-    push(spelledOutName(input.productName, brand));
-  push(input.productName);
+  const asWritten = input.productName?.trim() ?? "";
+  push(asWritten);
+  if (asWritten !== "" && input.clientPartNumber === null) {
+    const spelledOut = spelledOutName(asWritten, brand);
+    if (
+      !sameQuery(spelledOut, asWritten) &&
+      attempts.includes(asWritten) &&
+      !attempts.includes(spelledOut)
+    ) {
+      push(spelledOut);
+      if (attempts.includes(spelledOut))
+        askedOnlyIfEmpty.set(spelledOut, asWritten);
+    }
+  }
   push(input.phrase);
 
-  return [
+  const queries = [
     ...attempts.slice(0, first),
     ...attempts.slice(first, first + MAX_QUERY_ATTEMPTS),
   ];
+  // A conditional attempt cut off the end is not on the plan at all. (It
+  // always follows the attempt that opens it, so that one is never cut alone.)
+  for (const query of [...askedOnlyIfEmpty.keys()])
+    if (!queries.includes(query)) askedOnlyIfEmpty.delete(query);
+  return { queries, askedOnlyIfEmpty };
 }

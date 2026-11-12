@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { MAX_QUERY_ATTEMPTS, planQueries } from "../src/query-plan.js";
+import {
+  MAX_QUERY_ATTEMPTS,
+  planQueries,
+  planSearch,
+  type QueryPlanInput,
+} from "../src/query-plan.js";
 import type { QuerySupport } from "../src/adapters/types.js";
 
 const LAUNCH: QuerySupport = {
@@ -20,6 +25,7 @@ describe("planQueries", () => {
         partNumbers: ["30184"],
         phrase: "Allsop Mousepad",
         productName: null,
+        clientPartNumber: null,
       },
       LAUNCH,
     );
@@ -38,6 +44,7 @@ describe("planQueries", () => {
         partNumbers: ["63005", "QCK-MINI"],
         phrase: "SteelSeries QcK",
         productName: null,
+        clientPartNumber: null,
       },
       LAUNCH,
     );
@@ -55,6 +62,7 @@ describe("planQueries", () => {
         partNumbers: ["K72337WW"],
         phrase: null,
         productName: null,
+        clientPartNumber: null,
       },
       LAUNCH,
     );
@@ -75,6 +83,7 @@ describe("planQueries", () => {
         partNumbers: ["6933337311393", "1234567890"],
         phrase: "1234567890123",
         productName: null,
+        clientPartNumber: null,
       },
       LAUNCH,
     );
@@ -94,6 +103,7 @@ describe("planQueries", () => {
         partNumbers: ["2960703"],
         phrase: null,
         productName: null,
+        clientPartNumber: null,
       },
       LAUNCH,
     );
@@ -109,6 +119,7 @@ describe("planQueries", () => {
         partNumbers: [],
         phrase: "Squarespace Wall Kit",
         productName: null,
+        clientPartNumber: null,
       },
       LAUNCH,
     );
@@ -124,6 +135,7 @@ describe("planQueries", () => {
           partNumbers: [],
           phrase: null,
           productName: null,
+          clientPartNumber: null,
         },
         LAUNCH,
       ),
@@ -138,6 +150,7 @@ describe("planQueries", () => {
         partNumbers: ["A1", "A1", "B2", "C3", "D4", "E5", "F6", "G7"],
         phrase: "a phrase",
         productName: null,
+        clientPartNumber: null,
       },
       LAUNCH,
     );
@@ -153,6 +166,7 @@ describe("planQueries", () => {
         partNumbers: ["30184"],
         phrase: null,
         productName: null,
+        clientPartNumber: null,
       },
       LAUNCH,
     );
@@ -184,6 +198,7 @@ describe("planQueries and the client's description", () => {
         partNumbers: [],
         phrase: null,
         productName: "X870 TAICHI CREATOR",
+        clientPartNumber: null,
       },
       LAUNCH,
     );
@@ -201,6 +216,7 @@ describe("planQueries and the client's description", () => {
         partNumbers: [],
         phrase: null,
         productName: "ASRock X870 Taichi Creator",
+        clientPartNumber: null,
       },
       LAUNCH,
     );
@@ -220,6 +236,7 @@ describe("planQueries and the client's description", () => {
         partNumbers: ["30184"],
         phrase: null,
         productName: "Mousepad Pro XL",
+        clientPartNumber: null,
       },
       LAUNCH,
     );
@@ -240,6 +257,7 @@ describe("planQueries and the client's description", () => {
         partNumbers: [],
         phrase: "motherboard atx amd",
         productName: "X870 TAICHI CREATOR",
+        clientPartNumber: null,
       },
       LAUNCH,
     );
@@ -257,6 +275,7 @@ describe("planQueries and the client's description", () => {
         partNumbers: ["30184"],
         phrase: null,
         productName: null,
+        clientPartNumber: null,
       },
       LAUNCH,
     );
@@ -276,56 +295,106 @@ describe("planQueries and the client's description", () => {
  * candidate — the name as written, unbranded and in Micro Center's shorthand.
  * Newegg's search needs every word: `MAG X870E TOMAHAWK MAX WF` answers 0,
  * `MSI MAG X870E TOMAHAWK MAX WIFI` answers 6, the product first.
+ *
+ * ⚠️ **A fallback, after the name as written** — 220 of the 227 names differ
+ * when spelled out, so asking it first would buy ~220 searches a run that the
+ * name as written already answers. The plan marks it as asked only when that
+ * name answered an empty page; `spelled-out-fallback.spec.ts` checks resolve
+ * keeps to it.
  */
-describe("planQueries spells out the client's name", () => {
-  const nameOnly = (brand: string | null, productName: string) => ({
+describe("planSearch spells out the client's name, as a fallback", () => {
+  const nameOnly = (
+    brand: string | null,
+    productName: string,
+  ): QueryPlanInput => ({
     barcode: "not-a-barcode",
     brand,
     partNumbers: [],
+    clientPartNumber: null,
     phrase: null,
     productName,
   });
 
-  it("asks the name spelled out, brand first and shorthand expanded, ahead of the name as written", () => {
-    const plan = planQueries(
+  it("plans the name spelled out, brand first and shorthand expanded, right after the name as written", () => {
+    const plan = planSearch(
       nameOnly("MSI", "MAG X870E TOMAHAWK MAX WF"),
       LAUNCH,
     );
 
-    expect(plan).toEqual([
-      "MSI MAG X870E TOMAHAWK MAX WIFI",
+    expect(plan.queries).toEqual([
       "MAG X870E TOMAHAWK MAX WF",
+      "MSI MAG X870E TOMAHAWK MAX WIFI",
+    ]);
+    expect(
+      planQueries(nameOnly("MSI", "MAG X870E TOMAHAWK MAX WF"), LAUNCH),
+    ).toEqual(plan.queries);
+  });
+
+  it("🔑 marks it as asked only when the name as written found nothing", () => {
+    const plan = planSearch(
+      nameOnly("MSI", "MAG X870E TOMAHAWK MAX WF"),
+      LAUNCH,
+    );
+
+    expect([...plan.askedOnlyIfEmpty]).toEqual([
+      ["MSI MAG X870E TOMAHAWK MAX WIFI", "MAG X870E TOMAHAWK MAX WF"],
     ]);
   });
 
   it("never prefixes a brand the name already leads with", () => {
     expect(
       planQueries(nameOnly("ASUS", "ASUS TUF GAM A520M-PLUS"), LAUNCH),
-    ).toEqual(["ASUS TUF GAMING A520M-PLUS", "ASUS TUF GAM A520M-PLUS"]);
+    ).toEqual(["ASUS TUF GAM A520M-PLUS", "ASUS TUF GAMING A520M-PLUS"]);
     // Whatever the case either is written in.
     expect(planQueries(nameOnly("ASRock", "ASROCK B850M-C"), LAUNCH)).toEqual([
       "ASROCK B850M-C",
     ]);
   });
 
+  it("🔴 reads the brand off the name as written, before anything is expanded", () => {
+    // A brand that is itself shorthand-shaped: `AOR` leads `AOR AR-DV1`, so
+    // nothing is prefixed and the brand is not rewritten into `AORUS`.
+    expect(planSearch(nameOnly("AOR", "AOR AR-DV1"), LAUNCH).queries).toEqual([
+      "AOR AR-DV1",
+    ]);
+  });
+
   it("adds only the brand to a name with no shorthand", () => {
     expect(
       planQueries(nameOnly("ASRock", "X870 TAICHI CREATOR"), LAUNCH),
-    ).toEqual(["ASRock X870 TAICHI CREATOR", "X870 TAICHI CREATOR"]);
+    ).toEqual(["X870 TAICHI CREATOR", "ASRock X870 TAICHI CREATOR"]);
   });
 
   it("expands the shorthand alone where no brand is known", () => {
     expect(planQueries(nameOnly(null, "Z890 UD WF6E"), LAUNCH)).toEqual([
-      "Z890 UD WIFI6E",
       "Z890 UD WF6E",
+      "Z890 UD WIFI6E",
     ]);
   });
 
-  it("🔑 asks nothing extra when the spelled-out name is the name as written", () => {
-    // The cost guard: no brand, no shorthand, one query.
-    expect(planQueries(nameOnly(null, "X870 TAICHI CREATOR"), LAUNCH)).toEqual([
-      "X870 TAICHI CREATOR",
+  it("expands ASUS's XHAIR to CROSSHAIR", () => {
+    expect(
+      planQueries(nameOnly("ASUS", "ROG XHAIR X870E ED20 AIO"), LAUNCH),
+    ).toEqual([
+      "ROG XHAIR X870E ED20 AIO",
+      "ASUS ROG CROSSHAIR X870E ED20 AIO",
     ]);
+  });
+
+  it("🔑 plans nothing extra when the spelled-out name is the name as written", () => {
+    // The cost guard: no brand, no shorthand, one query.
+    const plan = planSearch(nameOnly(null, "X870 TAICHI CREATOR"), LAUNCH);
+    expect(plan.queries).toEqual(["X870 TAICHI CREATOR"]);
+    expect(plan.askedOnlyIfEmpty.size).toBe(0);
+  });
+
+  it("🔑 plans nothing extra when the two differ only in spacing", () => {
+    expect(planQueries(nameOnly(null, "ROG  STRIX\tB850-A"), LAUNCH)).toEqual([
+      "ROG  STRIX\tB850-A",
+    ]);
+    expect(
+      planQueries(nameOnly("ASUS", "  ASUS   ROG  STRIX B850-A "), LAUNCH),
+    ).toEqual(["ASUS   ROG  STRIX B850-A"]);
   });
 
   it("expands whole words only, never a word that merely contains a shorthand", () => {
@@ -341,35 +410,63 @@ describe("planQueries spells out the client's name", () => {
     expect(planQueries(nameOnly(null, name), LAUNCH)).toEqual([name]);
   });
 
-  it("🔴 keeps a row WITH a part number on the plan it always had", () => {
-    // A part number is the exact key; the name is a fallback. An item that has
-    // one is asked exactly what it was asked before — no extra query, nothing
-    // pushed off the end of a full plan.
-    const withPartNumbers = [
-      {
-        barcode: "035286301848",
-        brand: "Allsop",
-        partNumbers: ["30184"],
-        phrase: null,
-        productName: "Mousepad Pro XL WF",
-      },
-      {
-        barcode: "813810010431",
-        brand: "SteelSeries",
-        partNumbers: ["63005", "QCK-MINI", "QCK-MINI-2", "QCK-HEAVY"],
-        phrase: "SteelSeries QcK",
-        productName: "QcK Mini GAM",
-      },
-    ];
-    expect(planQueries(withPartNumbers[0]!, LAUNCH)).toEqual([
+  it("🔴 keeps a row whose CLIENT supplied a part number on the plan it always had", () => {
+    // A part number is the exact key; the name is a fallback. An item the
+    // client gave one is asked exactly what it was asked before.
+    const allsop: QueryPlanInput = {
+      barcode: "035286301848",
+      brand: "Allsop",
+      partNumbers: ["30184"],
+      clientPartNumber: "30184",
+      phrase: null,
+      productName: "Mousepad Pro XL WF",
+    };
+    const plan = planSearch(allsop, LAUNCH);
+    expect(plan.queries).toEqual([
       "Allsop 30184",
       "30184",
       "Mousepad Pro XL WF",
     ]);
-    const full = planQueries(withPartNumbers[1]!, LAUNCH);
+    expect(plan.askedOnlyIfEmpty.size).toBe(0);
+
+    const steelSeries: QueryPlanInput = {
+      barcode: "813810010431",
+      brand: "SteelSeries",
+      partNumbers: ["63005", "QCK-MINI", "QCK-MINI-2", "QCK-HEAVY"],
+      clientPartNumber: "63005",
+      phrase: "SteelSeries QcK",
+      productName: "QcK Mini GAM",
+    };
+    const full = planQueries(steelSeries, LAUNCH);
     expect(full).toHaveLength(MAX_QUERY_ATTEMPTS);
     expect(full).not.toContain("SteelSeries QcK Mini GAMING");
     expect(full.slice(0, 2)).toEqual(["SteelSeries 63005", "63005"]);
+  });
+
+  it("🔴 still plans it where the part numbers were only INFERRED — the HTTPS case", () => {
+    // A search-engine page yields part-number candidates that are often not
+    // the product's at all (`HTTPS`, measured). Only the client's own part
+    // number takes the fallback away.
+    const plan = planSearch(
+      {
+        barcode: "not-a-barcode",
+        brand: "ASRock",
+        partNumbers: ["HTTPS"],
+        clientPartNumber: null,
+        phrase: null,
+        productName: "X870 TAICHI CREATR",
+      },
+      LAUNCH,
+    );
+    expect(plan.queries).toEqual([
+      "ASRock HTTPS",
+      "HTTPS",
+      "X870 TAICHI CREATR",
+      "ASRock X870 TAICHI CREATOR",
+    ]);
+    expect(plan.askedOnlyIfEmpty.get("ASRock X870 TAICHI CREATOR")).toBe(
+      "X870 TAICHI CREATR",
+    );
   });
 
   /**
@@ -433,11 +530,16 @@ describe("planQueries spells out the client's name", () => {
   });
 
   it.each(NEWEGG_MISSES)(
-    "%s %s is searched as %s, then as written",
+    "%s %s is searched as written, then as %s if that finds nothing",
     (brand, name, spelledOut) => {
-      const plan = planQueries(nameOnly(brand, name), LAUNCH);
-      expect(plan[0]).toBe(spelledOut);
-      expect(plan).toEqual(spelledOut === name ? [name] : [spelledOut, name]);
+      const plan = planSearch(nameOnly(brand, name), LAUNCH);
+      if (spelledOut === name) {
+        expect(plan.queries).toEqual([name]);
+        expect(plan.askedOnlyIfEmpty.size).toBe(0);
+      } else {
+        expect(plan.queries).toEqual([name, spelledOut]);
+        expect(plan.askedOnlyIfEmpty.get(spelledOut)).toBe(name);
+      }
     },
   );
 });

@@ -71,6 +71,7 @@ describe("planQueries with the switch", () => {
       partNumbers: ["30184"],
       phrase: "Allsop Mousepad",
       productName: null,
+      clientPartNumber: null,
     },
     {
       barcode: "813810010431",
@@ -78,6 +79,7 @@ describe("planQueries with the switch", () => {
       partNumbers: ["63005", "QCK-MINI", "QCK-MINI-2", "QCK-HEAVY"],
       phrase: "SteelSeries QcK",
       productName: "QcK Mini",
+      clientPartNumber: null,
     },
     {
       barcode: "4006381333931",
@@ -85,6 +87,7 @@ describe("planQueries with the switch", () => {
       partNumbers: [],
       phrase: null,
       productName: "Stabilo Boss",
+      clientPartNumber: null,
     },
     {
       barcode: "not-a-barcode",
@@ -92,6 +95,7 @@ describe("planQueries with the switch", () => {
       partNumbers: ["K72337WW"],
       phrase: null,
       productName: null,
+      clientPartNumber: null,
     },
   ];
 
@@ -119,6 +123,7 @@ describe("planQueries with the switch", () => {
       partNumbers: ["63005", "QCK-MINI", "QCK-MINI-2", "QCK-HEAVY"],
       phrase: "SteelSeries QcK",
       productName: "QcK Mini Gaming Mouse Pad",
+      clientPartNumber: null,
     };
     const without = planQueries(full, NOT_SEARCHABLE);
     expect(without).toHaveLength(MAX_QUERY_ATTEMPTS);

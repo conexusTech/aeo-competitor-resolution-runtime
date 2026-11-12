@@ -105,9 +105,10 @@ describe("🔴 a resolution's failure", () => {
         clientCatalogueUrlTemplate: "https://catalogue.test/{sku}",
       },
     );
+    // Every search answers an empty page, so the fallback is asked too.
     expect(r.queriesTried).toEqual([
-      "MSI MAG X870E TOMAHAWK MAX WIFI",
       "MAG X870E TOMAHAWK MAX WF",
+      "MSI MAG X870E TOMAHAWK MAX WIFI",
     ]);
     expect(r.failure).toContain("the client's product name");
     expect(r.failure).not.toContain("derived from its barcode");
