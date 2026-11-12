@@ -1402,7 +1402,7 @@ async function resolveCounted(
  * 🔴 **Only the agreeing barcode's own price.** A page listing several items
  * prices each one separately (`ParsedProduct.barcodePrices`); a sibling's
  * price is another item's, so a barcode the page does not price gets none
- * here, and the caller falls back to the price that answers for every barcode.
+ * here — and the caller never falls back to the page's one price for it.
  */
 function priceOfAgreeingBarcode(
   page: ParsedProduct | undefined,
@@ -1423,8 +1423,10 @@ function priceOfAgreeingBarcode(
  *
  * 🔴 **A verified pairing takes the price of the item that matched** where
  * the page prices its items separately — Costco's pages of several colours —
- * and the page's one price otherwise. Only a verified pairing: the barcode
- * an `unconfirmed` one carries DISAGREES, so its item is not the client's.
+ * and nothing else from that page; the page's one price only where it prices
+ * no barcode separately. Only a verified pairing takes a barcode's price: the
+ * barcode an `unconfirmed` one carries DISAGREES, so its item is not the
+ * client's.
  *
  * @param page The listing's product page as this item read it, or
  * `undefined` where it was never read (a pairing proven from the run's memory,
@@ -1445,7 +1447,13 @@ function evidence(
     outcome === "verified" && retailerBarcode !== null
       ? priceOfAgreeingBarcode(page, retailerBarcode)
       : null;
-  const pagePrice = matchedPrice ?? page?.priceCents ?? null;
+  // 🔴 **Structural, not by invariant**: a page that prices per barcode
+  // speaks only through the agreeing barcode's own price, so an unpriced
+  // item never takes the page's one price, whatever an adapter sets there.
+  const pagePrice =
+    page?.barcodePrices !== undefined
+      ? matchedPrice
+      : (page?.priceCents ?? null);
   // 🔴 Held to the gateway's limits: every string here is a competitor's.
   return withinEvidenceLimits({
     itemId: candidate.itemId,

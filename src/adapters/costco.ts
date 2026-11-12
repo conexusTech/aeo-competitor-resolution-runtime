@@ -299,10 +299,10 @@ function pageItem(html: string): PageItem | null {
   const discount = toCents(display?.["aggregatedDiscountAmt"]) ?? 0;
   const ld = ldProduct(html);
   const ldOffer = obj(ld, "offers");
-  const source =
-    online !== null && online - discount > 0
-      ? online - discount
-      : toCents(ldOffer?.["price"]);
+  const fromPriceInfo = online !== null && online - discount > 0;
+  const source = fromPriceInfo
+    ? online - discount
+    : toCents(ldOffer?.["price"]);
 
   const memberOnly =
     items.some((i) => i.membershipRequired) ||
@@ -325,7 +325,13 @@ function pageItem(html: string): PageItem | null {
   // known only from `priceInfo` and a JSON-LD offer naming it.
   const known = new Map<string, number>();
   const priced = strAt(priceInfo, "id");
-  if (priced !== null && source !== null) known.set(priced, source);
+  // 🔴 A JSON-LD price is `priceInfo`'s item's only where the JSON-LD names
+  // that item, or names none: one naming another sku prices another item.
+  const ldSku = strAt(ld, "sku");
+  const sourceIsPriced = fromPriceInfo || ldSku === null || ldSku === priced;
+  if (priced !== null && source !== null && sourceIsPriced) {
+    known.set(priced, source);
+  }
   for (const offer of arr(ld, "offers")) {
     const sku = strAt(offer, "sku");
     const cents = toCents(isObj(offer) ? offer["price"] : null);

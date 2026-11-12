@@ -270,6 +270,82 @@ describe("🔴 a price per barcode, on a page listing several items", () => {
     ]);
   });
 
+  it("🔴 SYNTHETIC: a barcode two items carry is unpriced unless both show one price", () => {
+    // 112 carries 111's UPC and the page does not price it: the barcode
+    // could be either item, so it has no price of its own.
+    const p = parseProductPage(
+      page({
+        productData: {
+          id: "9",
+          childCatalogData: [
+            item("111", "036000291452"),
+            item("112", "036000291452"),
+          ],
+        },
+        priceInfo: priced("111", 10),
+      }),
+    );
+    expect(p?.barcodePrices).toEqual([
+      { barcode: "036000291452", priceCents: null },
+    ]);
+  });
+
+  it("🔴 SYNTHETIC: a JSON-LD price is never credited to priceInfo's item when the JSON-LD names another sku", () => {
+    // priceInfo's own price nets to nothing (10 - 10), so the page's price
+    // falls back to the JSON-LD offer — which is item 112's, not 111's.
+    const p = parseProductPage(
+      page(
+        {
+          productData: {
+            id: "9",
+            childCatalogData: [
+              item("111", "036000291452"),
+              item("112", "036000291469"),
+            ],
+          },
+          priceInfo: {
+            id: "111",
+            displayPrice: { onlinePrice: 10, aggregatedDiscountAmt: 10 },
+          },
+        },
+        { "@type": "Product", sku: "112", offers: { price: 12 } },
+      ),
+    );
+    // A single offer object names no sku of its own, so 112 is not priced
+    // by the offer-by-sku path either.
+    expect(p?.barcodePrices).toEqual([
+      { barcode: "036000291452", priceCents: null },
+      { barcode: "036000291469", priceCents: null },
+    ]);
+  });
+
+  it("CONTROL: a JSON-LD price is credited to priceInfo's item when the JSON-LD names it, or no sku", () => {
+    for (const sku of ["111", undefined]) {
+      const p = parseProductPage(
+        page(
+          {
+            productData: {
+              id: "9",
+              childCatalogData: [
+                item("111", "036000291452"),
+                item("112", "036000291469"),
+              ],
+            },
+            priceInfo: {
+              id: "111",
+              displayPrice: { onlinePrice: 10, aggregatedDiscountAmt: 10 },
+            },
+          },
+          { "@type": "Product", sku, offers: { price: 12 } },
+        ),
+      );
+      expect(p?.barcodePrices, String(sku)).toEqual([
+        { barcode: "036000291452", priceCents: 1200 },
+        { barcode: "036000291469", priceCents: null },
+      ]);
+    }
+  });
+
   it("🔴 SYNTHETIC: member-only or in-cart-only, no barcode is priced", () => {
     for (const flag of [
       { isMembershipReqd: true },

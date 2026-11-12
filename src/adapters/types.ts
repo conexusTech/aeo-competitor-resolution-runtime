@@ -159,7 +159,8 @@ export interface ParsedProduct {
    *
    * ⚠️ **Optional, unlike its neighbours**: absent means `priceCents` speaks
    * for every barcode, which is every page of every other retailer read so
-   * far. Barcodes are verbatim; compare them with `gtinCore`.
+   * far. Where present, a pairing takes its price from here alone, never
+   * from `priceCents`. Barcodes are verbatim; compare them with `gtinCore`.
    */
   readonly barcodePrices?: readonly BarcodePrice[];
   readonly inStock: boolean | null;

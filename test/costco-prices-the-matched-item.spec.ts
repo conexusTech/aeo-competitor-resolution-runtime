@@ -143,6 +143,31 @@ describe("🔴 a Costco pairing carries the price of the item that matched", () 
     expect(r.match?.priceCents).toBe(64999);
   });
 
+  it("🔴 where a page prices per barcode, an unpriced barcode never takes the page's one price", async () => {
+    // An adapter breaking the rule that `priceCents` is null beside
+    // per-barcode prices: the pairing still takes only its own item's price.
+    const alsoOnePrice: RetailerAdapter = {
+      ...costcoAdapter,
+      parseProductPage: (html: string): ParsedProduct | null => {
+        const p = costcoAdapter.parseProductPage(html);
+        if (p === null) return null;
+        return p.barcodePrices === undefined ? p : { ...p, priceCents: 68999 };
+      },
+    };
+    const r = await resolve(
+      {
+        barcode: "195950824032",
+        clientSku: "001354",
+        productName: `${IPAD_NAME}, Starlight`,
+        partNumber: null,
+        brand: "Apple",
+      },
+      alsoOnePrice,
+    );
+    expect(r.outcome).toBe("verified");
+    expect(r.match).toMatchObject({ priceCents: null, priceSource: null });
+  });
+
   it("CONTROL: an adapter stating no per-barcode price keeps the page's one price", async () => {
     // The same pages, with the per-barcode price taken away: the pairing
     // falls back to `priceCents`, which is null on a page of several items.
